@@ -1,9 +1,11 @@
 import { createClient } from "next-sanity";
 
+import { sanityApiVersion, sanityDataset, sanityProjectId } from "./env";
+
 export const sanityClient = createClient({
-  projectId: process.env.NEXT_SANITY_PROJECT_ID,
-  dataset: process.env.NEXT_SANITY_DATASET,
-  apiVersion: "2026-08-20",
+  projectId: sanityProjectId,
+  dataset: sanityDataset,
+  apiVersion: sanityApiVersion,
 
   perspective: "published",
 
