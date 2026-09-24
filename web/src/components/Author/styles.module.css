@@ -1,0 +1,83 @@
+.authorPage {
+  width: 100%;
+  max-width: var(--layout-max-width, 1300px);
+  margin: 0 auto;
+}
+
+.profileHeader,
+.bio,
+.articles {
+  width: 100%;
+}
+
+.profileHeader header {
+  gap: 0.25rem;
+}
+
+.bio {
+  margin: var(--spacing-xl) auto;
+}
+
+.divider {
+  width: 100%;
+  border: 0;
+  border-top: 2px solid var(--border-default, #e2e8f0);
+}
+
+@media (max-width: 768px) {
+  .profileHeader header {
+    margin-left: auto !important;
+    margin-right: auto !important;
+    text-align: center;
+
+    & > * {
+      text-align: center;
+    }
+  }
+}
+
+@media (max-width: 640px) {
+  .dividerWrap {
+    padding-left: var(--spacing-lg, 24px);
+    padding-right: var(--spacing-lg, 24px);
+  }
+}
+
+.expertise {
+  width: 100%;
+  max-width: 900px;
+  margin: var(--spacing-xl, 48px) auto;
+  padding-left: var(--spacing-lg, 24px);
+  padding-right: var(--spacing-lg, 24px);
+  box-sizing: border-box;
+}
+
+.expertise h2 {
+  margin-top: 0;
+}
+
+.expertise h3 {
+  margin-bottom: var(--spacing-sm, 12px);
+}
+
+.expertise > div + div {
+  margin-top: var(--spacing-lg, 24px);
+}
+
+.expertiseList,
+.credentialList {
+  margin: 0;
+  padding-left: var(--spacing-lg, 24px);
+}
+
+.expertiseList li + li,
+.credentialList li + li {
+  margin-top: var(--spacing-xs, 8px);
+}
+
+.credentialMeta {
+  display: block;
+  margin-top: 0.25rem;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm, 14px);
+}

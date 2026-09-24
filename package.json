@@ -1,0 +1,10 @@
+{
+  "name": "website-starter",
+  "private": true,
+  "scripts": {
+    "dev:web": "pnpm --dir web dev",
+    "dev:studio": "pnpm --dir studio dev",
+    "build:web": "pnpm --dir web build",
+    "build:studio": "pnpm --dir studio build"
+  }
+}

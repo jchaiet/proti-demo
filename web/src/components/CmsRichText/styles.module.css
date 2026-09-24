@@ -1,0 +1,44 @@
+.textStyle {
+  color: inherit;
+  font-size: inherit;
+}
+
+.textStyle[data-color="brand"] {
+  color: var(--brand-base);
+}
+
+.textStyle[data-color="secondary"] {
+  color: var(--text-secondary);
+}
+
+.textStyle[data-color="inverse"] {
+  color: var(--text-inverse);
+}
+
+.textStyle[data-size="sm"] {
+  font-size: var(--font-size-sm);
+}
+
+.textStyle[data-size="md"] {
+  font-size: var(--font-size-md);
+}
+
+.textStyle[data-size="lg"] {
+  font-size: var(--font-size-lg);
+}
+
+.textStyle[data-size="xl"] {
+  font-size: var(--font-size-xl);
+}
+
+.textStyle[data-size="2xl"] {
+  font-size: var(--font-size-2xl);
+}
+
+.textStyle[data-size="3xl"] {
+  font-size: var(--font-size-3xl);
+}
+
+.textStyle[data-size="4xl"] {
+  font-size: var(--font-size-4xl);
+}
