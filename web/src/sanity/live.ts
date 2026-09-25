@@ -3,7 +3,7 @@ import { defineLive } from "next-sanity/live";
 import { sanityClient } from "@/sanity/client";
 
 const studioUrl =
-  process.env.NEXT_PUBLIC_SANITY_STUDIO_URL?.trim() || "http://localhost:3333";
+  process.env.NEXT_SANITY_STUDIO_URL?.trim() || "http://localhost:3333";
 
 const STEGA_CONFIGURATION_FIELDS = new Set([
   "accordionPosition",
