@@ -71,7 +71,7 @@ describe('validateRedirectSourcePath', () => {
       {
         _id: 'drafts.redirect-1',
         site: {_ref: 'drafts.site-a'},
-        locale: 'us-en',
+        locale: 'en-us',
       },
       0,
     )
@@ -82,7 +82,7 @@ describe('validateRedirectSourcePath', () => {
     expect(fetch).toHaveBeenCalledTimes(1)
     expect(fetch.mock.calls[0][1]).toEqual({
       siteId: 'site-a',
-      locale: 'us-en',
+      locale: 'en-us',
       sourcePaths: ['/old', '/old/'],
       documentId: 'redirect-1',
       draftId: 'drafts.redirect-1',
@@ -94,7 +94,7 @@ describe('validateRedirectSourcePath', () => {
       {
         _id: 'redirect-1',
         site: {_ref: 'site-a'},
-        locale: 'us-en',
+        locale: 'en-us',
       },
       0,
     )
@@ -111,7 +111,7 @@ describe('validateRedirectSourcePath', () => {
       {
         _id: 'redirect-1',
         site: {_ref: 'site-a'},
-        locale: 'us-en',
+        locale: 'en-us',
       },
       1,
     )

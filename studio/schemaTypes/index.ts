@@ -8,6 +8,7 @@ import {navigationSetType} from './documents/navigationSetType'
 import {redirectType} from './documents/redirectType'
 import {authorType} from './documents/authorType'
 import {singletonType} from './documents/singletonType'
+import {modalType} from './documents/modalType'
 
 import {heroBlockType} from './blocks/heroBlockType'
 import {carouselBlockType} from './blocks/carouselBlockType'
@@ -26,6 +27,7 @@ import {testimonialCardType} from './cards/testimonialCardType'
 import {fullBleedCardType} from './cards/fullBleedCardType'
 
 import {ctaType} from './objects/ctaType'
+import {ctaGroupType} from './objects/ctaGroupType'
 import {linkType} from './objects/linkType'
 import {siteLocaleType} from './objects/siteLocaleType'
 import {sectionHeadingType} from './objects/sectionHeadingType'
@@ -82,6 +84,7 @@ export const schemaTypes = [
   // Shared objects
   linkType,
   ctaType,
+  ctaGroupType,
   iconPickerType,
 
   gridImageItemType,
@@ -160,6 +163,7 @@ export const schemaTypes = [
   blogType,
   authorType,
   singletonType,
+  modalType,
   taxonomyType,
   navigationHeaderType,
   navigationFooterType,

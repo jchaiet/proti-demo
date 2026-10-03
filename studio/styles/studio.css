@@ -1,0 +1,13 @@
+/*
+ * Sanity Studio dialog spacing
+ *
+ * Sanity's generated class names are intentionally not targeted here.
+ * `data-ui="DialogContent"` is the semantic Sanity UI hook exposed on
+ * the scrollable dialog content container.
+ */
+div[data-ui='DialogContent'] > div[data-ui='Box']::after {
+  content: '';
+  display: block;
+  width: 100%;
+  height: 24px;
+}

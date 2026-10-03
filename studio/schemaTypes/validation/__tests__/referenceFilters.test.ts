@@ -4,6 +4,8 @@ import {
   siteLocaleReferenceFilter,
   siteOwnedReferenceFilter,
   siteReferenceFilter,
+  taxonomyTermReferenceFilter,
+  taxonomyVisitorFilterReferenceFilter,
 } from '../referenceFilters'
 
 describe('siteOwnedReferenceFilter', () => {
@@ -120,7 +122,7 @@ describe('siteLocaleReferenceFilter', () => {
   it('blocks the picker when Site is missing', () => {
     expect(
       siteLocaleReferenceFilter({
-        locale: 'us-en',
+        locale: 'en-us',
       }),
     ).toEqual({
       filter: 'false',
@@ -146,7 +148,7 @@ describe('siteLocaleReferenceFilter', () => {
         _type: 'reference',
         _ref: 'site-1',
       },
-      locale: 'us-en',
+      locale: 'en-us',
     })
 
     expect(result.filter).toContain('site._ref == $siteId')
@@ -155,7 +157,7 @@ describe('siteLocaleReferenceFilter', () => {
     if ('params' in result) {
       expect(result.params).toEqual({
         siteId: 'site-1',
-        locale: 'us-en',
+        locale: 'en-us',
       })
     }
   })
@@ -166,14 +168,60 @@ describe('siteLocaleReferenceFilter', () => {
         _type: 'reference',
         _ref: 'drafts.site-1',
       },
-      locale: 'us-es',
+      locale: 'es-us',
     })
 
     expect(result).toMatchObject({
       params: {
         siteId: 'site-1',
-        locale: 'us-es',
+        locale: 'es-us',
       },
     })
+  })
+})
+
+describe('taxonomyTermReferenceFilter', () => {
+  it('blocks the picker when Site is missing', () => {
+    expect(taxonomyTermReferenceFilter({})).toEqual({
+      filter: 'false',
+    })
+  })
+
+  it('restricts assignment pickers to non-Group Taxonomy items on the same Site', () => {
+    const result = taxonomyTermReferenceFilter({
+      site: {
+        _type: 'reference',
+        _ref: 'drafts.site-1',
+      },
+    })
+
+    expect(result.filter).toContain('site._ref == $siteId')
+    expect(result.filter).toContain('coalesce(kind, "term") != "group"')
+
+    if ('params' in result) {
+      expect(result.params).toEqual({
+        siteId: 'site-1',
+      })
+    }
+  })
+})
+
+describe('taxonomyVisitorFilterReferenceFilter', () => {
+  it('restricts visitor filters to filterable non-Group Taxonomy items', () => {
+    const result = taxonomyVisitorFilterReferenceFilter({
+      site: {
+        _type: 'reference',
+        _ref: 'site-1',
+      },
+    })
+
+    expect(result.filter).toContain('coalesce(kind, "term") != "group"')
+    expect(result.filter).toContain('includeInFilters != false')
+
+    if ('params' in result) {
+      expect(result.params).toEqual({
+        siteId: 'site-1',
+      })
+    }
   })
 })

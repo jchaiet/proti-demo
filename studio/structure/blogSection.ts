@@ -1,5 +1,5 @@
 import AddIcon from '@sanity/icons/Add'
-import DocumentIcon from '@sanity/icons/Document'
+import ComposeSparklesIcon from '@sanity/icons/ComposeSparkles'
 
 import type {StructureBuilder} from 'sanity/structure'
 
@@ -75,7 +75,7 @@ export function blogSiteList(S: StructureBuilder, sites: Site[]) {
   return S.listItem()
     .id('blog')
     .title('Blog')
-    .icon(DocumentIcon)
+    .icon(ComposeSparklesIcon)
     .child(
       S.list()
         .id('blog-sites')

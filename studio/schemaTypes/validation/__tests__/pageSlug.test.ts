@@ -29,7 +29,7 @@ describe('Page slug validation', () => {
     const {context, fetch} = createValidationContext({
       document: {
         site: {_ref: 'site-a'},
-        locale: 'us-en',
+        locale: 'en-us',
       },
     })
 
@@ -44,7 +44,7 @@ describe('Page slug validation', () => {
       document: {
         _id: 'drafts.page-a',
         site: {_ref: 'drafts.site-a'},
-        locale: 'us-en',
+        locale: 'en-us',
         parent: {_ref: 'drafts.page-parent'},
       },
       fetchResults: [0],
@@ -57,7 +57,7 @@ describe('Page slug validation', () => {
     })
     expect(fetch).toHaveBeenCalledWith(expect.stringContaining('parent._ref == $parentId'), {
       siteId: 'site-a',
-      locale: 'us-en',
+      locale: 'en-us',
       slug: 'nutrition',
       parentId: 'page-parent',
       documentId: 'page-a',
@@ -70,7 +70,7 @@ describe('Page slug validation', () => {
       document: {
         _id: 'page-a',
         site: {_ref: 'site-a'},
-        locale: 'us-en',
+        locale: 'en-us',
       },
       fetchResults: [0],
     })
@@ -90,7 +90,7 @@ describe('Page slug validation', () => {
       document: {
         _id: 'page-b',
         site: {_ref: 'site-a'},
-        locale: 'us-en',
+        locale: 'en-us',
         parent: {_ref: 'page-parent'},
       },
       fetchResults: [1],
@@ -106,7 +106,7 @@ describe('Page slug validation', () => {
       document: {
         _id: 'page-a',
         site: {_ref: 'site-b'},
-        locale: 'us-es',
+        locale: 'es-us',
         parent: {_ref: 'page-other-parent'},
       },
       fetchResults: [0],
@@ -118,7 +118,7 @@ describe('Page slug validation', () => {
       expect.any(String),
       expect.objectContaining({
         siteId: 'site-b',
-        locale: 'us-es',
+        locale: 'es-us',
         parentId: 'page-other-parent',
       }),
     )

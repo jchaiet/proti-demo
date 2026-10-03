@@ -12,7 +12,7 @@ describe('Site default Navigation validation', () => {
             _id: 'navigation-en',
             title: 'Default EN',
             site: {_ref: 'site-a'},
-            locale: 'us-en',
+            locale: 'en-us',
           },
         ],
         [
@@ -20,7 +20,7 @@ describe('Site default Navigation validation', () => {
             _id: 'navigation-es',
             title: 'Default ES',
             site: {_ref: 'site-a'},
-            locale: 'us-es',
+            locale: 'es-us',
           },
         ],
       ],
@@ -30,7 +30,7 @@ describe('Site default Navigation validation', () => {
       validateSiteNavigationDefaults(
         {
           _id: 'site-a',
-          locales: [{code: 'us-en'}, {code: 'us-es'}],
+          locales: [{code: 'en-us'}, {code: 'es-us'}],
           defaultNavigationSets: [{_ref: 'navigation-en'}, {_ref: 'navigation-es'}],
         },
         context,
@@ -45,7 +45,7 @@ describe('Site default Navigation validation', () => {
       validateSiteNavigationDefaults(
         {
           _id: 'site-a',
-          locales: [{code: 'us-en'}],
+          locales: [{code: 'en-us'}],
           defaultNavigationSets: [],
         },
         context,
@@ -63,7 +63,7 @@ describe('Site default Navigation validation', () => {
             _id: 'navigation-en',
             title: 'Default EN',
             site: {_ref: 'site-b'},
-            locale: 'us-en',
+            locale: 'en-us',
           },
         ],
       ],
@@ -73,7 +73,7 @@ describe('Site default Navigation validation', () => {
       validateSiteNavigationDefaults(
         {
           _id: 'site-a',
-          locales: [{code: 'us-en'}],
+          locales: [{code: 'en-us'}],
           defaultNavigationSets: [{_ref: 'navigation-en'}],
         },
         context,
@@ -103,7 +103,7 @@ describe('Site default Navigation validation', () => {
       validateSiteNavigationDefaults(
         {
           _id: 'site-a',
-          locales: [{code: 'us-en'}],
+          locales: [{code: 'en-us'}],
           defaultNavigationSets: [{_ref: 'navigation-fr'}],
         },
         context,
@@ -123,7 +123,7 @@ describe('Site default Navigation validation', () => {
             _id: 'navigation-a',
             title: 'Primary',
             site: {_ref: 'site-a'},
-            locale: 'us-en',
+            locale: 'en-us',
           },
         ],
         [
@@ -131,7 +131,7 @@ describe('Site default Navigation validation', () => {
             _id: 'navigation-b',
             title: 'Alternate',
             site: {_ref: 'site-a'},
-            locale: 'us-en',
+            locale: 'en-us',
           },
         ],
       ],
@@ -141,14 +141,14 @@ describe('Site default Navigation validation', () => {
       validateSiteNavigationDefaults(
         {
           _id: 'site-a',
-          locales: [{code: 'us-en'}],
+          locales: [{code: 'en-us'}],
           defaultNavigationSets: [{_ref: 'navigation-a'}, {_ref: 'navigation-b'}],
         },
         context,
       ),
     ).resolves.toEqual({
       message:
-        'Only one default Navigation Set is allowed for Locale "us-en". "Primary" and "Alternate" both use that Locale.',
+        'Only one default Navigation Set is allowed for Locale "en-us". "Primary" and "Alternate" both use that Locale.',
       path: ['defaultNavigationSets'],
     })
   })

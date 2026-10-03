@@ -11,7 +11,6 @@ import DocumentIcon from '@sanity/icons/Document'
 import HomeIcon from '@sanity/icons/Home'
 
 import EarthGlobeIcon from '@sanity/icons/EarthGlobe'
-import ComposeIcon from '@sanity/icons/Compose'
 import MenuIcon from '@sanity/icons/Menu'
 import TransferIcon from '@sanity/icons/Transfer'
 import TagsIcon from '@sanity/icons/Tags'
@@ -19,6 +18,7 @@ import RobotIcon from '@sanity/icons/Robot'
 
 import {authorSiteList} from './authorSection'
 import {blogSiteList} from './blogSection'
+import {modalSiteList} from './modalSection'
 
 import {map, type Observable} from 'rxjs'
 
@@ -1301,6 +1301,8 @@ export const structure: StructureResolver = async (S, context) => {
       authorSiteList(S, sites),
 
       singletonSiteList(S, context, sites),
+
+      modalSiteList(S, context, sites),
 
       navigationSiteList(S, context, sites),
 

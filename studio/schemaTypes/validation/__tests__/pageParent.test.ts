@@ -14,7 +14,7 @@ describe('Page parent validation', () => {
     const result = pageParentReferenceFilter({
       _id: 'drafts.page-a',
       site: {_ref: 'drafts.site-a'},
-      locale: 'us-en',
+      locale: 'en-us',
     })
 
     expect(result.filter).toContain('site._ref == $siteId')
@@ -24,7 +24,7 @@ describe('Page parent validation', () => {
     expect(result).toMatchObject({
       params: {
         siteId: 'site-a',
-        locale: 'us-en',
+        locale: 'en-us',
         documentId: 'page-a',
         draftId: 'drafts.page-a',
       },
@@ -36,12 +36,12 @@ describe('Page parent validation', () => {
       document: {
         _id: 'page-child',
         site: {_ref: 'site-a'},
-        locale: 'us-en',
+        locale: 'en-us',
       },
       fetchResults: [
         {
           site: {_ref: 'site-a'},
-          locale: 'us-en',
+          locale: 'en-us',
         },
       ],
     })
@@ -54,12 +54,12 @@ describe('Page parent validation', () => {
       document: {
         _id: 'page-child',
         site: {_ref: 'site-a'},
-        locale: 'us-en',
+        locale: 'en-us',
       },
       fetchResults: [
         {
           site: {_ref: 'site-b'},
-          locale: 'us-en',
+          locale: 'en-us',
         },
       ],
     })
@@ -74,12 +74,12 @@ describe('Page parent validation', () => {
       document: {
         _id: 'page-child',
         site: {_ref: 'site-a'},
-        locale: 'us-en',
+        locale: 'en-us',
       },
       fetchResults: [
         {
           site: {_ref: 'site-a'},
-          locale: 'us-es',
+          locale: 'es-us',
         },
       ],
     })
@@ -94,7 +94,7 @@ describe('Page parent validation', () => {
       document: {
         _id: 'drafts.page-a',
         site: {_ref: 'site-a'},
-        locale: 'us-en',
+        locale: 'en-us',
       },
     })
 
@@ -109,12 +109,12 @@ describe('Page parent validation', () => {
       document: {
         _id: 'page-current',
         site: {_ref: 'site-a'},
-        locale: 'us-en',
+        locale: 'en-us',
       },
       fetchResults: [
         {
           site: {_ref: 'site-a'},
-          locale: 'us-en',
+          locale: 'en-us',
           parent: {_ref: 'page-current'},
         },
       ],
@@ -128,7 +128,7 @@ describe('Page parent validation', () => {
   it('protects against excessively deep or circular Parent hierarchies', async () => {
     const fetchResults = Array.from({length: 50}, (_, index) => ({
       site: {_ref: 'site-a'},
-      locale: 'us-en',
+      locale: 'en-us',
       parent: {_ref: `page-${index + 1}`},
     }))
 
@@ -136,7 +136,7 @@ describe('Page parent validation', () => {
       document: {
         _id: 'page-current',
         site: {_ref: 'site-a'},
-        locale: 'us-en',
+        locale: 'en-us',
       },
       fetchResults,
     })

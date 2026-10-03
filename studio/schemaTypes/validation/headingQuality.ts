@@ -245,9 +245,9 @@ function buildHeadingWarning(
     }
   } else {
     /*
-     * BlogTemplate already renders the Blog document title as H1 before the
-     * body builder. Any authored H1 inside Blog Content is therefore an
-     * additional H1.
+     * BlogHero always renders the Blog document title as the page H1 before
+     * the body builder. Studio validation therefore treats that title as the
+     * primary H1 and only checks Blog Content for additional H1 headings.
      */
     const bodyH1s = builderHeadings.filter((heading) => heading.level === 1)
 

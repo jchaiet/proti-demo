@@ -5,6 +5,7 @@ export interface SectionHeadingValue {
   title?: unknown[]
   description?: unknown[]
   disclaimer?: unknown[]
+  textAlignment?: 'inherit' | 'left' | 'center' | 'right'
 }
 
 export const sectionHeadingType = defineType({
@@ -39,6 +40,27 @@ export const sectionHeadingType = defineType({
               : 'Section Title should use Heading 1 through Heading 6 rather than Normal text.'
           })
           .warning(),
+    }),
+
+    defineField({
+      name: 'textAlignment',
+      title: 'Text Alignment',
+      type: 'string',
+
+      description:
+        'Controls the alignment of the heading text only. Block placement alignment remains separate.',
+
+      initialValue: 'inherit',
+
+      options: {
+        list: [
+          {title: 'Block Default', value: 'inherit'},
+          {title: 'Left', value: 'left'},
+          {title: 'Center', value: 'center'},
+          {title: 'Right', value: 'right'},
+        ],
+        layout: 'radio',
+      },
     }),
 
     defineField({

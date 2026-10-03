@@ -86,9 +86,19 @@ export const blogType = defineType({
       type: 'text',
       group: 'content',
       description:
-        'Short description used in Blog cards, search results, listings, and the Blog hero.',
+        'Short description used in Blog cards, search results, listings, and as the default SEO and structured-data description. It is not shown in the article unless enabled below.',
       rows: 3,
       validation: (rule) => rule.required().max(300),
+    }),
+
+    defineField({
+      name: 'showSummaryInArticle',
+      title: 'Show Summary in Article',
+      type: 'boolean',
+      group: 'content',
+      description:
+        'Display the Summary beneath the Blog title in the article hero. This only controls on-page display; the Summary is still used for cards, search results, listings, SEO metadata, and structured data.',
+      initialValue: false,
     }),
 
     defineField({

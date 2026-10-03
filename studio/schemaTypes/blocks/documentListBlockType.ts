@@ -1,7 +1,12 @@
 import {defineArrayMember, defineField, defineType} from 'sanity'
 
+import {TaxonomyFilterPickerInput} from '../../components/inputs/TaxonomyFilterPickerInput'
+
 import {validateDocumentListTaxonomyReferences} from '../validation/documentListTaxonomy'
-import {siteReferenceFilter} from '../validation/referenceFilters'
+import {
+  taxonomyTermReferenceFilter,
+  taxonomyVisitorFilterReferenceFilter,
+} from '../validation/referenceFilters'
 
 type TaxonomyReference = {
   _ref?: string
@@ -98,7 +103,8 @@ export const documentListBlockType = defineType({
       title: 'Content Types',
       type: 'array',
 
-      description: 'Choose which types of content are eligible to appear in this list.',
+      description:
+        'Choose which types of content are eligible to appear in this list. Select all available types for a site-wide search.',
 
       hidden: ({parent}) => parent?.sourceMode !== 'dynamic',
 
@@ -110,6 +116,10 @@ export const documentListBlockType = defineType({
 
       options: {
         list: [
+          {
+            title: 'Pages',
+            value: 'page',
+          },
           {
             title: 'Articles',
             value: 'article',
@@ -168,7 +178,7 @@ export const documentListBlockType = defineType({
           options: {
             disableNew: true,
 
-            filter: ({document}) => siteReferenceFilter(document),
+            filter: ({document}) => taxonomyTermReferenceFilter(document),
           },
         }),
       ],
@@ -299,7 +309,8 @@ export const documentListBlockType = defineType({
       title: 'Maximum Results',
       type: 'number',
 
-      description: 'Maximum number of matching documents that may be loaded for this list.',
+      description:
+        'Maximum number shown before a visitor searches. Search queries use the full selected content scope.',
 
       initialValue: 50,
 
@@ -315,6 +326,10 @@ export const documentListBlockType = defineType({
 
           if (parent?.sourceMode === 'dynamic' && (typeof value !== 'number' || value < 1)) {
             return 'Maximum results must be at least 1.'
+          }
+
+          if (parent?.sourceMode === 'dynamic' && typeof value === 'number' && value > 200) {
+            return 'Maximum results cannot exceed 200.'
           }
 
           return true
@@ -392,7 +407,7 @@ export const documentListBlockType = defineType({
       title: 'Enable Search',
       type: 'boolean',
 
-      description: 'Allow visitors to search the currently available content.',
+      description: 'Allow visitors to search the full eligible content scope selected above.',
 
       initialValue: true,
     }),
@@ -405,6 +420,34 @@ export const documentListBlockType = defineType({
       initialValue: 'Search documents...',
 
       hidden: ({parent}) => parent?.enableSearch === false,
+    }),
+
+    defineField({
+      name: 'requireSearchQuery',
+      title: 'Require Search Query',
+      type: 'boolean',
+
+      description:
+        'When enabled, no dynamic results are loaded until the visitor enters a search term. Useful for a dedicated Site Search page.',
+
+      initialValue: false,
+
+      hidden: ({parent}) => parent?.sourceMode !== 'dynamic' || parent?.enableSearch === false,
+    }),
+
+    defineField({
+      name: 'initialStateText',
+      title: 'Initial State Text',
+      type: 'string',
+
+      description: 'Displayed before the visitor enters a search term.',
+
+      initialValue: 'Enter a search term to begin.',
+
+      hidden: ({parent}) =>
+        parent?.sourceMode !== 'dynamic' ||
+        parent?.enableSearch === false ||
+        parent?.requireSearchQuery !== true,
     }),
 
     /* === Visitor Filters === */
@@ -525,6 +568,142 @@ export const documentListBlockType = defineType({
       ],
     }),
 
+    defineField({
+      name: 'taxonomyFilterTitle',
+      title: 'Taxonomy Filter Title',
+      type: 'string',
+
+      description: 'Heading displayed above the visitor-facing Taxonomy filter group.',
+
+      initialValue: 'Topics',
+
+      hidden: ({parent}) =>
+        !parent?.enableFilters ||
+        parent?.sourceMode !== 'dynamic' ||
+        !Array.isArray(parent?.filterTaxonomy) ||
+        parent.filterTaxonomy.length === 0,
+    }),
+
+    defineField({
+      name: 'taxonomyFilterLogic',
+      title: 'Taxonomy Filter Selection',
+      type: 'string',
+
+      description:
+        'Single Selection allows one Taxonomy Term at a time. Multiple Selection allows several.',
+
+      initialValue: 'checkbox',
+
+      hidden: ({parent}) =>
+        !parent?.enableFilters ||
+        parent?.sourceMode !== 'dynamic' ||
+        !Array.isArray(parent?.filterTaxonomy) ||
+        parent.filterTaxonomy.length === 0,
+
+      options: {
+        list: [
+          {
+            title: 'Single Selection',
+            value: 'radio',
+          },
+          {
+            title: 'Multiple Selection',
+            value: 'checkbox',
+          },
+        ],
+
+        layout: 'radio',
+      },
+    }),
+
+    defineField({
+      name: 'taxonomyFilterMatchLogic',
+      title: 'Taxonomy Match',
+      type: 'string',
+
+      description:
+        'Any Match includes content assigned to at least one selected visitor Taxonomy filter. All Match requires every selected Taxonomy filter.',
+
+      initialValue: 'any',
+
+      hidden: ({parent}) =>
+        !parent?.enableFilters ||
+        parent?.sourceMode !== 'dynamic' ||
+        parent?.taxonomyFilterLogic !== 'checkbox' ||
+        !Array.isArray(parent?.filterTaxonomy) ||
+        parent.filterTaxonomy.length === 0,
+
+      options: {
+        list: [
+          {
+            title: 'Any Match',
+            value: 'any',
+          },
+          {
+            title: 'All Match',
+            value: 'all',
+          },
+        ],
+
+        layout: 'radio',
+      },
+    }),
+
+    defineField({
+      name: 'filterTaxonomy',
+      title: 'Taxonomy Filters',
+      type: 'array',
+
+      description:
+        'Choose the Site Taxonomy Terms visitors may use as filters. Labels are pulled automatically from the Taxonomy Term and localized for the current document Locale.',
+
+      hidden: ({parent}) => !parent?.enableFilters || parent?.sourceMode !== 'dynamic',
+
+      components: {
+        input: TaxonomyFilterPickerInput,
+      },
+
+      of: [
+        defineArrayMember({
+          type: 'reference',
+
+          to: [
+            {
+              type: 'taxonomy',
+            },
+          ],
+
+          options: {
+            disableNew: true,
+
+            filter: ({document}) => taxonomyVisitorFilterReferenceFilter(document),
+          },
+        }),
+      ],
+
+      validation: (Rule) =>
+        Rule.unique().custom((value, context) => {
+          const parent = context.parent as
+            | {
+                enableFilters?: boolean
+                sourceMode?: string
+              }
+            | undefined
+
+          if (!parent?.enableFilters || parent.sourceMode !== 'dynamic') {
+            return true
+          }
+
+          return validateDocumentListTaxonomyReferences(
+            value as TaxonomyReference[] | undefined,
+            context,
+            {
+              requireFilterable: true,
+            },
+          )
+        }),
+    }),
+
     /* === Visitor Sorting === */
 
     defineField({
@@ -542,6 +721,9 @@ export const documentListBlockType = defineType({
       title: 'Sort Options',
       type: 'array',
 
+      description:
+        'Choose which standard sort options visitors can use. Public labels are localized automatically from the page Locale.',
+
       hidden: ({parent}) => !parent?.enableSorting,
 
       of: [
@@ -553,10 +735,13 @@ export const documentListBlockType = defineType({
           fields: [
             defineField({
               name: 'label',
-              title: 'Label',
+              title: 'Legacy Label',
               type: 'string',
 
-              validation: (Rule) => Rule.required(),
+              description:
+                'Legacy stored label retained for existing content. The public label is localized automatically from Sort Value.',
+
+              hidden: true,
             }),
 
             defineField({
@@ -564,7 +749,32 @@ export const documentListBlockType = defineType({
               title: 'Sort Value',
               type: 'string',
 
-              description: 'For example: newest, oldest, title-asc, title-desc.',
+              description: 'Choose the machine value used by the Document List query.',
+
+              options: {
+                list: [
+                  {
+                    title: 'Relevance',
+                    value: 'relevance',
+                  },
+                  {
+                    title: 'Newest',
+                    value: 'newest',
+                  },
+                  {
+                    title: 'Oldest',
+                    value: 'oldest',
+                  },
+                  {
+                    title: 'Title A–Z',
+                    value: 'title-asc',
+                  },
+                  {
+                    title: 'Title Z–A',
+                    value: 'title-desc',
+                  },
+                ],
+              },
 
               validation: (Rule) => Rule.required(),
             }),
@@ -572,13 +782,20 @@ export const documentListBlockType = defineType({
 
           preview: {
             select: {
-              title: 'label',
               value: 'value',
             },
 
-            prepare({title, value}) {
+            prepare({value}) {
+              const titles: Record<string, string> = {
+                relevance: 'Relevance',
+                newest: 'Newest',
+                oldest: 'Oldest',
+                'title-asc': 'Title A–Z',
+                'title-desc': 'Title Z–A',
+              }
+
               return {
-                title: title || 'Sort Option',
+                title: titles[value] || 'Sort Option',
 
                 subtitle: value || undefined,
               }

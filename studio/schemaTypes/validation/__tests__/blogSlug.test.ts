@@ -86,7 +86,7 @@ describe('Blog slug validation', () => {
           _type: 'reference',
           _ref: 'site-1',
         },
-        locale: 'us-en',
+        locale: 'en-us',
       },
       duplicateCount: 0,
     })
@@ -110,7 +110,7 @@ describe('Blog slug validation', () => {
           _type: 'reference',
           _ref: 'site-1',
         },
-        locale: 'us-en',
+        locale: 'en-us',
       },
       duplicateCount: 1,
     })
@@ -134,7 +134,7 @@ describe('Blog slug validation', () => {
           _type: 'reference',
           _ref: 'drafts.site-1',
         },
-        locale: 'us-es',
+        locale: 'es-us',
       },
     })
 
@@ -158,7 +158,7 @@ describe('Blog slug validation', () => {
     expect(query).toContain('!(_id in [$documentId, $draftId])')
     expect(params).toEqual({
       siteId: 'site-1',
-      locale: 'us-es',
+      locale: 'es-us',
       slug: 'mi-articulo',
       documentId: 'blog-1',
       draftId: 'drafts.blog-1',

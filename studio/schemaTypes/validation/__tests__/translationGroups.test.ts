@@ -8,7 +8,7 @@ import {createValidationContext} from './testUtils'
 
 describe('translationDocumentReferenceFilter', () => {
   it('blocks the picker until Site, Locale, and Content Type are available', () => {
-    expect(translationDocumentReferenceFilter({_id: 'group-1'}, {locale: 'us-en'})).toEqual({
+    expect(translationDocumentReferenceFilter({_id: 'group-1'}, {locale: 'en-us'})).toEqual({
       filter: 'false',
     })
   })
@@ -20,7 +20,7 @@ describe('translationDocumentReferenceFilter', () => {
         contentType: 'page',
       },
       {
-        locale: 'us-es',
+        locale: 'es-us',
       },
     )
 
@@ -30,7 +30,7 @@ describe('translationDocumentReferenceFilter', () => {
     expect(result.params).toEqual({
       contentType: 'page',
       siteId: 'site-1',
-      locale: 'us-es',
+      locale: 'es-us',
     })
   })
 })
@@ -49,13 +49,13 @@ describe('validateTranslationGroupEntries', () => {
             _id: 'page-en',
             _type: 'page',
             site: {_ref: 'site-1'},
-            locale: 'us-en',
+            locale: 'en-us',
           },
           {
             _id: 'drafts.page-es',
             _type: 'page',
             site: {_ref: 'site-1'},
-            locale: 'us-es',
+            locale: 'es-us',
           },
         ],
         null,
@@ -65,8 +65,8 @@ describe('validateTranslationGroupEntries', () => {
     await expect(
       validateTranslationGroupEntries(
         [
-          {locale: 'us-en', document: {_ref: 'page-en'}},
-          {locale: 'us-es', document: {_ref: 'page-es'}},
+          {locale: 'en-us', document: {_ref: 'page-en'}},
+          {locale: 'es-us', document: {_ref: 'page-es'}},
         ],
         context,
       ),
@@ -84,8 +84,8 @@ describe('validateTranslationGroupEntries', () => {
     await expect(
       validateTranslationGroupEntries(
         [
-          {locale: 'us-en', document: {_ref: 'page-a'}},
-          {locale: 'us-en', document: {_ref: 'page-b'}},
+          {locale: 'en-us', document: {_ref: 'page-a'}},
+          {locale: 'en-us', document: {_ref: 'page-b'}},
         ],
         context,
       ),
@@ -105,8 +105,8 @@ describe('validateTranslationGroupEntries', () => {
     await expect(
       validateTranslationGroupEntries(
         [
-          {locale: 'us-en', document: {_ref: 'page-a'}},
-          {locale: 'us-es', document: {_ref: 'drafts.page-a'}},
+          {locale: 'en-us', document: {_ref: 'page-a'}},
+          {locale: 'es-us', document: {_ref: 'drafts.page-a'}},
         ],
         context,
       ),
@@ -128,14 +128,14 @@ describe('validateTranslationGroupEntries', () => {
             _id: 'blog-1',
             _type: 'blog',
             site: {_ref: 'site-2'},
-            locale: 'us-en',
+            locale: 'en-us',
           },
         ],
       ],
     })
 
     await expect(
-      validateTranslationGroupEntries([{locale: 'us-en', document: {_ref: 'blog-1'}}], context),
+      validateTranslationGroupEntries([{locale: 'en-us', document: {_ref: 'blog-1'}}], context),
     ).resolves.toBe('Every Translation must belong to the same Site as the Translation Group.')
   })
 
@@ -152,7 +152,7 @@ describe('validateTranslationGroupEntries', () => {
             _id: 'page-en',
             _type: 'page',
             site: {_ref: 'site-1'},
-            locale: 'us-en',
+            locale: 'en-us',
           },
         ],
         {
@@ -162,7 +162,7 @@ describe('validateTranslationGroupEntries', () => {
     })
 
     await expect(
-      validateTranslationGroupEntries([{locale: 'us-en', document: {_ref: 'page-en'}}], context),
+      validateTranslationGroupEntries([{locale: 'en-us', document: {_ref: 'page-en'}}], context),
     ).resolves.toBe('One or more selected documents already belong to another Translation Group.')
   })
 })

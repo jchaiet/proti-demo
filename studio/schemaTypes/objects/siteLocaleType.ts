@@ -9,7 +9,7 @@ export const siteLocaleType = defineType({
       name: 'code',
       title: 'Locale Code',
       type: 'string',
-      description: 'Regional language code (e.g. us-en, us-es, ca-fr)',
+      description: 'Regional language code (e.g. en-us, es-us, ca-fr)',
       validation: (rule) =>
         rule.required().regex(/^[a-z]{2}-[a-z]{2}$/, {
           name: 'regional locale',

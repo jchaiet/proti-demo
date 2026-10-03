@@ -10,7 +10,11 @@ const API_VERSION = '2026-08-21'
 
 type NavigationDocumentType = 'navigationHeader' | 'navigationFooter' | 'navigationSet'
 
-type TranslatableType = 'page' | 'blog' | 'singleton' | NavigationDocumentType
+type KeyedContentDocumentType = 'singleton' | 'modal'
+
+type KeyedDocumentType = NavigationDocumentType | KeyedContentDocumentType
+
+type TranslatableType = 'page' | 'blog' | KeyedDocumentType
 
 type Reference = {
   _type?: 'reference'
@@ -41,7 +45,6 @@ type TranslatableDocument = Record<string, unknown> & {
   isHomepage?: boolean
 
   key?: string
-  component?: unknown[]
 
   navigation?: unknown
   taxonomy?: unknown[]
@@ -82,6 +85,14 @@ function cleanId(id?: string): string {
 
 function isNavigationDocumentType(type: TranslatableType): type is NavigationDocumentType {
   return type === 'navigationHeader' || type === 'navigationFooter' || type === 'navigationSet'
+}
+
+function isKeyedContentDocumentType(type: TranslatableType): type is KeyedContentDocumentType {
+  return type === 'singleton' || type === 'modal'
+}
+
+function isKeyedDocumentType(type: TranslatableType): type is KeyedDocumentType {
+  return isNavigationDocumentType(type) || isKeyedContentDocumentType(type)
 }
 
 function getPageSlug(document: TranslatableDocument): string | undefined {
@@ -466,65 +477,10 @@ async function resolveBlogTranslation(
 }
 
 /* =========================================================
- * Singletons
+ * Keyed documents
  * ======================================================= */
 
-async function resolveSingletonTranslation(
-  draftClient: StudioClient,
-  rawClient: StudioClient,
-  {
-    siteId,
-    locale,
-    label,
-    key,
-  }: {
-    siteId: string
-    locale: string
-    label: string
-    key: string
-  },
-): Promise<TranslationRow> {
-  const document = await draftClient.fetch<{_id: string} | null>(
-    `
-      *[
-        _type == "singleton" &&
-        site._ref == $siteId &&
-        locale == $locale &&
-        key == $key
-      ][0]{
-        _id
-      }
-    `,
-    {
-      siteId,
-      locale,
-      key,
-    },
-  )
-
-  if (!document?._id) {
-    return {
-      locale,
-      label,
-      state: 'missing',
-    }
-  }
-
-  const documentId = cleanId(document._id)
-
-  return {
-    locale,
-    label,
-    state: await getDocumentStatus(rawClient, documentId),
-    documentId,
-  }
-}
-
-/* =========================================================
- * Navigation
- * ======================================================= */
-
-async function resolveNavigationTranslation(
+async function resolveKeyedTranslation(
   draftClient: StudioClient,
   rawClient: StudioClient,
   {
@@ -537,7 +493,7 @@ async function resolveNavigationTranslation(
     siteId: string
     locale: string
     label: string
-    documentType: NavigationDocumentType
+    documentType: KeyedDocumentType
     key: string
   },
 ): Promise<TranslationRow> {
@@ -689,89 +645,16 @@ async function remapInternalPageLinks(
   return Object.fromEntries(entries)
 }
 
-type SingletonTranslationCache = Map<string, Promise<string>>
-
-async function createSingletonTranslation(
-  client: StudioClient,
-  draftClient: StudioClient,
-  rawClient: StudioClient,
-  source: TranslatableDocument,
-  siteId: string,
-  targetLocale: string,
-  cache: SingletonTranslationCache = new Map(),
-): Promise<string> {
-  const key = source.key
-
-  if (!key) {
-    throw new Error('The Singleton is missing its Key.')
-  }
-
-  const cacheKey = `${cleanId(siteId)}:${targetLocale}:${key}`
-  const cached = cache.get(cacheKey)
-
-  if (cached) {
-    return cached
-  }
-
-  const creation = (async () => {
-    const existing = await resolveSingletonTranslation(draftClient, rawClient, {
-      siteId,
-      locale: targetLocale,
-      label: targetLocale,
-      key,
-    })
-
-    if (existing.documentId) {
-      return existing.documentId
-    }
-
-    let value = buildTranslationDocument(source, 'singleton', targetLocale)
-
-    /*
-     * A Singleton is locale-specific shared content. Internal Page links
-     * must therefore point at the equivalent target-locale Page when one
-     * exists rather than silently retaining the source-locale destination.
-     */
-    value = (await remapInternalPageLinks(
-      value,
-      draftClient,
-      rawClient,
-      siteId,
-      targetLocale,
-    )) as Record<string, unknown> & {
-      _id: string
-      _type: TranslatableType
-    }
-
-    const created = await client.create(value)
-
-    return cleanId(created._id)
-  })()
-
-  cache.set(cacheKey, creation)
-
-  try {
-    return await creation
-  } catch (error) {
-    cache.delete(cacheKey)
-    throw error
-  }
-}
-
-async function remapSingletonReferences(
+async function remapModalReferences(
   value: unknown,
-  client: StudioClient,
   draftClient: StudioClient,
   rawClient: StudioClient,
   siteId: string,
   targetLocale: string,
-  cache: SingletonTranslationCache,
 ): Promise<unknown> {
   if (Array.isArray(value)) {
     return Promise.all(
-      value.map((item) =>
-        remapSingletonReferences(item, client, draftClient, rawClient, siteId, targetLocale, cache),
-      ),
+      value.map((item) => remapModalReferences(item, draftClient, rawClient, siteId, targetLocale)),
     )
   }
 
@@ -781,58 +664,101 @@ async function remapSingletonReferences(
 
   const objectValue = value as Record<string, unknown>
 
-  if (objectValue._type === 'singletonReferenceBlock') {
-    const sourceReference = objectValue.singleton as Reference | undefined
-    const sourceSingletonId = cleanId(sourceReference?._ref)
+  if (objectValue.actionType === 'modal') {
+    const modalReference = objectValue.modal as Reference | undefined
+    const sourceModalId = cleanId(modalReference?._ref)
 
-    if (!sourceSingletonId) {
-      return objectValue
-    }
+    if (sourceModalId) {
+      const sourceModal = await getDocumentById(draftClient, sourceModalId, 'modal')
+      const modalKey = sourceModal?.key
 
-    const sourceSingleton = await getDocumentById(draftClient, sourceSingletonId, 'singleton')
+      if (modalKey) {
+        const targetModal = await resolveKeyedTranslation(draftClient, rawClient, {
+          siteId,
+          locale: targetLocale,
+          label: targetLocale,
+          documentType: 'modal',
+          key: modalKey,
+        })
 
-    if (!sourceSingleton) {
-      throw new Error('A referenced Singleton could not be resolved.')
-    }
-
-    if (cleanId(sourceSingleton.site?._ref) !== cleanId(siteId)) {
-      throw new Error('A referenced Singleton belongs to a different Site.')
-    }
-
-    const targetSingletonId = await createSingletonTranslation(
-      client,
-      draftClient,
-      rawClient,
-      sourceSingleton,
-      siteId,
-      targetLocale,
-      cache,
-    )
-
-    const targetState = await getDocumentStatus(rawClient, targetSingletonId)
-
-    return {
-      ...objectValue,
-      singleton: buildReference(targetSingletonId, 'singleton', targetState),
+        if (targetModal.documentId) {
+          return {
+            ...objectValue,
+            modal: buildReference(
+              targetModal.documentId,
+              'modal',
+              targetModal.state as 'published' | 'draft' | 'changes',
+            ),
+          }
+        }
+      }
     }
   }
 
   const entries = await Promise.all(
     Object.entries(objectValue).map(async ([key, childValue]) => [
       key,
-      await remapSingletonReferences(
-        childValue,
-        client,
-        draftClient,
-        rawClient,
-        siteId,
-        targetLocale,
-        cache,
-      ),
+      await remapModalReferences(childValue, draftClient, rawClient, siteId, targetLocale),
     ]),
   )
 
   return Object.fromEntries(entries)
+}
+
+async function createKeyedContentTranslation(
+  client: StudioClient,
+  draftClient: StudioClient,
+  rawClient: StudioClient,
+  source: TranslatableDocument,
+  siteId: string,
+  targetLocale: string,
+  documentType: KeyedContentDocumentType,
+): Promise<string> {
+  const key = source.key
+
+  if (!key) {
+    throw new Error(`The ${documentType === 'modal' ? 'Modal' : 'Singleton'} is missing its Key.`)
+  }
+
+  const existing = await resolveKeyedTranslation(draftClient, rawClient, {
+    siteId,
+    locale: targetLocale,
+    label: targetLocale,
+    documentType,
+    key,
+  })
+
+  if (existing.documentId) {
+    return existing.documentId
+  }
+
+  let value = buildTranslationDocument(source, documentType, targetLocale)
+
+  value = (await remapInternalPageLinks(
+    value,
+    draftClient,
+    rawClient,
+    siteId,
+    targetLocale,
+  )) as Record<string, unknown> & {
+    _id: string
+    _type: TranslatableType
+  }
+
+  value = (await remapModalReferences(
+    value,
+    draftClient,
+    rawClient,
+    siteId,
+    targetLocale,
+  )) as Record<string, unknown> & {
+    _id: string
+    _type: TranslatableType
+  }
+
+  const created = await client.create(value)
+
+  return cleanId(created._id)
 }
 
 async function createNavigationTranslation(
@@ -850,7 +776,7 @@ async function createNavigationTranslation(
     throw new Error('The Navigation document is missing its Key.')
   }
 
-  const existing = await resolveNavigationTranslation(draftClient, rawClient, {
+  const existing = await resolveKeyedTranslation(draftClient, rawClient, {
     siteId,
     locale: targetLocale,
     label: targetLocale,
@@ -1077,35 +1003,6 @@ async function createPageTranslationWithAncestors(
   siteId: string,
   targetLocale: string,
 ): Promise<string> {
-  const singletonCache: SingletonTranslationCache = new Map()
-
-  async function preparePageTranslation(
-    sourcePage: TranslatableDocument,
-    targetParentId?: string,
-    targetParentIsDraftOnly = false,
-  ) {
-    const value = buildTranslationDocument(
-      sourcePage,
-      'page',
-      targetLocale,
-      targetParentId,
-      targetParentIsDraftOnly,
-    )
-
-    return (await remapSingletonReferences(
-      value,
-      client,
-      draftClient,
-      rawClient,
-      siteId,
-      targetLocale,
-      singletonCache,
-    )) as Record<string, unknown> & {
-      _id: string
-      _type: TranslatableType
-    }
-  }
-
   if (source.isHomepage === true) {
     const existingHomepage = await findHomepage(draftClient, rawClient, siteId, targetLocale)
 
@@ -1113,7 +1010,9 @@ async function createPageTranslationWithAncestors(
       return existingHomepage.documentId
     }
 
-    const createdHomepage = await client.create(await preparePageTranslation(source))
+    const createdHomepage = await client.create(
+      buildTranslationDocument(source, 'page', targetLocale),
+    )
 
     return cleanId(createdHomepage._id)
   }
@@ -1144,8 +1043,10 @@ async function createPageTranslationWithAncestors(
     }
 
     const createdTargetPage = await client.create(
-      await preparePageTranslation(
+      buildTranslationDocument(
         sourcePage,
+        'page',
+        targetLocale,
         targetParentId ?? undefined,
         targetParentIsDraftOnly,
       ),
@@ -1205,7 +1106,7 @@ export const ShowTranslationsAction: DocumentActionComponent = (props) => {
 
   const pageSlug = source ? getPageSlug(source) : undefined
   const blogSlug = source ? getBlogSlug(source) : undefined
-  const sharedKey = source?.key ?? ''
+  const documentKey = source?.key ?? ''
 
   const isHomepage = source?.isHomepage === true
 
@@ -1217,8 +1118,8 @@ export const ShowTranslationsAction: DocumentActionComponent = (props) => {
       ? isHomepage || pageSlug
       : documentType === 'blog'
         ? blogSlug
-        : documentType === 'singleton' || isNavigationDocumentType(documentType)
-          ? sharedKey
+        : isKeyedDocumentType(documentType)
+          ? documentKey
           : false),
   )
 
@@ -1299,22 +1200,13 @@ export const ShowTranslationsAction: DocumentActionComponent = (props) => {
               })
             }
 
-            if (documentType === 'singleton') {
-              return resolveSingletonTranslation(draftClient, rawClient, {
-                siteId,
-                locale: code,
-                label,
-                key: sharedKey,
-              })
-            }
-
-            if (isNavigationDocumentType(documentType)) {
-              return resolveNavigationTranslation(draftClient, rawClient, {
+            if (isKeyedDocumentType(documentType)) {
+              return resolveKeyedTranslation(draftClient, rawClient, {
                 siteId,
                 locale: code,
                 label,
                 documentType,
-                key: sharedKey,
+                key: documentKey,
               })
             }
 
@@ -1354,7 +1246,7 @@ export const ShowTranslationsAction: DocumentActionComponent = (props) => {
     currentLocale,
     pageSlug,
     blogSlug,
-    sharedKey,
+    documentKey,
     isHomepage,
     draftClient,
     rawClient,
@@ -1410,20 +1302,11 @@ export const ShowTranslationsAction: DocumentActionComponent = (props) => {
           return
         }
 
-        let translationDocument = buildTranslationDocument(sourceDocument, documentType, row.locale)
-
-        translationDocument = (await remapSingletonReferences(
-          translationDocument,
-          client,
-          draftClient,
-          rawClient,
-          siteId,
+        const translationDocument = buildTranslationDocument(
+          sourceDocument,
+          documentType,
           row.locale,
-          new Map(),
-        )) as Record<string, unknown> & {
-          _id: string
-          _type: TranslatableType
-        }
+        )
 
         const created = await client.create(translationDocument)
 
@@ -1437,14 +1320,15 @@ export const ShowTranslationsAction: DocumentActionComponent = (props) => {
         return
       }
 
-      if (documentType === 'singleton') {
-        const documentId = await createSingletonTranslation(
+      if (isKeyedContentDocumentType(documentType)) {
+        const documentId = await createKeyedContentTranslation(
           client,
           draftClient,
           rawClient,
           sourceDocument,
           siteId,
           row.locale,
+          documentType,
         )
 
         setOpen(false)
@@ -1453,7 +1337,6 @@ export const ShowTranslationsAction: DocumentActionComponent = (props) => {
           id: documentId,
           type: documentType,
         })
-
         return
       }
 
@@ -1486,6 +1369,7 @@ export const ShowTranslationsAction: DocumentActionComponent = (props) => {
     documentType !== 'page' &&
     documentType !== 'blog' &&
     documentType !== 'singleton' &&
+    documentType !== 'modal' &&
     documentType !== 'navigationHeader' &&
     documentType !== 'navigationFooter' &&
     documentType !== 'navigationSet'

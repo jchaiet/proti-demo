@@ -10,12 +10,20 @@ type ReferenceValue = {
 
 type TaxonomyDocument = {
   _id: string
+  title?: string
   site?: ReferenceValue
+  kind?: 'term' | 'group'
+  includeInFilters?: boolean
+}
+
+type DocumentListTaxonomyValidationOptions = {
+  requireFilterable?: boolean
 }
 
 export async function validateDocumentListTaxonomyReferences(
   references: ReferenceValue[] | undefined,
   context: ValidationContext,
+  options: DocumentListTaxonomyValidationOptions = {},
 ): Promise<true | string> {
   if (!references?.length) {
     return true
@@ -50,7 +58,10 @@ export async function validateDocumentListTaxonomyReferences(
         _id in $ids
       ]{
         _id,
-        site
+        title,
+        site,
+        kind,
+        includeInFilters
       }
     `,
     {
@@ -79,6 +90,18 @@ export async function validateDocumentListTaxonomyReferences(
 
     if (!taxonomyDocument || cleanId(taxonomyDocument.site?._ref) !== siteId) {
       return 'Taxonomy terms must belong to the same Site as this Document List.'
+    }
+
+    const label = taxonomyDocument.title?.trim()
+      ? `"${taxonomyDocument.title.trim()}"`
+      : referenceId
+
+    if (taxonomyDocument.kind === 'group') {
+      return `Taxonomy Group ${label} is organizational only and cannot be used by this Document List.`
+    }
+
+    if (options.requireFilterable && taxonomyDocument.includeInFilters === false) {
+      return `Taxonomy Term ${label} is excluded from visitor filters.`
     }
   }
 

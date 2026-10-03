@@ -1,15 +1,29 @@
 import {defineArrayMember, defineField, defineType} from 'sanity'
 
 import {TaxonomyTranslationsInput} from '../../components/inputs/TaxonomyTranslationsInput'
+import {
+  buildTaxonomyPreviewPath,
+  createTaxonomyPreviewAncestorSelect,
+} from '../../utils/taxonomyPath'
 import {validateSiteTranslations} from '../validation/siteTranslations'
 import {validateTaxonomyRouteIntegrity} from '../validation/taxonomyRoutes'
 import {siteReferenceFilter} from '../validation/referenceFilters'
 import {validateTaxonomyParent} from '../validation/taxonomyParent'
 import {validateTaxonomySlug} from '../validation/taxonomySlug'
 
+const taxonomyPreviewSelect = {
+  title: 'title',
+  slug: 'slug.current',
+  site: 'site.name',
+  kind: 'kind',
+  includeInFilters: 'includeInFilters',
+  translationCount: 'translations',
+  ...createTaxonomyPreviewAncestorSelect(),
+}
+
 export const taxonomyType = defineType({
   name: 'taxonomy',
-  title: 'Taxonomy Term',
+  title: 'Taxonomy Item',
   type: 'document',
 
   validation: (rule) =>
@@ -31,6 +45,10 @@ export const taxonomyType = defineType({
     {
       name: 'translations',
       title: 'Translations',
+    },
+    {
+      name: 'usage',
+      title: 'Usage',
     },
     {
       name: 'assignment',
@@ -118,6 +136,56 @@ export const taxonomyType = defineType({
     }),
 
     defineField({
+      name: 'kind',
+      title: 'Taxonomy Type',
+      type: 'string',
+      group: 'usage',
+
+      description:
+        'Terms can be assigned to content. Groups / Folders exist only to organize the Taxonomy hierarchy. Existing items with no value are treated as Terms.',
+
+      initialValue: 'term',
+
+      options: {
+        list: [
+          {
+            title: 'Taxonomy Term',
+            value: 'term',
+          },
+          {
+            title: 'Group / Folder',
+            value: 'group',
+          },
+        ],
+
+        layout: 'radio',
+      },
+
+      validation: (rule) =>
+        rule.custom((value) => {
+          if (!value || value === 'term' || value === 'group') {
+            return true
+          }
+
+          return 'Choose Taxonomy Term or Group / Folder.'
+        }),
+    }),
+
+    defineField({
+      name: 'includeInFilters',
+      title: 'Include in Visitor Filters',
+      type: 'boolean',
+      group: 'usage',
+
+      description:
+        'When enabled, this Taxonomy Term can be exposed as a visitor-facing Document List filter. This does not affect whether the Term can be assigned to content.',
+
+      initialValue: true,
+
+      hidden: ({parent}) => parent?.kind === 'group',
+    }),
+
+    defineField({
       name: 'site',
       title: 'Site',
       type: 'reference',
@@ -133,10 +201,10 @@ export const taxonomyType = defineType({
 
     defineField({
       name: 'parent',
-      title: 'Parent Taxonomy Term',
+      title: 'Parent Taxonomy Item',
       type: 'reference',
       group: 'assignment',
-      description: 'Optional parent used to build the hierarchical Taxonomy path.',
+      description: 'Optional parent Term or Group used to build the hierarchical Taxonomy path.',
 
       to: [
         {
@@ -194,21 +262,38 @@ export const taxonomyType = defineType({
   ],
 
   preview: {
-    select: {
-      title: 'title',
-      slug: 'slug.current',
-      site: 'site.name',
-      translationCount: 'translations',
-    },
+    select: taxonomyPreviewSelect,
 
-    prepare({title, slug, site, translationCount}) {
+    prepare(selection) {
+      const {title, slug, site, kind, includeInFilters, translationCount} = selection as {
+        title?: string
+        slug?: string
+        site?: string
+        kind?: string
+        includeInFilters?: boolean
+        translationCount?: unknown[]
+      } & Record<string, unknown>
+
       const translatedLocales = Array.isArray(translationCount) ? translationCount.length : 0
 
+      const taxonomyKind = kind === 'group' ? 'Group / Folder' : 'Taxonomy Term'
+
+      const filterStatus =
+        kind === 'group'
+          ? undefined
+          : includeInFilters === false
+            ? 'Hidden from filters'
+            : undefined
+
+      const path = buildTaxonomyPreviewPath(slug, selection as Record<string, unknown>)
+
       return {
-        title: title ?? 'Untitled Taxonomy Term',
+        title: title ?? 'Untitled Taxonomy Item',
         subtitle: [
           site,
-          slug ? `/${slug}` : undefined,
+          taxonomyKind,
+          filterStatus,
+          path,
           translatedLocales > 0
             ? `${translatedLocales} translation${translatedLocales === 1 ? '' : 's'}`
             : undefined,

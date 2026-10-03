@@ -252,28 +252,32 @@ export const heroBlockType = defineType({
     }),
 
     defineField({
-      name: 'ctas',
+      name: 'ctaGroup',
       title: 'Calls to Action',
+      type: 'ctaGroup',
+    }),
+
+    // Legacy fields retained temporarily so existing documents remain schema-valid.
+    defineField({
+      name: 'ctas',
+      title: 'Legacy Calls to Action',
       type: 'array',
+      hidden: true,
+      of: [defineArrayMember({type: 'cta'})],
+    }),
 
-      of: [
-        defineArrayMember({
-          type: 'cta',
-        }),
-      ],
-
-      validation: (rule) =>
-        rule
-          .max(3)
-          .warning('Hero blocks should generally contain no more than three calls to action.'),
+    defineField({
+      name: 'ctaAlignment',
+      title: 'Legacy CTA Alignment',
+      type: 'string',
+      hidden: true,
     }),
 
     defineField({
       name: 'ctaStackOnMobile',
-      title: 'Stack CTAs on Mobile',
+      title: 'Legacy CTA Stack on Mobile',
       type: 'boolean',
-      initialValue: true,
-      description: 'Stack Hero buttons vertically on smaller screens.',
+      hidden: true,
     }),
   ],
 

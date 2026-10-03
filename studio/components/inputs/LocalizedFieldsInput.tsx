@@ -62,8 +62,13 @@ type LocalizedFieldsInputProps = {
   config: LocalizedFieldsInputConfig
 }
 
+type TranslationIssueCode =
+  'missing-locale' | 'default-locale' | 'unsupported-locale' | 'duplicate-locale'
+
 type TranslationIssue = {
   key: string
+
+  code: TranslationIssueCode
 
   locale?: string
 
@@ -164,7 +169,7 @@ export function LocalizedFieldsInput({inputProps, config}: LocalizedFieldsInputP
 
   const site = useFormValue(['site']) as ReferenceValue | undefined
 
-  const document = (useFormValue([]) ?? {}) as Record<string, unknown>
+  const documentValue = useFormValue([]) as Record<string, unknown> | undefined
 
   const siteId = cleanId(site?._ref)
 
@@ -294,6 +299,8 @@ export function LocalizedFieldsInput({inputProps, config}: LocalizedFieldsInputP
         result.push({
           key: translation._key,
 
+          code: 'missing-locale',
+
           message: 'This translation has no Locale.',
         })
 
@@ -303,6 +310,8 @@ export function LocalizedFieldsInput({inputProps, config}: LocalizedFieldsInputP
       if (locale === siteLocalization?.defaultLocale) {
         result.push({
           key: translation._key,
+
+          code: 'default-locale',
 
           locale,
 
@@ -315,6 +324,8 @@ export function LocalizedFieldsInput({inputProps, config}: LocalizedFieldsInputP
         result.push({
           key: translation._key,
 
+          code: 'unsupported-locale',
+
           locale,
 
           message: 'This Locale is no longer supported by the selected Site.',
@@ -324,6 +335,8 @@ export function LocalizedFieldsInput({inputProps, config}: LocalizedFieldsInputP
       if ((translationCounts.get(locale) ?? 0) > 1) {
         result.push({
           key: translation._key,
+
+          code: 'duplicate-locale',
 
           locale,
 
@@ -335,21 +348,21 @@ export function LocalizedFieldsInput({inputProps, config}: LocalizedFieldsInputP
     return result
   }, [siteLocalization, supportedLocaleCodes, translationCounts, translations])
 
-  const rows = useMemo(
-    () =>
-      locales.map((locale) => {
-        const translation = translations.find((item) => item.locale === locale.code)
+  const rows = useMemo(() => {
+    const document = documentValue ?? {}
 
-        return {
-          locale,
+    return locales.map((locale) => {
+      const translation = translations.find((item) => item.locale === locale.code)
 
-          translation,
+      return {
+        locale,
 
-          status: getTranslationStatus(translation, document, config),
-        }
-      }),
-    [config, document, locales, translations],
-  )
+        translation,
+
+        status: getTranslationStatus(translation, document, config),
+      }
+    })
+  }, [config, documentValue, locales, translations])
 
   const filteredRows = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase()
@@ -548,9 +561,9 @@ export function LocalizedFieldsInput({inputProps, config}: LocalizedFieldsInputP
             </Stack>
 
             <Stack gap={2}>
-              {issues.map((issue, index) => (
+              {issues.map((issue) => (
                 <Card
-                  key={`${issue.key}-${index}`}
+                  key={`${issue.key}-${issue.code}`}
                   padding={3}
                   radius={2}
                   border

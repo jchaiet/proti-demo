@@ -98,6 +98,13 @@ describe('heading quality validation', () => {
     ).toBe(true)
   })
 
+  it('accepts an empty Blog body because BlogHero renders the document title as H1', () => {
+    const {context} = createValidationContext({document: {title: 'Article title'}})
+
+    expect(validateBlogHeadingQuality(undefined, context)).toBe(true)
+    expect(validateBlogHeadingQuality([], context)).toBe(true)
+  })
+
   it('warns when Blog Content adds another H1', () => {
     const {context} = createValidationContext({document: {title: 'Article title'}})
 

@@ -17,16 +17,18 @@ export function generateSingletonKey(value?: string): string {
 }
 
 export function SingletonKeyInput(props: StringInputProps) {
+  const {onChange} = props
   const title = useFormValue(['title'])
 
   const generatedKey = generateSingletonKey(typeof title === 'string' ? title : undefined)
+
   const handleGenerate = useCallback(() => {
     if (!generatedKey) {
       return
     }
 
-    props.onChange(set(generatedKey))
-  }, [generatedKey, props.onChange])
+    onChange(set(generatedKey))
+  }, [generatedKey, onChange])
 
   return (
     <Stack gap={2}>

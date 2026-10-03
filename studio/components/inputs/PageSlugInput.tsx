@@ -1,4 +1,4 @@
-import {Button, Card, Code, Stack, Text} from '@sanity/ui'
+import {Button, Card, Stack, Text} from '@sanity/ui'
 import {useEffect, useState} from 'react'
 import {set, type StringInputProps, useClient, useFormValue} from 'sanity'
 

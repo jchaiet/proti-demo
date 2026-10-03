@@ -17,14 +17,10 @@ export const linkType = defineType({
       title: 'Link Type',
       type: 'string',
 
-      initialValue: 'none',
+      initialValue: 'internal',
 
       options: {
         list: [
-          {
-            title: 'No Link',
-            value: 'none',
-          },
           {
             title: 'Internal Page',
             value: 'internal',
@@ -208,9 +204,14 @@ export const linkType = defineType({
           }
 
         case 'none':
+          return {
+            title: 'Legacy No Link',
+            subtitle: 'Select a current Link Type to replace this legacy value.',
+          }
+
         default:
           return {
-            title: 'No Link',
+            title: 'Select Link Destination',
           }
       }
     },

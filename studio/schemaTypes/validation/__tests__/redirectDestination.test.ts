@@ -69,7 +69,7 @@ describe('validateRedirectInternalPage', () => {
       parent: {type: 'internal'},
       document: {
         site: {_ref: 'site-a'},
-        locale: 'us-en',
+        locale: 'en-us',
       },
       fetchResults: [null],
     })
@@ -84,12 +84,12 @@ describe('validateRedirectInternalPage', () => {
       parent: {type: 'internal'},
       document: {
         site: {_ref: 'site-a'},
-        locale: 'us-en',
+        locale: 'en-us',
       },
       fetchResults: [
         {
           site: {_ref: 'site-b'},
-          locale: 'us-en',
+          locale: 'en-us',
         },
       ],
     })
@@ -104,12 +104,12 @@ describe('validateRedirectInternalPage', () => {
       parent: {type: 'internal'},
       document: {
         site: {_ref: 'site-a'},
-        locale: 'us-en',
+        locale: 'en-us',
       },
       fetchResults: [
         {
           site: {_ref: 'site-a'},
-          locale: 'us-es',
+          locale: 'es-us',
         },
       ],
     })
@@ -124,12 +124,12 @@ describe('validateRedirectInternalPage', () => {
       parent: {type: 'internal'},
       document: {
         site: {_ref: 'drafts.site-a'},
-        locale: 'us-en',
+        locale: 'en-us',
       },
       fetchResults: [
         {
           site: {_ref: 'site-a'},
-          locale: 'us-en',
+          locale: 'en-us',
         },
       ],
     })
@@ -190,7 +190,7 @@ describe('validateRedirectPathDestination', () => {
         _id: 'drafts.redirect-1',
         sourcePath: '/old',
         site: {_ref: 'drafts.site-a'},
-        locale: 'us-en',
+        locale: 'en-us',
       },
       fetchResults: [null],
     })
@@ -198,7 +198,7 @@ describe('validateRedirectPathDestination', () => {
     await expect(validateRedirectPathDestination('/new', context)).resolves.toBe(true)
     expect(fetch.mock.calls[0][1]).toEqual({
       siteId: 'site-a',
-      locale: 'us-en',
+      locale: 'en-us',
       sourcePath: '/new',
       documentId: 'redirect-1',
       draftId: 'drafts.redirect-1',
@@ -212,7 +212,7 @@ describe('validateRedirectPathDestination', () => {
         _id: 'redirect-1',
         sourcePath: '/a',
         site: {_ref: 'site-a'},
-        locale: 'us-en',
+        locale: 'en-us',
       },
       fetchResults: [
         {
@@ -237,7 +237,7 @@ describe('validateRedirectPathDestination', () => {
         _id: 'redirect-1',
         sourcePath: '/a',
         site: {_ref: 'site-a'},
-        locale: 'us-en',
+        locale: 'en-us',
       },
       fetchResults: [
         {

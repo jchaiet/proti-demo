@@ -49,3 +49,8 @@ Thumbs.db
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json
+
+# Playwright local/runtime output
+/e2e/.env.e2e
+/playwright-report/
+/test-results/

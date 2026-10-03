@@ -34,7 +34,7 @@ describe('validateSiteLocale', () => {
   it('requires a Site before validating a Locale', async () => {
     const {context, getClient} = createContext()
 
-    await expect(validateSiteLocale('us-en', context)).resolves.toBe('Select a Site first.')
+    await expect(validateSiteLocale('en-us', context)).resolves.toBe('Select a Site first.')
     expect(getClient).not.toHaveBeenCalled()
   })
 
@@ -44,13 +44,13 @@ describe('validateSiteLocale', () => {
       fetchResult: true,
     })
 
-    await expect(validateSiteLocale('us-en', context)).resolves.toBe(true)
+    await expect(validateSiteLocale('en-us', context)).resolves.toBe(true)
 
     expect(getClient).toHaveBeenCalledWith({apiVersion: '2026-08-21'})
     expect(withConfig).toHaveBeenCalledWith({perspective: 'drafts'})
     expect(fetch).toHaveBeenCalledWith(expect.stringContaining('$locale in locales[].code'), {
       siteId: 'site-1',
-      locale: 'us-en',
+      locale: 'en-us',
     })
   })
 

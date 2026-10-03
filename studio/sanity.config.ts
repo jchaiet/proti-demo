@@ -12,6 +12,7 @@ import {structure} from './structure'
 import {media} from 'sanity-plugin-media'
 import {ShowTranslationsAction} from './actions/ShowTranslationsAction'
 import {presentationResolve} from './presentation/resolve'
+import './styles/studio.css'
 
 const previewUrl = process.env.SANITY_STUDIO_PREVIEW_URL || 'http://localhost:3000'
 const previewOrigin = new URL(previewUrl).origin
@@ -49,6 +50,7 @@ export default defineConfig({
         context.schemaType === 'page' ||
         context.schemaType === 'blog' ||
         context.schemaType === 'singleton' ||
+        context.schemaType === 'modal' ||
         context.schemaType === 'navigationHeader' ||
         context.schemaType === 'navigationFooter' ||
         context.schemaType === 'navigationSet'
@@ -69,6 +71,7 @@ export default defineConfig({
           template.schemaType !== 'page' &&
           template.schemaType !== 'blog' &&
           template.schemaType !== 'singleton' &&
+          template.schemaType !== 'modal' &&
           template.schemaType !== 'taxonomy' &&
           template.schemaType !== 'navigationHeader' &&
           template.schemaType !== 'navigationFooter' &&
@@ -204,6 +207,37 @@ export default defineConfig({
           },
 
           locale,
+        }),
+      },
+
+      /*
+       * Modals
+       */
+      {
+        id: 'modal-scoped',
+        title: 'Modal',
+        schemaType: 'modal',
+
+        parameters: [
+          {
+            name: 'siteId',
+            type: 'string',
+          },
+          {
+            name: 'locale',
+            type: 'string',
+          },
+        ],
+
+        value: ({siteId, locale}: {siteId: string; locale: string}) => ({
+          site: {
+            _type: 'reference',
+            _ref: siteId,
+          },
+
+          locale,
+
+          size: 'md',
         }),
       },
 

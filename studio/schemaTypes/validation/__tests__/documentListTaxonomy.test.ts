@@ -8,7 +8,7 @@ describe('Document List taxonomy validation', () => {
     const {context, fetch, withConfig} = createValidationContext({
       document: {
         site: {_ref: 'drafts.site-1'},
-        locale: 'us-es',
+        locale: 'es-us',
       },
       fetchResults: [
         [
@@ -76,5 +76,54 @@ describe('Document List taxonomy validation', () => {
     ).resolves.toBe('Select a Site before choosing taxonomy terms.')
 
     expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it('rejects a Taxonomy Group from Dynamic Taxonomy scope', async () => {
+    const {context} = createValidationContext({
+      document: {
+        site: {_ref: 'site-1'},
+      },
+      fetchResults: [
+        [
+          {
+            _id: 'taxonomy-group',
+            title: 'Categories',
+            site: {_ref: 'site-1'},
+            kind: 'group',
+          },
+        ],
+      ],
+    })
+
+    await expect(
+      validateDocumentListTaxonomyReferences([{_ref: 'taxonomy-group'}], context),
+    ).resolves.toBe(
+      'Taxonomy Group "Categories" is organizational only and cannot be used by this Document List.',
+    )
+  })
+
+  it('rejects a Term excluded from visitor filters when filterability is required', async () => {
+    const {context} = createValidationContext({
+      document: {
+        site: {_ref: 'site-1'},
+      },
+      fetchResults: [
+        [
+          {
+            _id: 'taxonomy-hidden',
+            title: 'Internal Topic',
+            site: {_ref: 'site-1'},
+            kind: 'term',
+            includeInFilters: false,
+          },
+        ],
+      ],
+    })
+
+    await expect(
+      validateDocumentListTaxonomyReferences([{_ref: 'taxonomy-hidden'}], context, {
+        requireFilterable: true,
+      }),
+    ).resolves.toBe('Taxonomy Term "Internal Topic" is excluded from visitor filters.')
   })
 })

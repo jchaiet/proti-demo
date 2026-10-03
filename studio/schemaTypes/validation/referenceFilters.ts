@@ -115,6 +115,66 @@ export function siteReferenceFilter(
 }
 
 /**
+ * Restricts Taxonomy reference pickers to assignable Taxonomy Terms for the
+ * current Site. Existing Taxonomy documents with no `kind` are treated as
+ * normal Terms for backwards compatibility.
+ *
+ * Taxonomy Groups remain valid hierarchy parents, so this filter should only
+ * be used by fields that assign Taxonomy to content or content scopes.
+ */
+export function taxonomyTermReferenceFilter(
+  document: Record<string, unknown> | undefined,
+): ReferenceFilterResult {
+  const site = document?.site as SiteDocument['site']
+
+  if (!site?._ref) {
+    return {
+      filter: 'false',
+    }
+  }
+
+  return {
+    filter: `
+      site._ref == $siteId &&
+      coalesce(kind, "term") != "group"
+    `,
+    params: {
+      siteId: cleanId(site._ref),
+    },
+  }
+}
+
+/**
+ * Restricts Taxonomy reference pickers used for visitor-facing filters.
+ *
+ * In addition to excluding Groups, Terms explicitly marked
+ * `includeInFilters == false` are excluded. Existing Terms with the field
+ * unset remain filterable.
+ */
+export function taxonomyVisitorFilterReferenceFilter(
+  document: Record<string, unknown> | undefined,
+): ReferenceFilterResult {
+  const site = document?.site as SiteDocument['site']
+
+  if (!site?._ref) {
+    return {
+      filter: 'false',
+    }
+  }
+
+  return {
+    filter: `
+      site._ref == $siteId &&
+      coalesce(kind, "term") != "group" &&
+      includeInFilters != false
+    `,
+    params: {
+      siteId: cleanId(site._ref),
+    },
+  }
+}
+
+/**
  * Restricts reference pickers to documents that belong to the same Site and
  * Locale as the document currently being edited.
  *
