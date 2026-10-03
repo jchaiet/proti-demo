@@ -8,6 +8,8 @@ import {
   resolveCanonicalPublicUrl,
 } from "@/lib/routing/public-url";
 
+import { siteLocaleToLanguageTag } from "@/lib/routing/locale";
+
 import { PUBLISHED_SANITY_FETCH_OPTIONS } from "@/sanity/cache";
 import { sanityClient } from "@/sanity/client";
 
@@ -239,16 +241,6 @@ function buildImageObject({
 
     caption: caption?.trim() || null,
   });
-}
-
-function normalizeLocale(locale: string): string {
-  const [region, language] = locale.split("-");
-
-  if (!region || !language) {
-    return locale;
-  }
-
-  return `${language.toLowerCase()}-${region.toUpperCase()}`;
 }
 
 function normalizeSchemaDate(value?: string): string | undefined {
@@ -687,7 +679,8 @@ export function buildWebSiteSchema(site: StructuredDataSite): JsonLdObject {
 
     name: site.name,
 
-    inLanguage: uniqueStringArray(site.locales)?.map(normalizeLocale) ?? null,
+    inLanguage:
+      uniqueStringArray(site.locales)?.map(siteLocaleToLanguageTag) ?? null,
 
     publisher: {
       "@id": getOrganizationSchemaId(site),
@@ -718,7 +711,7 @@ export function buildWebPageSchema({
 
     description: description ?? null,
 
-    inLanguage: normalizeLocale(locale),
+    inLanguage: siteLocaleToLanguageTag(locale),
 
     isPartOf: {
       "@id": getWebSiteSchemaId(site),
@@ -781,7 +774,7 @@ export function buildProfilePageSchema({
 
     description: description ?? null,
 
-    inLanguage: normalizeLocale(locale),
+    inLanguage: siteLocaleToLanguageTag(locale),
 
     isPartOf: {
       "@id": getWebSiteSchemaId(site),
@@ -839,7 +832,7 @@ export function buildBlogPostingSchema({
 
     description: description ?? null,
 
-    inLanguage: normalizeLocale(locale),
+    inLanguage: siteLocaleToLanguageTag(locale),
 
     image: image ?? null,
 
@@ -916,7 +909,7 @@ export function buildCollectionPageSchema({
 
     description: description ?? null,
 
-    inLanguage: normalizeLocale(locale),
+    inLanguage: siteLocaleToLanguageTag(locale),
 
     isPartOf: {
       "@id": getWebSiteSchemaId(site),

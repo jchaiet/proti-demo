@@ -5,7 +5,11 @@ export * from "./structured-data";
 
 export type { CmsLink, CmsReference } from "./link";
 
-export type { CmsCta } from "./cta";
+export type { CmsCta, CmsCtaActionType } from "./cta";
+
+export type { CmsCtaAlignment, CmsCtaGroup } from "./cta-group";
+
+export type { CmsModal, CmsModalBlock, CmsModalSize } from "./modal";
 
 export type { CmsIcon } from "./icon";
 

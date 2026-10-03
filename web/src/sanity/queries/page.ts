@@ -30,11 +30,11 @@ type PageQueryRecord = Omit<Page, "seo"> & {
     socialImage?: CmsImage;
   };
 
-  sections?: CmsBlock[];
+  sections?: CmsBlock[] | null;
 };
 
 export type ResolvedPage = Page & {
-  sections?: CmsBlock[];
+  sections: CmsBlock[];
 };
 
 const HOMEPAGE_QUERY = `
@@ -159,10 +159,12 @@ async function getPageById(
     return null;
   }
 
-  const { seo, ...page } = record;
+  const { seo, sections, ...page } = record;
 
   return {
     ...page,
+
+    sections: sections ?? [],
 
     seo: seo
       ? {

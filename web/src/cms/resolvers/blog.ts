@@ -1,6 +1,13 @@
 import type { PortableTextBlock } from "@portabletext/types";
 
-import type { CmsAuthor, CmsBlog, CmsImage, CmsSeo } from "@/cms/types";
+import type {
+  CmsAuthor,
+  CmsBlock,
+  CmsBlog,
+  CmsImage,
+  CmsSeo,
+  CmsTaxonomyTerm,
+} from "@/cms/types";
 
 import { portableTextToPlainText } from "@/cms/resolvers/portable-text-markdown";
 
@@ -42,7 +49,14 @@ type BlogSeoRecord = Omit<CmsSeo, "socialImageUrl" | "socialImageAlt"> & {
 
 type BlogQueryRecord = Omit<
   CmsBlog,
-  "imageUrl" | "socialImageUrl" | "imageAlt" | "author" | "reviewer" | "seo"
+  | "imageUrl"
+  | "socialImageUrl"
+  | "imageAlt"
+  | "author"
+  | "reviewer"
+  | "seo"
+  | "taxonomy"
+  | "sections"
 > & {
   mainImage?: CmsImage;
 
@@ -51,6 +65,10 @@ type BlogQueryRecord = Omit<
   reviewer?: BlogAuthorRecord;
 
   seo?: BlogSeoRecord;
+
+  taxonomy?: CmsTaxonomyTerm[] | null;
+
+  sections?: CmsBlock[] | null;
 };
 
 function mapAuthor(
@@ -101,7 +119,8 @@ export async function getBlogBySlug({
     return null;
   }
 
-  const { mainImage, author, reviewer, seo, ...blog } = record;
+  const { mainImage, author, reviewer, seo, taxonomy, sections, ...blog } =
+    record;
 
   const mappedSeo = seo
     ? (() => {
@@ -129,6 +148,10 @@ export async function getBlogBySlug({
     author: mapAuthor(author),
 
     reviewer: mapAuthor(reviewer),
+
+    taxonomy: taxonomy ?? [],
+
+    sections: sections ?? [],
 
     seo: mappedSeo,
   };

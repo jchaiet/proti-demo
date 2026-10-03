@@ -6,6 +6,7 @@ import {
 } from "../cards";
 
 import { CTA_FRAGMENT } from "../cta";
+import { CTA_GROUP_FRAGMENT } from "../ctaGroup";
 import { IMAGE_FRAGMENT } from "../image";
 import { LINK_FRAGMENT } from "../link";
 import { SECTION_HEADING_FRAGMENT } from "../sectionHeading";
@@ -20,10 +21,15 @@ export const CAROUSEL_BLOCK_FRAGMENT = `
     alignment,
     mediaPosition,
 
+    ctaGroup {
+      ${CTA_GROUP_FRAGMENT}
+    },
+
+    // Legacy fields retained until stored content is migrated.
     ctas[] {
       ${CTA_FRAGMENT}
     },
-
+    ctaAlignment,
     ctaStackOnMobile,
 
     items[] {

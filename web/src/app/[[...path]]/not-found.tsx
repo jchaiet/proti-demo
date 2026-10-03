@@ -15,6 +15,26 @@ function getRequestHost(
   return forwardedHost?.split(",")[0]?.trim() ?? hostHeader?.trim() ?? null;
 }
 
+async function resolveNotFoundSite() {
+  try {
+    const requestHeaders = await headers();
+
+    const host = getRequestHost(requestHeaders);
+
+    if (!host) {
+      return null;
+    }
+
+    return await resolveSiteByHost(host);
+  } catch {
+    /*
+     * A 404 should remain usable even if tenant/CMS
+     * resolution itself is temporarily unavailable.
+     */
+    return null;
+  }
+}
+
 function NotFoundContent({ homeHref = "/" }: { homeHref?: string }) {
   return (
     <ErrorState
@@ -38,31 +58,15 @@ export default async function NotFound() {
    * Server Component as a supported API, the navigation
    * Locale falls back to the Site's default Locale.
    */
-  try {
-    const requestHeaders = await headers();
+  const site = await resolveNotFoundSite();
 
-    const host = getRequestHost(requestHeaders);
-
-    if (!host) {
-      return <NotFoundContent />;
-    }
-
-    const site = await resolveSiteByHost(host);
-
-    if (!site) {
-      return <NotFoundContent />;
-    }
-
-    return (
-      <SiteLayout siteId={site._id} locale={site.defaultLocale} homeHref="/">
-        <NotFoundContent />
-      </SiteLayout>
-    );
-  } catch {
-    /*
-     * A 404 should remain usable even if tenant/CMS
-     * resolution itself is temporarily unavailable.
-     */
+  if (!site) {
     return <NotFoundContent />;
   }
+
+  return (
+    <SiteLayout siteId={site._id} locale={site.defaultLocale} homeHref="/">
+      <NotFoundContent />
+    </SiteLayout>
+  );
 }

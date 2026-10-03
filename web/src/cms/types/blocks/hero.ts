@@ -1,6 +1,6 @@
 import type { CmsCta } from "../cta";
+import type { CmsCtaGroup } from "../cta-group";
 import type { CmsSectionHeading } from "../section-heading";
-import type { ButtonGroupProps } from "mino-ui";
 
 export type CmsHeroLayout =
   | "default"
@@ -59,9 +59,14 @@ export type CmsHeroBlock = {
 
   splitMediaPosition?: "left" | "right";
 
+  ctaGroup?: CmsCtaGroup;
+
+  /** @deprecated Read-only compatibility for pre-ctaGroup Sanity documents. */
   ctas?: CmsCta[];
 
-  ctaGroupProps?: Pick<ButtonGroupProps, "stackOnMobile">;
+  /** @deprecated Read-only compatibility for pre-ctaGroup Sanity documents. */
+  ctaAlignment?: CmsHeroAlignment;
 
+  /** @deprecated Read-only compatibility for pre-ctaGroup Sanity documents. */
   ctaStackOnMobile?: boolean;
 };

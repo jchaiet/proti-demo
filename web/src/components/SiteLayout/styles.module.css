@@ -37,6 +37,6 @@
   display: inline-block;
   color: inherit;
   font: inherit;
-  font-weight: var(--font-weight-bold, 700);
+  font-weight: var(--mino-font-weight-bold, var(--font-weight-bold, 700));
   white-space: nowrap;
 }

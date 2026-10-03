@@ -26,7 +26,7 @@ export interface GetAuthorBySlugOptions {
   visualEditing?: boolean;
 }
 
-export interface GetAuthorPageOptions extends GetAuthorBySlugOptions {}
+export type GetAuthorPageOptions = GetAuthorBySlugOptions;
 
 export interface BuildAuthorLocaleLinksOptions {
   slug: string;

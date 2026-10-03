@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   fetch: vi.fn(),
@@ -38,7 +38,7 @@ it("short-circuits when required resolver context is missing", async () => {
   expect(
     await resolveDynamicDocumentList({
       siteId: "",
-      locale: "us-en",
+      locale: "en-us",
       contentTypes: ["blog"],
       sort: "newest",
       limit: 10,
@@ -58,7 +58,7 @@ it("short-circuits when required resolver context is missing", async () => {
   expect(
     await resolveDynamicDocumentList({
       siteId: "site-proti",
-      locale: "us-en",
+      locale: "en-us",
       contentTypes: [],
       sort: "newest",
       limit: 10,
@@ -73,7 +73,7 @@ it("normalizes taxonomy draft IDs, deduplicates them, maps content types, and cl
 
   await resolveDynamicDocumentList({
     siteId: "site-proti",
-    locale: "us-en",
+    locale: "en-us",
     contentTypes: ["article", "blog", "news", "resource"],
     taxonomyIds: [
       "drafts.taxonomy-nutrition",
@@ -92,7 +92,7 @@ it("normalizes taxonomy draft IDs, deduplicates them, maps content types, and cl
     "DOCUMENT_LIST_QUERY",
     {
       siteId: "site-proti",
-      locale: "us-en",
+      locale: "en-us",
       types: ["article", "blog", "news", "resource"],
       taxonomyIds: ["taxonomy-nutrition", "taxonomy-health"],
       taxonomyMatchLogic: "all",
@@ -163,7 +163,7 @@ it("maps dynamic Blog/Article/News items to Article cards and Resources to Resou
 
   const result = await resolveDynamicDocumentList({
     siteId: "site-proti",
-    locale: "us-en",
+    locale: "en-us",
     contentTypes: ["article", "blog", "news", "resource"],
     sort: "newest",
     limit: 20,
@@ -239,7 +239,7 @@ it("keeps default-locale dynamic URLs unprefixed", async () => {
 
   const result = await resolveDynamicDocumentList({
     siteId: "site-proti",
-    locale: "us-en",
+    locale: "en-us",
     localePrefix: "",
     contentTypes: ["blog"],
     sort: "newest",
@@ -273,17 +273,17 @@ it("prefixes slug-based dynamic URLs for a non-default locale", async () => {
 
   const result = await resolveDynamicDocumentList({
     siteId: "site-proti",
-    locale: "us-es",
-    localePrefix: "/us-es",
+    locale: "es-us",
+    localePrefix: "/es-us",
     contentTypes: ["blog", "news", "resource"],
     sort: "newest",
     limit: 10,
   });
 
   expect(result.map((item) => item.url)).toEqual([
-    "/us-es/blog/nutricion",
-    "/us-es/news/noticias",
-    "/us-es/resources/recurso",
+    "/es-us/blog/nutricion",
+    "/es-us/news/noticias",
+    "/es-us/resources/recurso",
   ]);
 });
 
@@ -299,14 +299,14 @@ it("prefixes projected paths for a non-default locale", async () => {
 
   const result = await resolveDynamicDocumentList({
     siteId: "site-proti",
-    locale: "us-es",
-    localePrefix: "/us-es",
+    locale: "es-us",
+    localePrefix: "/es-us",
     contentTypes: ["article"],
     sort: "newest",
     limit: 10,
   });
 
-  expect(result[0]?.url).toBe("/us-es/articles/articulo");
+  expect(result[0]?.url).toBe("/es-us/articles/articulo");
 });
 
 it("does not double-prefix an already-localized projected path", async () => {
@@ -315,20 +315,20 @@ it("does not double-prefix an already-localized projected path", async () => {
       _id: "article-es",
       _type: "article",
       title: "Artículo",
-      path: "/us-es/articles/articulo",
+      path: "/es-us/articles/articulo",
     },
   ]);
 
   const result = await resolveDynamicDocumentList({
     siteId: "site-proti",
-    locale: "us-es",
-    localePrefix: "/us-es",
+    locale: "es-us",
+    localePrefix: "/es-us",
     contentTypes: ["article"],
     sort: "newest",
     limit: 10,
   });
 
-  expect(result[0]?.url).toBe("/us-es/articles/articulo");
+  expect(result[0]?.url).toBe("/es-us/articles/articulo");
 });
 
 it("drops dynamic documents that have no title", async () => {
@@ -342,7 +342,7 @@ it("drops dynamic documents that have no title", async () => {
 
   const result = await resolveDynamicDocumentList({
     siteId: "site-proti",
-    locale: "us-en",
+    locale: "en-us",
     contentTypes: ["blog"],
     sort: "newest",
     limit: 10,
@@ -363,7 +363,7 @@ it("normalizes a projected path that does not start with /", async () => {
 
   const result = await resolveDynamicDocumentList({
     siteId: "site-proti",
-    locale: "us-en",
+    locale: "en-us",
     contentTypes: ["article"],
     sort: "newest",
     limit: 10,

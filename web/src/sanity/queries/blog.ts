@@ -29,6 +29,7 @@ export const BLOG_BY_SLUG_QUERY = `
 
     title,
     summary,
+    "showSummaryInArticle": coalesce(showSummaryInArticle, false),
 
     "slug": slug.current,
 

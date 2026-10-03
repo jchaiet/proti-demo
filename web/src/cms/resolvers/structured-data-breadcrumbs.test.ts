@@ -49,26 +49,26 @@ describe("buildBreadcrumbItems", () => {
     expect(
       buildBreadcrumbItems({
         origin: "https://example.com",
-        localePrefix: "/us-es",
+        localePrefix: "/es-us",
         segments: ["blog", "topics", "nutricion"],
         leafTitle: "Nutrición",
       }),
     ).toEqual([
       {
         name: "Home",
-        url: "https://example.com/us-es",
+        url: "https://example.com/es-us",
       },
       {
         name: "Blog",
-        url: "https://example.com/us-es/blog",
+        url: "https://example.com/es-us/blog",
       },
       {
         name: "Topics",
-        url: "https://example.com/us-es/blog/topics",
+        url: "https://example.com/es-us/blog/topics",
       },
       {
         name: "Nutrición",
-        url: "https://example.com/us-es/blog/topics/nutricion",
+        url: "https://example.com/es-us/blog/topics/nutricion",
       },
     ]);
   });

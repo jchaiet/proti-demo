@@ -48,7 +48,7 @@ describe("getBlogTaxonomyPage", () => {
     await expect(
       getBlogTaxonomyPage({
         siteId: "site-a",
-        locale: "us-es",
+        locale: "es-us",
         segments: ["topics", "nutrition"],
         visualEditing: true,
       }),
@@ -71,7 +71,7 @@ describe("getBlogTaxonomyPage", () => {
     );
     expect(taxonomyFetch?.[1]).toEqual({
       siteId: "site-a",
-      locale: "us-es",
+      locale: "es-us",
     });
     expect(taxonomyFetch?.[2]?.visualEditing).toBe(true);
     expect(blogFetch?.[2]?.visualEditing).toBe(true);
@@ -96,7 +96,7 @@ describe("getBlogTaxonomyPage", () => {
 
     await getBlogTaxonomyPage({
       siteId: "site-a",
-      locale: "us-en",
+      locale: "en-us",
       segments: ["topics", "nutrition"],
       visualEditing: false,
     });
@@ -117,7 +117,7 @@ describe("getBlogTaxonomyPage", () => {
     await expect(
       getBlogTaxonomyPage({
         siteId: "site-a",
-        locale: "us-en",
+        locale: "en-us",
         segments: ["topics", "missing"],
         visualEditing: true,
       }),

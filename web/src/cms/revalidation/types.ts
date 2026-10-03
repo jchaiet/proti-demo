@@ -2,6 +2,7 @@ export const REVALIDATION_DOCUMENT_TYPES = [
   "page",
   "blog",
   "singleton",
+  "modal",
   "navigationHeader",
   "navigationFooter",
   "navigationSet",

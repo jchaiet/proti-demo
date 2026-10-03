@@ -2,7 +2,7 @@ import type { ContentBlockProps } from "mino-ui/blocks/ContentBlock";
 
 import type { CmsContentBlock } from "@/cms/types";
 
-import { mapCtas } from "@/cms/mappers/cta";
+import { mapCtaGroup } from "@/cms/mappers/cta-group";
 import { mapSectionHeading } from "@/cms/mappers/section-heading";
 import { resolveSanityImage } from "@/cms/resolvers/image";
 
@@ -47,7 +47,12 @@ function resolveContentImage(block: CmsContentBlock): string | undefined {
 export async function mapContentBlock(
   block: CmsContentBlock,
 ): Promise<ContentBlockProps> {
-  const ctas = await mapCtas(block.ctas);
+  const ctaGroup = await mapCtaGroup(block.ctaGroup, {
+    legacyItems: block.ctas,
+    legacyAlignment: block.ctaAlignment,
+    legacyStackOnMobile: block.ctaStackOnMobile,
+    fallbackAlignment: block.alignment ?? "left",
+  });
 
   const heading = mapSectionHeading(block.heading);
 
@@ -89,10 +94,8 @@ export async function mapContentBlock(
 
     videoSrc,
 
-    ctas,
+    ctas: ctaGroup.ctas,
 
-    ctaGroupProps: {
-      stackOnMobile: block.ctaStackOnMobile ?? true,
-    },
+    ctaGroupProps: ctaGroup.ctaGroupProps,
   };
 }

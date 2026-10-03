@@ -1,6 +1,8 @@
 "use client";
 
-import { Button, ButtonGroup, Navigation } from "mino-ui";
+import { Button } from "mino-ui/core/Button";
+import { ButtonGroup } from "mino-ui/core/ButtonGroup";
+import { Navigation } from "mino-ui/core/Navigation";
 
 import type { MappedNavigationHeader } from "@/cms/mappers/navigation";
 

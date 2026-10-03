@@ -12,46 +12,46 @@ import {
 const index: SitePublicRouteIndex = {
   site: {
     _id: "site-a",
-    defaultLocale: "us-en",
-    locales: [{ code: "us-en" }, { code: "us-es" }],
+    defaultLocale: "en-us",
+    locales: [{ code: "en-us" }, { code: "es-us" }],
   },
   pages: [
     {
       _id: "home-en",
-      locale: "us-en",
+      locale: "en-us",
       isHomepage: true,
     },
     {
       _id: "products-en",
-      locale: "us-en",
+      locale: "en-us",
       slug: "products",
     },
     {
       _id: "widget-en",
-      locale: "us-en",
+      locale: "en-us",
       slug: "widget",
       parentId: "products-en",
     },
     {
       _id: "search-page",
-      locale: "us-en",
+      locale: "en-us",
       slug: "search",
     },
     {
       _id: "home-es",
-      locale: "us-es",
+      locale: "es-us",
       isHomepage: true,
     },
   ],
   blogs: [
     {
       _id: "blog-en",
-      locale: "us-en",
+      locale: "en-us",
       slug: "nutrition",
     },
     {
       _id: "blog-es",
-      locale: "us-es",
+      locale: "es-us",
       slug: "nutricion",
     },
   ],
@@ -67,54 +67,55 @@ const index: SitePublicRouteIndex = {
 };
 
 describe("revalidation route builders", () => {
-  it("builds locale-aware Page paths and omits reserved Page routes", () => {
+  it("builds locale-aware Page paths and keeps authored Search pages", () => {
     expect(buildPagePaths(index)).toEqual([
       "/",
+      "/es-us",
       "/products",
       "/products/widget",
-      "/us-es",
+      "/search",
     ]);
   });
 
   it("can reconstruct an old Page hierarchy from a webhook snapshot", () => {
     expect(
       buildPagePaths(index, {
-        locale: "us-en",
+        locale: "en-us",
         snapshot: {
           _id: "products-en",
           _type: "page",
           siteId: "site-a",
-          locale: "us-en",
+          locale: "en-us",
           slug: "catalog",
           isHomepage: false,
         },
       }),
-    ).toEqual(["/", "/catalog", "/catalog/widget"]);
+    ).toEqual(["/", "/catalog", "/catalog/widget", "/search"]);
   });
 
   it("builds Blog and Author paths with the default locale unprefixed", () => {
     expect(
       buildBlogPath(
         {
-          locale: "us-es",
+          locale: "es-us",
           slug: "nutrition",
         },
-        "us-en",
+        "en-us",
       ),
-    ).toBe("/us-es/blog/nutrition");
+    ).toBe("/es-us/blog/nutrition");
 
     expect(
-      buildAuthorPaths("jane-doe", "us-en", [
-        { code: "us-en" },
-        { code: "us-es" },
+      buildAuthorPaths("jane-doe", "en-us", [
+        { code: "en-us" },
+        { code: "es-us" },
       ]),
-    ).toEqual(["/authors/jane-doe", "/us-es/authors/jane-doe"]);
+    ).toEqual(["/authors/jane-doe", "/es-us/authors/jane-doe"]);
   });
 
   it("only exposes taxonomy paths with at least root + child segments", () => {
     expect(buildTaxonomyPaths(index)).toEqual([
       "/blog/topics/nutrition",
-      "/us-es/blog/topics/nutrition",
+      "/es-us/blog/topics/nutrition",
     ]);
   });
 
@@ -124,14 +125,14 @@ describe("revalidation route builders", () => {
       "/authors/jane-doe",
       "/blog/nutrition",
       "/blog/topics/nutrition",
+      "/es-us",
+      "/es-us/authors/jane-doe",
+      "/es-us/blog/nutricion",
+      "/es-us/blog/topics/nutrition",
+      "/es-us/search",
       "/products",
       "/products/widget",
       "/search",
-      "/us-es",
-      "/us-es/authors/jane-doe",
-      "/us-es/blog/nutricion",
-      "/us-es/blog/topics/nutrition",
-      "/us-es/search",
     ]);
   });
 });

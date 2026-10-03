@@ -56,7 +56,7 @@ describe("resolveRedirect", () => {
     await expect(
       resolveRedirect({
         siteId: "",
-        locale: "us-en",
+        locale: "en-us",
         sourcePath: "/old",
       }),
     ).resolves.toBeNull();
@@ -69,7 +69,7 @@ describe("resolveRedirect", () => {
 
     await resolveRedirect({
       siteId: "site-a",
-      locale: "us-en",
+      locale: "en-us",
       sourcePath: " /old/ ",
     });
 
@@ -77,7 +77,7 @@ describe("resolveRedirect", () => {
       REDIRECT_BY_SOURCE_QUERY,
       {
         siteId: "site-a",
-        locale: "us-en",
+        locale: "en-us",
         sourcePaths: ["/old", "/old/"],
       },
       {
@@ -97,7 +97,7 @@ describe("resolveRedirect", () => {
     await expect(
       resolveRedirect({
         siteId: "site-a",
-        locale: "us-en",
+        locale: "en-us",
         sourcePath: "/old",
       }),
     ).resolves.toBeNull();
@@ -109,7 +109,7 @@ describe("resolveRedirect", () => {
     await expect(
       resolveRedirect({
         siteId: "site-a",
-        locale: "us-en",
+        locale: "en-us",
         sourcePath: "/old",
       }),
     ).resolves.toEqual({
@@ -128,7 +128,7 @@ describe("resolveRedirect", () => {
     await expect(
       resolveRedirect({
         siteId: "site-a",
-        locale: "us-en",
+        locale: "en-us",
         sourcePath: "/old",
       }),
     ).resolves.toEqual({
@@ -144,12 +144,12 @@ describe("resolveRedirect", () => {
     await expect(
       resolveRedirect({
         siteId: "site-a",
-        locale: "us-es",
+        locale: "es-us",
         sourcePath: "/old",
-        localePrefix: "/us-es",
+        localePrefix: "/es-us",
       }),
     ).resolves.toMatchObject({
-      destination: "/us-es/new",
+      destination: "/es-us/new",
     });
   });
 
@@ -159,7 +159,7 @@ describe("resolveRedirect", () => {
     await expect(
       resolveRedirect({
         siteId: "site-a",
-        locale: "us-en",
+        locale: "en-us",
         sourcePath: "/old",
         localePrefix: "",
       }),
@@ -182,7 +182,7 @@ describe("resolveRedirect", () => {
     await expect(
       resolveRedirect({
         siteId: "site-a",
-        locale: "us-en",
+        locale: "en-us",
         sourcePath: "/old",
       }),
     ).resolves.toMatchObject({
@@ -191,7 +191,7 @@ describe("resolveRedirect", () => {
 
     expect(mocks.getPageUrl).toHaveBeenCalledWith("drafts.page-1", {
       expectedSiteId: "site-a",
-      expectedLocale: "us-en",
+      expectedLocale: "en-us",
     });
   });
 
@@ -209,7 +209,7 @@ describe("resolveRedirect", () => {
     await expect(
       resolveRedirect({
         siteId: "site-a",
-        locale: "us-en",
+        locale: "en-us",
         sourcePath: "/old",
       }),
     ).resolves.toBeNull();
@@ -228,7 +228,7 @@ describe("resolveRedirect", () => {
     await expect(
       resolveRedirect({
         siteId: "site-a",
-        locale: "us-en",
+        locale: "en-us",
         sourcePath: "/old",
       }),
     ).resolves.toMatchObject({
@@ -249,9 +249,9 @@ describe("resolveRedirect", () => {
     await expect(
       resolveRedirect({
         siteId: "site-a",
-        locale: "us-es",
+        locale: "es-us",
         sourcePath: "/old",
-        localePrefix: "/us-es",
+        localePrefix: "/es-us",
       }),
     ).resolves.toBeNull();
   });

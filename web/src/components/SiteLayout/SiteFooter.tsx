@@ -2,7 +2,7 @@
 
 import type { AnchorHTMLAttributes } from "react";
 
-import { Footer, FooterColumn, FooterLink } from "mino-ui";
+import { Footer, FooterColumn, FooterLink } from "mino-ui/core/Footer";
 
 import type {
   MappedFooterLink,

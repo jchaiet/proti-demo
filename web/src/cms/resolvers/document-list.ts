@@ -15,6 +15,7 @@ import { getDynamicDocumentListQuery } from "@/sanity/queries/documentList";
 
 const SANITY_DOCUMENT_TYPES: Record<CmsDocumentListDynamicContentType, string> =
   {
+    page: "page",
     article: "article",
     blog: "blog",
     news: "news",
@@ -22,7 +23,7 @@ const SANITY_DOCUMENT_TYPES: Record<CmsDocumentListDynamicContentType, string> =
   };
 
 const CONTENT_ROUTE_PREFIXES: Record<
-  CmsDocumentListDynamicContentType,
+  Exclude<CmsDocumentListDynamicContentType, "page">,
   string
 > = {
   article: "articles",
@@ -104,6 +105,10 @@ function resolveDynamicHref(
 
   if (!item.slug) {
     return "";
+  }
+
+  if (item._type === "page") {
+    return applyLocalePrefix(`/${item.slug}`, localePrefix);
   }
 
   const routePrefix = CONTENT_ROUTE_PREFIXES[item._type];

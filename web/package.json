@@ -14,7 +14,13 @@
     "test:document-list": "vitest run src/sanity/queries/documentList.test.ts src/cms/mappers/blocks/document-list.test.ts src/cms/resolvers/document-list.test.ts src/components/BlockRenderer/DocumentList.test.tsx src/components/BlockRenderer/DocumentListBlock.integration.test.tsx",
     "test:seo": "vitest run src/sanity/queries/search-engine.test.ts src/cms/resolvers/seo.test.ts src/cms/resolvers/structured-data.test.ts src/cms/resolvers/structured-data-breadcrumbs.test.ts src/cms/resolvers/search-engine.test.ts src/app/sitemap.test.ts src/app/robots.test.ts \"src/app/[[...path]]/seo-output.integration.test.tsx\"",
     "test:seo-output": "vitest run \"src/app/[[...path]]/seo-output.integration.test.tsx\"",
-    "test:revalidation": "vitest run src/sanity/fetch.test.ts src/cms/revalidation/route.test.ts src/cms/revalidation/dependencies.test.ts src/app/api/revalidate/route.test.ts"
+    "test:revalidation": "vitest run src/sanity/fetch.test.ts src/cms/revalidation/route.test.ts src/cms/revalidation/dependencies.test.ts src/app/api/revalidate/route.test.ts",
+    "test:e2e": "playwright test",
+    "test:e2e:smoke": "playwright test e2e/smoke.spec.ts",
+    "test:e2e:visual": "playwright test e2e/visual.spec.ts",
+    "test:e2e:update": "playwright test e2e/visual.spec.ts --update-snapshots",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:report": "playwright show-report"
   },
   "dependencies": {
     "@portabletext/react": "^8.0.1",
@@ -29,16 +35,17 @@
     "react-icons": "^5.7.0"
   },
   "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/react": "^16.3.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^4.7.0",
     "eslint": "^9",
     "eslint-config-next": "16.3.1",
-    "typescript": "^5",
-    "@testing-library/dom": "^10.4.1",
-    "@testing-library/react": "^16.3.0",
-    "@vitejs/plugin-react": "^4.7.0",
     "jsdom": "^26.1.0",
+    "typescript": "^5",
     "vite": "^6.4.1",
     "vite-tsconfig-paths": "^5.1.4",
     "vitest": "3.2.4"

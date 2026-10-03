@@ -1,10 +1,21 @@
 import { act, render, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, expect, it, vi } from "vitest";
 
 import type { DocumentItem } from "mino-ui/blocks/DocumentListBlock";
 
 const mocks = vi.hoisted(() => ({
   latestProps: null as Record<string, unknown> | null,
+  replace: vi.fn(),
+  pathname: "/search",
+  searchParams: "",
+}));
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({
+    replace: mocks.replace,
+  }),
+  usePathname: () => mocks.pathname,
+  useSearchParams: () => new URLSearchParams(mocks.searchParams),
 }));
 
 vi.mock("mino-ui/blocks/DocumentListBlock", () => ({
@@ -87,6 +98,7 @@ function renderDocumentList(overrides: Record<string, unknown> = {}) {
         ],
         dateLocale: "en-US",
       }}
+      sourceMode="manual"
       enableSearch
       enableSorting
       enablePagination
@@ -106,7 +118,13 @@ function getProps() {
     totalPages: number;
     totalResults: number;
     onSearchChange?: (query: string) => void;
+    filterGroups?: Array<{
+      id: string;
+      selected?: string | string[];
+      onChange?: (value: string | string[]) => void;
+    }>;
     onFilterChange?: (filter: string | string[]) => void;
+    onClearFilters?: () => void;
     onSortChange?: (sort: string) => void;
     onPageChange?: (page: number) => void;
     dateLocale?: string;
@@ -115,6 +133,9 @@ function getProps() {
 
 beforeEach(() => {
   mocks.latestProps = null;
+  mocks.replace.mockReset();
+  mocks.pathname = "/search";
+  mocks.searchParams = "";
 });
 
 it("sorts newest first using raw ISO dates before paginating", () => {
@@ -262,6 +283,7 @@ it("passes no interactive handlers when those features are disabled", () => {
       props={{
         documents,
       }}
+      sourceMode="manual"
       enableSearch={false}
       enableSorting={false}
       enablePagination={false}
@@ -276,4 +298,251 @@ it("passes no interactive handlers when those features are disabled", () => {
   expect(props.onSearchChange).toBeUndefined();
   expect(props.onSortChange).toBeUndefined();
   expect(props.onPageChange).toBeUndefined();
+});
+
+it("writes server-backed filter changes to the URL", async () => {
+  mocks.searchParams = "q=nutrition";
+
+  render(
+    <DocumentList
+      props={{
+        documents: [],
+        filterLogic: "radio",
+        filterOptions: [
+          {
+            label: "Pages",
+            value: "page",
+          },
+          {
+            label: "Blog",
+            value: "blog",
+          },
+        ],
+        sortOptions: [
+          {
+            label: "Relevance",
+            value: "relevance",
+          },
+          {
+            label: "Newest",
+            value: "newest",
+          },
+        ],
+      }}
+      sourceMode="dynamic"
+      enableSearch
+      enableSorting
+      enablePagination
+      itemsPerPage={12}
+      serverState={{
+        searchQuery: "nutrition",
+        selectedFilter: "all",
+        selectedTaxonomy: [],
+        selectedSort: "relevance",
+        currentPage: 1,
+        totalPages: 1,
+        totalResults: 0,
+      }}
+    />,
+  );
+
+  act(() => {
+    getProps().onFilterChange?.("blog");
+  });
+
+  await waitFor(() => {
+    expect(mocks.replace).toHaveBeenCalledWith(
+      "/search?q=nutrition&filter=blog",
+      {
+        scroll: false,
+      },
+    );
+  });
+});
+
+it("writes server-backed sort changes to the URL", async () => {
+  mocks.searchParams = "q=nutrition&filter=page";
+
+  render(
+    <DocumentList
+      props={{
+        documents: [],
+        filterLogic: "radio",
+        filterOptions: [
+          {
+            label: "Pages",
+            value: "page",
+          },
+        ],
+        sortOptions: [
+          {
+            label: "Relevance",
+            value: "relevance",
+          },
+          {
+            label: "Newest",
+            value: "newest",
+          },
+        ],
+      }}
+      sourceMode="dynamic"
+      enableSearch
+      enableSorting
+      enablePagination
+      itemsPerPage={12}
+      serverState={{
+        searchQuery: "nutrition",
+        selectedFilter: "page",
+        selectedSort: "relevance",
+        selectedTaxonomy: [],
+        currentPage: 1,
+        totalPages: 1,
+        totalResults: 0,
+      }}
+    />,
+  );
+
+  act(() => {
+    getProps().onSortChange?.("newest");
+  });
+
+  await waitFor(() => {
+    expect(mocks.replace).toHaveBeenCalledWith(
+      "/search?q=nutrition&filter=page&sort=newest",
+      {
+        scroll: false,
+      },
+    );
+  });
+});
+
+it("writes server-backed Taxonomy filter changes to a separate taxonomy URL parameter", async () => {
+  mocks.searchParams = "q=nutrition&filter=blog";
+
+  render(
+    <DocumentList
+      props={{
+        documents: [],
+        filterGroups: [
+          {
+            id: "content",
+            title: "Content Type",
+            options: [
+              {
+                label: "Blog",
+                value: "blog",
+              },
+            ],
+            logic: "radio",
+          },
+          {
+            id: "taxonomy",
+            title: "Topics",
+            options: [
+              {
+                label: "Nutrition",
+                value: "taxonomy-nutrition",
+              },
+            ],
+            logic: "checkbox",
+          },
+        ],
+      }}
+      sourceMode="dynamic"
+      enableSearch
+      enableSorting={false}
+      enablePagination
+      itemsPerPage={12}
+      serverState={{
+        searchQuery: "nutrition",
+        selectedFilter: "blog",
+        selectedTaxonomy: [],
+        selectedSort: "relevance",
+        currentPage: 1,
+        totalPages: 1,
+        totalResults: 0,
+      }}
+    />,
+  );
+
+  const taxonomyGroup = getProps().filterGroups?.find(
+    (group) => group.id === "taxonomy",
+  );
+
+  act(() => {
+    taxonomyGroup?.onChange?.(["taxonomy-nutrition"]);
+  });
+
+  await waitFor(() => {
+    expect(mocks.replace).toHaveBeenCalledWith(
+      "/search?q=nutrition&filter=blog&taxonomy=taxonomy-nutrition",
+      {
+        scroll: false,
+      },
+    );
+  });
+});
+
+it("clears content and Taxonomy filters without clearing search or sort", async () => {
+  mocks.searchParams =
+    "q=nutrition&filter=blog&taxonomy=taxonomy-nutrition&sort=newest&page=2";
+
+  render(
+    <DocumentList
+      props={{
+        documents: [],
+        filterGroups: [
+          {
+            id: "content",
+            title: "Content Type",
+            options: [
+              {
+                label: "Blog",
+                value: "blog",
+              },
+            ],
+            logic: "radio",
+          },
+          {
+            id: "taxonomy",
+            title: "Topics",
+            options: [
+              {
+                label: "Nutrition",
+                value: "taxonomy-nutrition",
+              },
+            ],
+            logic: "checkbox",
+          },
+        ],
+      }}
+      sourceMode="dynamic"
+      enableSearch
+      enableSorting
+      enablePagination
+      itemsPerPage={12}
+      serverState={{
+        searchQuery: "nutrition",
+        selectedFilter: "blog",
+        selectedTaxonomy: ["taxonomy-nutrition"],
+        selectedSort: "newest",
+        currentPage: 2,
+        totalPages: 2,
+        totalResults: 18,
+      }}
+    />,
+  );
+
+  act(() => {
+    getProps().onClearFilters?.();
+  });
+
+  await waitFor(() => {
+    expect(mocks.replace).toHaveBeenCalledWith(
+      "/search?q=nutrition&sort=newest",
+      {
+        scroll: false,
+      },
+    );
+  });
 });

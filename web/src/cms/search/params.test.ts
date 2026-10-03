@@ -52,6 +52,20 @@ describe("parseSearchParams", () => {
     });
   });
 
+  it("accepts every Dynamic Document List content type", () => {
+    const result = parseSearchParams(
+      new URLSearchParams("type=page,article,blog,news,resource"),
+    );
+
+    expect(result.types).toEqual([
+      "page",
+      "article",
+      "blog",
+      "news",
+      "resource",
+    ]);
+  });
+
   it("deduplicates content types and taxonomy values", () => {
     const result = parseSearchParams(
       new URLSearchParams(

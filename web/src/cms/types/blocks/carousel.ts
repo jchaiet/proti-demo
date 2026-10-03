@@ -8,6 +8,7 @@ import type {
 import type { CmsImage } from "../image";
 import type { CmsLink } from "../link";
 import type { CmsCta } from "../cta";
+import type { CmsCtaGroup } from "../cta-group";
 import type { CmsSectionHeading } from "../section-heading";
 
 export type CmsCarouselLayout = "default" | "split" | "split-35-65";
@@ -78,7 +79,14 @@ export interface CmsCarouselBlock {
   mediaPosition?: CmsCarouselPosition;
 
   // CTAs
+  ctaGroup?: CmsCtaGroup;
+
+  /** @deprecated Read-only compatibility for pre-ctaGroup Sanity documents. */
   ctas?: CmsCta[];
+
+  /** @deprecated Read-only compatibility for pre-ctaGroup Sanity documents. */
+  ctaAlignment?: CmsCarouselAlignment;
+  /** @deprecated Read-only compatibility for pre-ctaGroup Sanity documents. */
   ctaStackOnMobile?: boolean;
 
   // Carousel content

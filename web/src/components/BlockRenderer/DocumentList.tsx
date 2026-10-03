@@ -1,17 +1,24 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  useTransition,
+} from "react";
+
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { DocumentListBlock } from "mino-ui/blocks/DocumentListBlock";
 
 import type {
   DocumentItem,
+  FilterGroup,
   FilterOption,
 } from "mino-ui/blocks/DocumentListBlock";
 
 import type { MappedDocumentListBlock } from "@/cms/mappers/blocks";
-
-type DocumentListProps = MappedDocumentListBlock;
 
 const normalizeValue = (value?: string) => value?.trim().toLowerCase() ?? "";
 
@@ -54,11 +61,7 @@ const matchesFilter = (
   return activeFilters.some((filter) => documentValues.includes(filter));
 };
 
-const matchesSearch = (
-  document: DocumentItem,
-
-  query: string,
-): boolean => {
+const matchesSearch = (document: DocumentItem, query: string): boolean => {
   const normalizedQuery = normalizeValue(query);
 
   if (!normalizedQuery) {
@@ -169,13 +172,13 @@ const getInitialSort = (
   sortOptions: MappedDocumentListBlock["props"]["sortOptions"],
 ): string => sortOptions?.[0]?.value ?? "";
 
-export function DocumentList({
+function LocalDocumentList({
   props,
   enableSearch,
   enableSorting,
   enablePagination,
   itemsPerPage,
-}: DocumentListProps) {
+}: MappedDocumentListBlock) {
   const {
     documents,
 
@@ -198,7 +201,7 @@ export function DocumentList({
     getInitialSort(sortOptions),
   );
 
-  const [currentPage, setCurrentPage] = useState(1);
+  const [requestedPage, setRequestedPage] = useState(1);
 
   const filteredDocuments = useMemo(() => {
     return documents.filter((document) => {
@@ -228,6 +231,8 @@ export function DocumentList({
     ? Math.max(1, Math.ceil(totalResults / safeItemsPerPage))
     : 1;
 
+  const currentPage = Math.min(Math.max(requestedPage, 1), totalPages);
+
   const visibleDocuments = useMemo(() => {
     if (!enablePagination) {
       return sortedDocuments;
@@ -238,32 +243,28 @@ export function DocumentList({
     return sortedDocuments.slice(startIndex, startIndex + safeItemsPerPage);
   }, [sortedDocuments, enablePagination, currentPage, safeItemsPerPage]);
 
-  useEffect(() => {
-    setCurrentPage((previous) => Math.min(Math.max(previous, 1), totalPages));
-  }, [totalPages]);
-
   const handleSearchChange = (query: string) => {
     setSearchQuery(query);
 
-    setCurrentPage(1);
+    setRequestedPage(1);
   };
 
   const handleFilterChange = (filter: string | string[]) => {
     setSelectedFilter(filter);
 
-    setCurrentPage(1);
+    setRequestedPage(1);
   };
 
   const handleSortChange = (sort: string) => {
     setSelectedSort(sort);
 
-    setCurrentPage(1);
+    setRequestedPage(1);
   };
 
   const handlePageChange = (page: number) => {
     const nextPage = Math.min(Math.max(page, 1), totalPages);
 
-    setCurrentPage(nextPage);
+    setRequestedPage(nextPage);
   };
 
   return (
@@ -287,4 +288,208 @@ export function DocumentList({
       onPageChange={enablePagination ? handlePageChange : undefined}
     />
   );
+}
+
+type ServerDocumentListProps = MappedDocumentListBlock & {
+  serverState: NonNullable<MappedDocumentListBlock["serverState"]>;
+};
+
+function ServerDocumentList({
+  props,
+  enableSearch,
+  enableSorting,
+  enablePagination,
+  serverState,
+}: ServerDocumentListProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const [isPending, startTransition] = useTransition();
+
+  const state = serverState;
+
+  const {
+    documents,
+    filterLogic = "radio",
+    filterOptions = [],
+    filterGroups = [],
+    sortOptions = [],
+    ...blockProps
+  } = props;
+
+  const [queryState, setQueryState] = useState(() => ({
+    value: state.searchQuery,
+    responseQuery: state.searchQuery,
+  }));
+
+  const localQuery =
+    queryState.responseQuery === state.searchQuery
+      ? queryState.value
+      : state.searchQuery;
+
+  const setLocalQuery = (value: string) => {
+    setQueryState({
+      value,
+      responseQuery: state.searchQuery,
+    });
+  };
+
+  const replaceParams = useCallback(
+    (update: (params: URLSearchParams) => void) => {
+      const params = new URLSearchParams(searchParams.toString());
+
+      update(params);
+
+      const queryString = params.toString();
+
+      const nextUrl = queryString ? `${pathname}?${queryString}` : pathname;
+
+      startTransition(() => {
+        router.replace(nextUrl, {
+          scroll: false,
+        });
+      });
+    },
+    [pathname, router, searchParams],
+  );
+
+  useEffect(() => {
+    if (!enableSearch || localQuery === state.searchQuery) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      replaceParams((params) => {
+        const value = localQuery.trim();
+
+        if (value) {
+          params.set("q", value);
+        } else {
+          params.delete("q");
+        }
+
+        params.delete("page");
+      });
+    }, 350);
+
+    return () => {
+      window.clearTimeout(timeout);
+    };
+  }, [enableSearch, localQuery, replaceParams, state.searchQuery]);
+
+  const handleFilterChange = (value: string | string[]) => {
+    const values = Array.isArray(value) ? value : [value];
+
+    replaceParams((params) => {
+      params.delete("filter");
+
+      for (const filter of values) {
+        if (filter && filter !== "all") {
+          params.append("filter", filter);
+        }
+      }
+
+      params.delete("page");
+    });
+  };
+
+  const handleTaxonomyChange = (value: string | string[]) => {
+    const values = Array.isArray(value) ? value : [value];
+
+    replaceParams((params) => {
+      params.delete("taxonomy");
+
+      for (const taxonomy of values) {
+        if (taxonomy && taxonomy !== "all") {
+          params.append("taxonomy", taxonomy);
+        }
+      }
+
+      params.delete("page");
+    });
+  };
+
+  const handleClearFilters = () => {
+    replaceParams((params) => {
+      params.delete("filter");
+      params.delete("taxonomy");
+      params.delete("page");
+    });
+  };
+
+  const resolvedFilterGroups: FilterGroup[] = filterGroups.map((group) => {
+    if (group.id === "taxonomy") {
+      return {
+        ...group,
+        selected: state.selectedTaxonomy,
+        onChange: handleTaxonomyChange,
+      };
+    }
+
+    return {
+      ...group,
+      selected: state.selectedFilter,
+      onChange: handleFilterChange,
+    };
+  });
+
+  const handleSortChange = (sort: string) => {
+    replaceParams((params) => {
+      if (sort) {
+        params.set("sort", sort);
+      } else {
+        params.delete("sort");
+      }
+
+      params.delete("page");
+    });
+  };
+
+  const handlePageChange = (page: number) => {
+    replaceParams((params) => {
+      if (page <= 1) {
+        params.delete("page");
+      } else {
+        params.set("page", String(page));
+      }
+    });
+  };
+
+  return (
+    <DocumentListBlock
+      {...blockProps}
+      documents={documents}
+      filterLogic={filterLogic}
+      filterOptions={filterOptions as FilterOption[]}
+      filterGroups={resolvedFilterGroups}
+      sortOptions={enableSorting ? sortOptions : []}
+      searchQuery={localQuery}
+      selectedFilter={state.selectedFilter}
+      selectedSort={state.selectedSort}
+      currentPage={state.currentPage}
+      totalPages={state.totalPages}
+      totalResults={state.totalResults}
+      onSearchChange={enableSearch ? setLocalQuery : undefined}
+      onFilterChange={filterOptions.length > 0 ? handleFilterChange : undefined}
+      onClearFilters={
+        resolvedFilterGroups.length > 0 ? handleClearFilters : undefined
+      }
+      onSortChange={
+        enableSorting && sortOptions.length > 0 ? handleSortChange : undefined
+      }
+      onPageChange={
+        enablePagination && state.totalPages > 1 ? handlePageChange : undefined
+      }
+      isLoading={isPending}
+    />
+  );
+}
+
+export function DocumentList(props: MappedDocumentListBlock) {
+  if (props.sourceMode === "dynamic" && props.serverState) {
+    return <ServerDocumentList {...props} serverState={props.serverState} />;
+  }
+
+  return <LocalDocumentList {...props} />;
 }

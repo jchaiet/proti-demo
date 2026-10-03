@@ -12,4 +12,10 @@ describe("BLOG_BY_SLUG_QUERY editorial contract", () => {
     expect(BLOG_BY_SLUG_QUERY).toContain("credentials[]{");
     expect(BLOG_BY_SLUG_QUERY).toContain('"affiliation": select(');
   });
+
+  it("defaults visible Summary display to off for existing Blogs", () => {
+    expect(BLOG_BY_SLUG_QUERY).toContain(
+      '"showSummaryInArticle": coalesce(showSummaryInArticle, false)',
+    );
+  });
 });

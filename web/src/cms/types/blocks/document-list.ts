@@ -17,6 +17,7 @@ export type CmsDocumentListFilterLogic = "radio" | "checkbox";
 export type CmsDocumentListSourceMode = "manual" | "dynamic";
 
 export type CmsDocumentListDynamicContentType =
+  | "page"
   | "article"
   | "blog"
   | "news"
@@ -52,6 +53,10 @@ export interface CmsDocumentListTaxonomyReference {
   title?: string;
 
   slug?: string;
+
+  kind?: "term" | "group";
+
+  includeInFilters?: boolean;
 }
 
 export interface CmsDocumentListTaxonomyTerm {
@@ -154,6 +159,10 @@ export interface CmsDocumentListBlock {
 
   searchPlaceholder?: string;
 
+  requireSearchQuery?: boolean;
+
+  initialStateText?: string;
+
   enableFilters?: boolean;
 
   filterTitle?: string;
@@ -161,6 +170,14 @@ export interface CmsDocumentListBlock {
   filterLogic?: CmsDocumentListFilterLogic;
 
   filterOptions?: CmsDocumentListFilterOption[];
+
+  taxonomyFilterTitle?: string;
+
+  taxonomyFilterLogic?: CmsDocumentListFilterLogic;
+
+  taxonomyFilterMatchLogic?: CmsDocumentListTaxonomyMatchLogic;
+
+  filterTaxonomy?: CmsDocumentListTaxonomyReference[];
 
   enableSorting?: boolean;
 

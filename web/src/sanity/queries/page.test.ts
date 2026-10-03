@@ -24,26 +24,26 @@ describe("resolvePageBySegments", () => {
     fetchMock.mockResolvedValueOnce({ _id: "home-es" }).mockResolvedValueOnce({
       _id: "home-es",
       title: "Inicio",
-      locale: "us-es",
+      locale: "es-us",
       isHomepage: true,
     });
 
     await expect(
-      resolvePageBySegments("site-a", "us-es", []),
+      resolvePageBySegments("site-a", "es-us", []),
     ).resolves.toMatchObject({
       _id: "home-es",
-      locale: "us-es",
+      locale: "es-us",
       isHomepage: true,
     });
 
     expect(fetchMock.mock.calls[0]?.[1]).toEqual({
       siteId: "site-a",
-      locale: "us-es",
+      locale: "es-us",
     });
     expect(fetchMock.mock.calls[1]?.[1]).toEqual({
       pageId: "home-es",
       siteId: "site-a",
-      locale: "us-es",
+      locale: "es-us",
     });
   });
 
@@ -55,31 +55,31 @@ describe("resolvePageBySegments", () => {
         _id: "widget-es",
         title: "Widget",
         slug: "widget",
-        locale: "us-es",
+        locale: "es-us",
       });
 
     await expect(
-      resolvePageBySegments("site-a", "us-es", ["products", "widget"]),
+      resolvePageBySegments("site-a", "es-us", ["products", "widget"]),
     ).resolves.toMatchObject({
       _id: "widget-es",
-      locale: "us-es",
+      locale: "es-us",
     });
 
     expect(fetchMock.mock.calls[0]?.[1]).toEqual({
       siteId: "site-a",
-      locale: "us-es",
+      locale: "es-us",
       slug: "products",
     });
     expect(fetchMock.mock.calls[1]?.[1]).toEqual({
       siteId: "site-a",
-      locale: "us-es",
+      locale: "es-us",
       slug: "widget",
       parentId: "products-es",
     });
     expect(fetchMock.mock.calls[2]?.[1]).toEqual({
       pageId: "widget-es",
       siteId: "site-a",
-      locale: "us-es",
+      locale: "es-us",
     });
   });
 
@@ -89,7 +89,7 @@ describe("resolvePageBySegments", () => {
       .mockResolvedValueOnce(null);
 
     await expect(
-      resolvePageBySegments("site-a", "us-en", ["products", "missing"]),
+      resolvePageBySegments("site-a", "en-us", ["products", "missing"]),
     ).resolves.toBeNull();
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
@@ -99,7 +99,7 @@ describe("resolvePageBySegments", () => {
     fetchMock.mockResolvedValueOnce(null);
 
     await expect(
-      resolvePageBySegments("site-a", "us-en", ["missing"]),
+      resolvePageBySegments("site-a", "en-us", ["missing"]),
     ).resolves.toBeNull();
 
     expect(fetchMock).toHaveBeenCalledTimes(1);

@@ -40,9 +40,17 @@ export const DOCUMENT_LIST_BLOCK_FRAGMENT = `
 
       "_id": @->_id,
 
-      "title": @->title,
+      "title": coalesce(
+        @->translations[
+          locale == $locale
+        ][0].title,
+        @->title
+      ),
 
-      "slug": @->slug.current
+      "slug": @->slug.current,
+
+      "kind": coalesce(@->kind, "term"),
+      "includeInFilters": @->includeInFilters
     },
 
     dynamicTaxonomyMatchLogic,
@@ -55,6 +63,8 @@ export const DOCUMENT_LIST_BLOCK_FRAGMENT = `
 
     enableSearch,
     searchPlaceholder,
+    requireSearchQuery,
+    initialStateText,
 
     enableFilters,
     filterTitle,
@@ -64,6 +74,30 @@ export const DOCUMENT_LIST_BLOCK_FRAGMENT = `
       _key,
       label,
       value
+    },
+
+    taxonomyFilterTitle,
+    taxonomyFilterLogic,
+    taxonomyFilterMatchLogic,
+
+    "filterTaxonomy": filterTaxonomy[] {
+      _key,
+      _type,
+      _ref,
+
+      "_id": @->_id,
+
+      "title": coalesce(
+        @->translations[
+          locale == $locale
+        ][0].title,
+        @->title
+      ),
+
+      "slug": @->slug.current,
+
+      "kind": coalesce(@->kind, "term"),
+      "includeInFilters": @->includeInFilters
     },
 
     enableSorting,

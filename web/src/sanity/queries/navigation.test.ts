@@ -19,4 +19,10 @@ describe("NAVIGATION_SET_QUERY", () => {
   it("does not fall back to the legacy Navigation Set isDefault flag", () => {
     expect(NAVIGATION_SET_QUERY).not.toContain("isDefault");
   });
+
+  it("projects CTA modal actions without adding Modal to normal navigation Links", () => {
+    expect(NAVIGATION_SET_QUERY).toContain("actionType");
+    expect(NAVIGATION_SET_QUERY).toContain("modal {");
+    expect(NAVIGATION_SET_QUERY).toContain("_ref");
+  });
 });

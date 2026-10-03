@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
-import type { ButtonProps, NavItem } from "mino-ui";
+import type { ButtonProps } from "mino-ui/core/Button";
+import type { NavItem } from "mino-ui/core/Navigation";
 
 import type {
   CmsFooterColumn,

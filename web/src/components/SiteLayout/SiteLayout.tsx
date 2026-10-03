@@ -11,6 +11,8 @@ import { resolveNavigation } from "@/cms/resolvers/navigation";
 
 import { resolveSiteLocales } from "@/sanity/queries/site";
 
+import { ModalRegistry } from "@/components/ModalRegistry";
+
 import { SiteFooter } from "./SiteFooter";
 import { SiteHeader } from "./SiteHeader";
 
@@ -25,11 +27,11 @@ export interface SiteLayoutProps {
   homeHref?: string;
 
   /**
-   * Exact translated Page / Blog URLs keyed by Site locale.
+   * Exact translated CMS-document URLs keyed by Site locale.
    *
-   * Undefined means this is not a translated CMS document
-   * (for example /search) and the utility may preserve the
-   * application route while switching locale prefixes.
+   * Undefined means the caller does not have an exact translation map.
+   * Header utilities can then fall back to published locale homepages or,
+   * for legacy callers without availability data, preserve the route path.
    */
   localeHrefs?: Record<string, string>;
 
@@ -99,6 +101,12 @@ export async function SiteLayout({
       <div className={styles.main}>{children}</div>
 
       {footer ? <SiteFooter footer={footer} homeHref={homeHref} /> : null}
+
+      <ModalRegistry
+        siteId={siteId}
+        locale={locale}
+        visualEditing={visualEditing}
+      />
     </div>
   );
 }

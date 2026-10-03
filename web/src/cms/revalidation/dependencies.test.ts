@@ -24,12 +24,12 @@ vi.mock("@/sanity/client", () => ({
 const siteIndex = {
   site: {
     _id: "site-a",
-    defaultLocale: "us-en",
-    locales: [{ code: "us-en" }, { code: "us-es" }],
+    defaultLocale: "en-us",
+    locales: [{ code: "en-us" }, { code: "es-us" }],
   },
   pages: [
-    { _id: "home", locale: "us-en", isHomepage: true },
-    { _id: "page-a", locale: "us-en", slug: "products" },
+    { _id: "home", locale: "en-us", isHomepage: true },
+    { _id: "page-a", locale: "en-us", slug: "products" },
   ],
   blogs: [],
   authors: [],
@@ -90,7 +90,7 @@ describe("resolveRevalidationPlan", () => {
           _id: "page-a",
           _type: "page",
           siteId: "site-a",
-          locale: "us-en",
+          locale: "en-us",
           slug: "products",
         },
       ],
@@ -101,12 +101,28 @@ describe("resolveRevalidationPlan", () => {
         _id: "singleton-a",
         _type: "singleton",
         siteId: "site-a",
-        locale: "us-en",
+        locale: "en-us",
         key: "global-cta",
       },
     });
 
     expect(plan?.paths).toEqual(["/products"]);
+  });
+
+  it("revalidates the Site route set when a Modal changes", async () => {
+    mockFetch();
+
+    const plan = await resolveRevalidationPlan({
+      after: {
+        _id: "modal-a",
+        _type: "modal",
+        siteId: "site-a",
+        locale: "en-us",
+        key: "product-details",
+      },
+    });
+
+    expect(plan?.paths).toEqual(["/", "/es-us/search", "/products", "/search"]);
   });
 
   it("walks Header -> Navigation Set -> Site and revalidates the Site route set", async () => {
@@ -116,7 +132,7 @@ describe("resolveRevalidationPlan", () => {
           _id: "nav-set-a",
           _type: "navigationSet",
           siteId: "site-a",
-          locale: "us-en",
+          locale: "en-us",
         },
       ],
       "nav-set-a": [
@@ -124,8 +140,8 @@ describe("resolveRevalidationPlan", () => {
           _id: "site-a",
           _type: "site",
           siteId: "site-a",
-          defaultLocale: "us-en",
-          locales: [{ code: "us-en" }, { code: "us-es" }],
+          defaultLocale: "en-us",
+          locales: [{ code: "en-us" }, { code: "es-us" }],
         },
       ],
     };
@@ -151,22 +167,22 @@ describe("resolveRevalidationPlan", () => {
         _id: "header-a",
         _type: "navigationHeader",
         siteId: "site-a",
-        locale: "us-en",
+        locale: "en-us",
       },
     });
 
-    expect(plan?.paths).toEqual(["/", "/products", "/search", "/us-es/search"]);
+    expect(plan?.paths).toEqual(["/", "/es-us/search", "/products", "/search"]);
   });
 
   it("invalidates both old and new Page hierarchies when a parent slug changes", async () => {
     const indexWithChild = {
       ...siteIndex,
       pages: [
-        { _id: "home", locale: "us-en", isHomepage: true },
-        { _id: "parent", locale: "us-en", slug: "catalog" },
+        { _id: "home", locale: "en-us", isHomepage: true },
+        { _id: "parent", locale: "en-us", slug: "catalog" },
         {
           _id: "child",
-          locale: "us-en",
+          locale: "en-us",
           slug: "widget",
           parentId: "parent",
         },
@@ -184,14 +200,14 @@ describe("resolveRevalidationPlan", () => {
         _id: "parent",
         _type: "page",
         siteId: "site-a",
-        locale: "us-en",
+        locale: "en-us",
         slug: "products",
       },
       after: {
         _id: "parent",
         _type: "page",
         siteId: "site-a",
-        locale: "us-en",
+        locale: "en-us",
         slug: "catalog",
       },
     });
@@ -212,7 +228,7 @@ describe("resolveRevalidationPlan", () => {
       blogs: [
         {
           _id: "blog-a",
-          locale: "us-en",
+          locale: "en-us",
           slug: "healthy-eating",
           authorId: "author-a",
           taxonomyIds: ["taxonomy-child"],
@@ -255,7 +271,7 @@ describe("resolveRevalidationPlan", () => {
         _id: "blog-a",
         _type: "blog",
         siteId: "site-a",
-        locale: "us-en",
+        locale: "en-us",
         slug: "healthy-eating",
         authorId: "author-a",
         taxonomyIds: ["taxonomy-child"],
@@ -264,7 +280,7 @@ describe("resolveRevalidationPlan", () => {
         _id: "blog-a",
         _type: "blog",
         siteId: "site-a",
-        locale: "us-en",
+        locale: "en-us",
         slug: "healthy-eating",
         authorId: "author-a",
         taxonomyIds: ["taxonomy-child"],
@@ -275,9 +291,9 @@ describe("resolveRevalidationPlan", () => {
       "/authors/jane-doe",
       "/blog/healthy-eating",
       "/blog/topics/nutrition",
+      "/es-us/authors/jane-doe",
+      "/es-us/blog/topics/nutrition",
       "/sitemap.xml",
-      "/us-es/authors/jane-doe",
-      "/us-es/blog/topics/nutrition",
     ]);
   });
 
@@ -288,7 +304,7 @@ describe("resolveRevalidationPlan", () => {
           _id: "page-a",
           _type: "page",
           siteId: "site-a",
-          locale: "us-en",
+          locale: "en-us",
           slug: "products",
           dynamicLists: [
             {
@@ -301,7 +317,7 @@ describe("resolveRevalidationPlan", () => {
           _id: "page-nonmatch",
           _type: "page",
           siteId: "site-a",
-          locale: "us-en",
+          locale: "en-us",
           slug: "other",
           dynamicLists: [
             {
@@ -318,7 +334,7 @@ describe("resolveRevalidationPlan", () => {
         _id: "blog-a",
         _type: "blog",
         siteId: "site-a",
-        locale: "us-en",
+        locale: "en-us",
         slug: "healthy-eating",
         taxonomyIds: ["taxonomy-child"],
       },
@@ -334,7 +350,7 @@ describe("resolveRevalidationPlan", () => {
       blogs: [
         {
           _id: "blog-a",
-          locale: "us-en",
+          locale: "en-us",
           slug: "healthy-eating",
           authorId: "author-a",
           taxonomyIds: ["taxonomy-child"],
@@ -357,7 +373,7 @@ describe("resolveRevalidationPlan", () => {
           _id: "blog-a",
           _type: "blog",
           siteId: "site-a",
-          locale: "us-en",
+          locale: "en-us",
           slug: "healthy-eating",
           authorId: "author-a",
           taxonomyIds: ["taxonomy-child"],
@@ -390,9 +406,9 @@ describe("resolveRevalidationPlan", () => {
       "/authors/jane-doe",
       "/blog/healthy-eating",
       "/blog/topics/nutrition",
+      "/es-us/authors/jane-doe",
+      "/es-us/blog/topics/nutrition",
       "/sitemap.xml",
-      "/us-es/authors/jane-doe",
-      "/us-es/blog/topics/nutrition",
     ]);
   });
 
@@ -403,21 +419,20 @@ describe("resolveRevalidationPlan", () => {
       before: {
         _id: "site-a",
         _type: "site",
-        defaultLocale: "us-en",
-        locales: [{ code: "us-en" }, { code: "us-es" }],
+        defaultLocale: "en-us",
+        locales: [{ code: "en-us" }, { code: "es-us" }],
       },
       after: {
         _id: "site-a",
         _type: "site",
-        defaultLocale: "us-es",
-        locales: [{ code: "us-en" }, { code: "us-es" }],
+        defaultLocale: "es-us",
+        locales: [{ code: "en-us" }, { code: "es-us" }],
       },
     });
 
-    expect(plan?.paths).toContain("/api/search");
     expect(plan?.paths).toContain("/robots.txt");
     expect(plan?.paths).toContain("/sitemap.xml");
-    expect(plan?.paths).toContain("/us-en/products");
+    expect(plan?.paths).toContain("/en-us/products");
     expect(plan?.paths).toContain("/products");
   });
 });

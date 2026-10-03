@@ -14,18 +14,18 @@ const site: Site = {
   name: "Proti",
   key: "proti",
   domains: ["example.com"],
-  defaultLocale: "us-en",
+  defaultLocale: "en-us",
   locales: [
     {
-      code: "us-en",
+      code: "en-us",
       label: "English",
     },
     {
-      code: "us-es",
+      code: "es-us",
       label: "Spanish",
     },
     {
-      code: "ca-fr",
+      code: "fr-ca",
       label: "French",
     },
   ],
@@ -34,7 +34,7 @@ const site: Site = {
 describe("resolveLocale", () => {
   it("uses the default locale when the path has no locale prefix", () => {
     expect(resolveLocale(site, ["products", "widget"])).toEqual({
-      locale: "us-en",
+      locale: "en-us",
       pageSegments: ["products", "widget"],
       localeWasExplicit: false,
       explicitDefaultLocale: false,
@@ -42,8 +42,8 @@ describe("resolveLocale", () => {
   });
 
   it("removes a supported non-default locale prefix", () => {
-    expect(resolveLocale(site, ["us-es", "products", "widget"])).toEqual({
-      locale: "us-es",
+    expect(resolveLocale(site, ["es-us", "products", "widget"])).toEqual({
+      locale: "es-us",
       pageSegments: ["products", "widget"],
       localeWasExplicit: true,
       explicitDefaultLocale: false,
@@ -51,8 +51,8 @@ describe("resolveLocale", () => {
   });
 
   it("detects an explicitly-prefixed default locale", () => {
-    expect(resolveLocale(site, ["us-en", "products", "widget"])).toEqual({
-      locale: "us-en",
+    expect(resolveLocale(site, ["en-us", "products", "widget"])).toEqual({
+      locale: "en-us",
       pageSegments: ["products", "widget"],
       localeWasExplicit: true,
       explicitDefaultLocale: true,
@@ -60,9 +60,9 @@ describe("resolveLocale", () => {
   });
 
   it("does not mistake an unsupported first segment for a locale", () => {
-    expect(resolveLocale(site, ["uk-en", "products"])).toEqual({
-      locale: "us-en",
-      pageSegments: ["uk-en", "products"],
+    expect(resolveLocale(site, ["en-gb", "products"])).toEqual({
+      locale: "en-us",
+      pageSegments: ["en-gb", "products"],
       localeWasExplicit: false,
       explicitDefaultLocale: false,
     });
@@ -81,56 +81,64 @@ describe("segmentsToPath", () => {
 
 describe("siteLocaleToLanguageTag", () => {
   it.each([
+    ["en-us", "en-US"],
+    ["es-us", "es-US"],
+    ["fr-ca", "fr-CA"],
+    ["en", "en"],
+    ["", "en"],
+  ])("converts standard locale %s to %s", (locale, expected) => {
+    expect(siteLocaleToLanguageTag(locale)).toBe(expected);
+  });
+
+  it.each([
     ["us-en", "en-US"],
     ["us-es", "es-US"],
     ["ca-fr", "fr-CA"],
-    ["en", "en"],
-    ["", "en"],
-  ])("converts %s to %s", (locale, expected) => {
+  ])("temporarily accepts legacy locale %s as %s", (locale, expected) => {
     expect(siteLocaleToLanguageTag(locale)).toBe(expected);
   });
 });
 
 describe("resolveLocaleCodeFromPathname", () => {
-  const locales = ["us-en", "us-es", "ca-fr"];
+  const locales = ["en-us", "es-us", "fr-ca"];
 
   it("uses the Site default locale for an unprefixed route", () => {
     expect(
       resolveLocaleCodeFromPathname({
         pathname: "/products/widget",
-        defaultLocale: "us-en",
+        defaultLocale: "en-us",
         locales,
       }),
-    ).toBe("us-en");
+    ).toBe("en-us");
   });
 
   it("uses a supported locale prefix", () => {
     expect(
       resolveLocaleCodeFromPathname({
-        pathname: "/us-es/products/widget",
-        defaultLocale: "us-en",
+        pathname: "/es-us/products/widget",
+        defaultLocale: "en-us",
         locales,
       }),
-    ).toBe("us-es");
+    ).toBe("es-us");
   });
 
   it("uses the default locale for /", () => {
     expect(
       resolveLocaleCodeFromPathname({
         pathname: "/",
-        defaultLocale: "us-en",
+        defaultLocale: "en-us",
         locales,
       }),
-    ).toBe("us-en");
+    ).toBe("en-us");
   });
 
   it("does not accept an unsupported locale prefix", () => {
     expect(
       resolveLocaleCodeFromPathname({
-        pathname: "/uk-en/products/widget",
-        defaultLocale: "us-en",
+        pathname: "/en-gb/products/widget",
+        defaultLocale: "en-us",
         locales,
       }),
-    ).toBe("us-en");
+    ).toBe("en-us");
   });
 });

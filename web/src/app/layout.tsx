@@ -1,10 +1,6 @@
 import type { Metadata } from "next";
-import type { ReactNode } from "react";
-import { Geist, Geist_Mono } from "next/font/google";
 import { draftMode, headers } from "next/headers";
 import { VisualEditing } from "next-sanity/visual-editing";
-
-import "mino-ui/tokens";
 
 import { HtmlLanguageSync } from "@/components/HtmlLanguageSync";
 import { DisableDraftMode } from "@/components/Preview";
@@ -16,16 +12,6 @@ import { SanityLive } from "@/sanity/live";
 import { resolveSiteByHostCached } from "@/sanity/queries/site";
 
 import "./globals.css";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   title: "Website Starter",
@@ -41,6 +27,50 @@ function getRequestHost(
   return forwardedHost?.split(",")[0]?.trim() ?? hostHeader?.trim() ?? null;
 }
 
+interface RootLocaleContext {
+  htmlLang: string;
+  defaultLocale: string;
+  localeCodes: string[];
+}
+
+async function resolveRootLocaleContext(
+  host: string | null,
+  pathname: string,
+): Promise<RootLocaleContext | null> {
+  if (!host) {
+    return null;
+  }
+
+  try {
+    const site = await resolveSiteByHostCached(host);
+
+    if (!site) {
+      return null;
+    }
+
+    const localeCodes = site.locales.map((item) => item.code).filter(Boolean);
+
+    const locale = resolveLocaleCodeFromPathname({
+      pathname,
+      defaultLocale: site.defaultLocale,
+      locales: localeCodes,
+    });
+
+    return {
+      htmlLang: siteLocaleToLanguageTag(locale),
+      defaultLocale: site.defaultLocale,
+      localeCodes,
+    };
+  } catch {
+    /*
+     * Keep the root document usable if Site resolution is temporarily
+     * unavailable. The catch-all route will continue to handle its own
+     * CMS/error behavior, while the document falls back to English.
+     */
+    return null;
+  }
+}
+
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   const [{ isEnabled: isDraftMode }, requestHeaders] = await Promise.all([
     draftMode(),
@@ -49,51 +79,22 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
 
   const host = getRequestHost(requestHeaders);
   const pathname = requestHeaders.get("x-proti-pathname") ?? "/";
+  const localeContext = await resolveRootLocaleContext(host, pathname);
 
-  let htmlLang = "en";
-  let languageSync: ReactNode = null;
-
-  if (host) {
-    try {
-      const site = await resolveSiteByHostCached(host);
-
-      if (site) {
-        const localeCodes = site.locales
-          .map((item) => item.code)
-          .filter(Boolean);
-
-        const locale = resolveLocaleCodeFromPathname({
-          pathname,
-          defaultLocale: site.defaultLocale,
-          locales: localeCodes,
-        });
-
-        htmlLang = siteLocaleToLanguageTag(locale);
-
-        languageSync = (
-          <HtmlLanguageSync
-            defaultLocale={site.defaultLocale}
-            locales={localeCodes}
-          />
-        );
-      }
-    } catch {
-      /*
-       * Keep the root document usable if Site resolution is temporarily
-       * unavailable. The catch-all route will continue to handle its own
-       * CMS/error behavior, while the document falls back to English.
-       */
-    }
-  }
+  const htmlLang = localeContext?.htmlLang ?? "en";
 
   return (
-    <html
-      lang={htmlLang}
-      className={`${geistSans.variable} ${geistMono.variable}`}
-    >
+    <html lang={htmlLang}>
       <body>
-        {languageSync}
+        {localeContext ? (
+          <HtmlLanguageSync
+            defaultLocale={localeContext.defaultLocale}
+            locales={localeContext.localeCodes}
+          />
+        ) : null}
+
         {children}
+
         {isDraftMode ? (
           <>
             <SanityLive includeDrafts />

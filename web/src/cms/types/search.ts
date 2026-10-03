@@ -1,4 +1,9 @@
-export type SearchContentType = "page" | "blog";
+export type SearchContentType =
+  | "page"
+  | "article"
+  | "blog"
+  | "news"
+  | "resource";
 
 export type SearchSort =
   | "relevance"
@@ -34,6 +39,9 @@ export interface SearchResult {
   imageAlt?: string;
 
   date?: string;
+
+  fileType?: string;
+  fileSize?: string;
 
   author?: SearchAuthor;
   taxonomy?: SearchTaxonomyItem[];
@@ -79,13 +87,48 @@ export interface SearchContentOptions {
 
   query: string;
 
+  /**
+   * Dynamic Document Lists can show their scoped content before a visitor
+   * enters a search term. Leave this false/undefined when results should
+   * require a non-empty query.
+   */
+  includeAllOnEmptyQuery?: boolean;
+
+  /**
+   * Search resolution respects SEO visibility by default. Editorial Document
+   * Lists can disable this so noindex/canonical settings do not remove
+   * otherwise eligible content from an on-page listing.
+   */
+  respectSeoVisibility?: boolean;
+
   page?: number;
   pageSize?: number;
 
   types?: SearchContentType[];
 
+  /**
+   * Visitor-selected Taxonomy filters.
+   */
   taxonomy?: string[];
   taxonomyMatch?: SearchTaxonomyMatch;
 
+  /**
+   * Optional authored Taxonomy scope applied before visitor filters.
+   */
+  taxonomyScope?: string[];
+  taxonomyScopeMatch?: SearchTaxonomyMatch;
+
   sort?: SearchSort;
+
+  /**
+   * Optional visitor filter values supplied by a server-backed Document List.
+   * Values are matched against content type, taxonomy, and resource metadata.
+   */
+  filters?: string[];
+
+  /**
+   * Optional upper bound used by Dynamic Document List blocks.
+   * Omit this when the caller does not need a capped result set.
+   */
+  maxResults?: number;
 }

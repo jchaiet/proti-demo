@@ -6,7 +6,6 @@ import { AuthorTemplate } from "@/components/Author/AuthorTemplate";
 import { BlogTemplate } from "@/components/Blog/BlogTemplate";
 import { BlogTaxonomyTemplate } from "@/components/Blog/BlogTaxonomyTemplate";
 import { BlockRenderer } from "@/components/BlockRenderer";
-import { SearchTemplate } from "@/components/Search";
 import { SiteLayout } from "@/components/SiteLayout";
 import { StructuredData } from "@/components/StructuredData";
 
@@ -24,10 +23,8 @@ import {
   getAuthorSlug,
   getBlogSlug,
   getBlogTaxonomySegments,
-  isSearchRoute,
   resolveRoute,
 } from "@/cms/resolvers/route";
-import { searchContent } from "@/cms/resolvers/search";
 import { buildSeoMetadata } from "@/cms/resolvers/seo";
 import { resolveDocumentTranslations } from "@/cms/resolvers/translation";
 import {
@@ -47,10 +44,6 @@ import {
   resolveStructuredDataUrl,
 } from "@/cms/resolvers/structured-data";
 import { buildBreadcrumbItems } from "@/cms/resolvers/structured-data-breadcrumbs";
-import {
-  parseSearchParams,
-  searchParamRecordToUrlSearchParams,
-} from "@/cms/search/params";
 
 import { resolveLocale, segmentsToPath } from "@/lib/routing/locale";
 import {
@@ -109,40 +102,6 @@ export async function generateMetadata({
     defaultLocale: site.defaultLocale,
     path: segmentsToPath(pageSegments),
   });
-
-  /*
-   * Search result URLs are useful to visitors but should
-   * not become an indexable collection of arbitrary query
-   * combinations. Canonicalize to /search and noindex the
-   * route while still allowing crawlers to follow links.
-   */
-  if (isSearchRoute(pageSegments)) {
-    const metadata = await buildSeoMetadata({
-      siteId: site._id,
-      locale,
-
-      publicPath,
-
-      title: "Search",
-      description: "Search pages and blog posts on this site.",
-
-      type: "website",
-    });
-
-    return {
-      ...metadata,
-
-      robots: {
-        index: false,
-        follow: true,
-
-        googleBot: {
-          index: false,
-          follow: true,
-        },
-      },
-    };
-  }
 
   const authorSlug = getAuthorSlug(pageSegments);
 
@@ -362,7 +321,7 @@ export default async function Page({ params, searchParams }: PageProps) {
   );
 
   /*
-   * An explicitly authored default Locale such as /us-en
+   * An explicitly authored default Locale such as /en-us
    * still needs an unprefixed redirect destination.
    */
   const localePrefix = getLocalePrefix(locale, site.defaultLocale);
@@ -401,51 +360,6 @@ export default async function Page({ params, searchParams }: PageProps) {
   }
 
   const homeHref = getHomeHref(localePrefix);
-
-  /*
-   * Search is an application route, not a CMS Page.
-   *
-   * It uses the same searchContent() backend resolver as
-   * /api/search without making an HTTP request back into
-   * this Next.js application.
-   */
-  if (resolvedRoute.type === "search") {
-    const parsedSearch = parseSearchParams(
-      searchParamRecordToUrlSearchParams(requestSearchParams),
-    );
-
-    const searchResponse = await searchContent({
-      siteId: site._id,
-      locale,
-
-      query: parsedSearch.query,
-
-      page: parsedSearch.page,
-
-      pageSize: parsedSearch.pageSize,
-
-      types: parsedSearch.types,
-
-      taxonomy: parsedSearch.taxonomy,
-
-      taxonomyMatch: parsedSearch.taxonomyMatch,
-
-      sort: parsedSearch.sort,
-    });
-
-    return (
-      <SiteLayout
-        siteId={site._id}
-        locale={locale}
-        homeHref={homeHref}
-        visualEditing={visualEditing}
-      >
-        <main>
-          <SearchTemplate response={searchResponse} />
-        </main>
-      </SiteLayout>
-    );
-  }
 
   if (resolvedRoute.type === "notFound") {
     notFound();
@@ -953,6 +867,7 @@ export default async function Page({ params, searchParams }: PageProps) {
             locale,
             localePrefix,
             visualEditing,
+            searchParams: requestSearchParams,
           }}
         />
       </main>

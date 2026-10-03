@@ -1,5 +1,5 @@
 import type { CmsHeroBlock } from "@/cms/types";
-import { mapCtas } from "../cta";
+import { mapCtaGroup } from "../cta-group";
 import { resolveSanityImage } from "../../resolvers/image";
 import type { HeroProps } from "mino-ui/blocks/HeroBlock";
 import { mapSectionHeading } from "../section-heading";
@@ -19,7 +19,12 @@ function resolveMediaPosition(block: CmsHeroBlock): HeroProps["mediaPosition"] {
 }
 
 export async function mapHeroBlock(block: CmsHeroBlock): Promise<HeroProps> {
-  const ctas = await mapCtas(block.ctas);
+  const ctaGroup = await mapCtaGroup(block.ctaGroup, {
+    legacyItems: block.ctas,
+    legacyAlignment: block.ctaAlignment,
+    legacyStackOnMobile: block.ctaStackOnMobile,
+    fallbackAlignment: block.hAlignment ?? "left",
+  });
 
   const imageSrc =
     block.mediaType === "image" ? resolveSanityImage(block.image) : undefined;
@@ -47,10 +52,8 @@ export async function mapHeroBlock(block: CmsHeroBlock): Promise<HeroProps> {
 
     videoSrc,
 
-    ctas,
+    ctas: ctaGroup.ctas,
 
-    ctaGroupProps: {
-      stackOnMobile: block.ctaStackOnMobile ?? true,
-    },
+    ctaGroupProps: ctaGroup.ctaGroupProps,
   };
 }

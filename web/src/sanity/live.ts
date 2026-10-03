@@ -48,6 +48,7 @@ const STEGA_CONFIGURATION_FIELDS = new Set([
   "submitButtonIconAlignment",
   "submitButtonSize",
   "submitButtonVariant",
+  "textAlignment",
   "theme",
   "vAlignment",
   "variant",

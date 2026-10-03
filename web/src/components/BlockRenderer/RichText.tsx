@@ -6,7 +6,9 @@ import { PortableText } from "@portabletext/react";
 
 import type { PortableTextBlock } from "@portabletext/types";
 
-import { Button, Heading, Text } from "mino-ui";
+import { Button } from "mino-ui/core/Button";
+import { Heading } from "mino-ui/core/Heading";
+import { Text } from "mino-ui/core/Text";
 
 import { RichTextBlock } from "mino-ui/blocks/RichTextBlock";
 

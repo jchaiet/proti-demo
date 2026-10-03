@@ -7,10 +7,12 @@ import {
 } from "./search";
 
 describe("Search GROQ contract", () => {
-  it("scopes searchable Page/Blog content to both Site and locale", () => {
+  it("scopes searchable Dynamic Document List content to both Site and locale", () => {
     expect(SEARCH_CONTENT_QUERY).toContain("site._ref == $siteId");
     expect(SEARCH_CONTENT_QUERY).toContain("locale == $locale");
-    expect(SEARCH_CONTENT_QUERY).toContain('_type in ["page", "blog"]');
+    expect(SEARCH_CONTENT_QUERY).toContain(
+      '_type in ["page", "article", "blog", "news", "resource"]',
+    );
   });
 
   it("keeps shared Taxonomy Site-scoped while localizing projected titles", () => {
@@ -33,15 +35,18 @@ describe("Search GROQ contract", () => {
   });
 
   it("projects localized Author name and job title", () => {
-    expect(SEARCH_CONTENT_QUERY).toContain(
-      "translations[\n            locale == $locale\n          ][0].name",
+    expect(SEARCH_CONTENT_QUERY).toMatch(
+      /"name":\s*coalesce\(\s*translations\[\s*locale == \$locale\s*\]\[0\]\.name,\s*name\s*\)/,
     );
-    expect(SEARCH_CONTENT_QUERY).toContain(
-      "translations[\n            locale == $locale\n          ][0].jobTitle",
+
+    expect(SEARCH_CONTENT_QUERY).toMatch(
+      /"jobTitle":\s*coalesce\(\s*translations\[\s*locale == \$locale\s*\]\[0\]\.jobTitle,\s*jobTitle\s*\)/,
     );
   });
 
-  it("projects full Blog image crop/hotspot data instead of a raw asset URL", () => {
+  it("projects Page string slugs plus full card image crop/hotspot data", () => {
+    expect(SEARCH_CONTENT_QUERY).toContain('_type == "page" => slug');
+    expect(SEARCH_CONTENT_QUERY).toContain("slug.current");
     expect(SEARCH_CONTENT_QUERY).toContain('"crop": mainImage.crop');
     expect(SEARCH_CONTENT_QUERY).toContain('"hotspot": mainImage.hotspot');
     expect(SEARCH_CONTENT_QUERY).not.toContain("asset->url");

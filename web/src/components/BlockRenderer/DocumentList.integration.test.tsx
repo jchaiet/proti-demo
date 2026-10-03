@@ -53,7 +53,7 @@ describe("Mino DocumentListBlock date presentation", () => {
             contentType: "blog",
             cardType: "article",
             title: "Nutrición",
-            url: "/us-es/blog/nutricion",
+            url: "/es-us/blog/nutricion",
             date: rawDate,
           },
         ]}

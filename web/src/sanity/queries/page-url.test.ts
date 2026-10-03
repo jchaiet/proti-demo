@@ -25,24 +25,24 @@ describe("getPageUrl", () => {
       .mockResolvedValueOnce({
         _id: "page-child",
         slug: "widget",
-        locale: "us-en",
+        locale: "en-us",
         parent: { _ref: "page-parent" },
         site: {
           _id: "site-a",
-          defaultLocale: "us-en",
+          defaultLocale: "en-us",
         },
       })
       .mockResolvedValueOnce({
         _id: "page-parent",
         slug: "products",
-        locale: "us-en",
+        locale: "en-us",
         site: { _ref: "site-a" },
       });
 
     await expect(
       getPageUrl("drafts.page-child", {
         expectedSiteId: "drafts.site-a",
-        expectedLocale: "us-en",
+        expectedLocale: "en-us",
       }),
     ).resolves.toBe("/products/widget");
   });
@@ -51,29 +51,29 @@ describe("getPageUrl", () => {
     fetchMock.mockResolvedValueOnce({
       _id: "page-1",
       slug: "producto",
-      locale: "us-es",
+      locale: "es-us",
       site: {
         _id: "site-a",
-        defaultLocale: "us-en",
+        defaultLocale: "en-us",
       },
     });
 
     await expect(
       getPageUrl("page-1", {
         expectedSiteId: "site-a",
-        expectedLocale: "us-es",
+        expectedLocale: "es-us",
       }),
-    ).resolves.toBe("/us-es/producto");
+    ).resolves.toBe("/es-us/producto");
   });
 
   it("returns the correct homepage URL", async () => {
     fetchMock.mockResolvedValueOnce({
       _id: "home-en",
-      locale: "us-en",
+      locale: "en-us",
       isHomepage: true,
       site: {
         _id: "site-a",
-        defaultLocale: "us-en",
+        defaultLocale: "en-us",
       },
     });
 
@@ -81,32 +81,32 @@ describe("getPageUrl", () => {
 
     fetchMock.mockResolvedValueOnce({
       _id: "home-es",
-      locale: "us-es",
+      locale: "es-us",
       isHomepage: true,
       site: {
         _id: "site-a",
-        defaultLocale: "us-en",
+        defaultLocale: "en-us",
       },
     });
 
-    await expect(getPageUrl("home-es")).resolves.toBe("/us-es");
+    await expect(getPageUrl("home-es")).resolves.toBe("/es-us");
   });
 
   it("rejects a Page from another Site", async () => {
     fetchMock.mockResolvedValueOnce({
       _id: "page-1",
       slug: "widget",
-      locale: "us-en",
+      locale: "en-us",
       site: {
         _id: "site-b",
-        defaultLocale: "us-en",
+        defaultLocale: "en-us",
       },
     });
 
     await expect(
       getPageUrl("page-1", {
         expectedSiteId: "site-a",
-        expectedLocale: "us-en",
+        expectedLocale: "en-us",
       }),
     ).resolves.toBeNull();
 
@@ -117,17 +117,17 @@ describe("getPageUrl", () => {
     fetchMock.mockResolvedValueOnce({
       _id: "page-1",
       slug: "widget",
-      locale: "us-es",
+      locale: "es-us",
       site: {
         _id: "site-a",
-        defaultLocale: "us-en",
+        defaultLocale: "en-us",
       },
     });
 
     await expect(
       getPageUrl("page-1", {
         expectedSiteId: "site-a",
-        expectedLocale: "us-en",
+        expectedLocale: "en-us",
       }),
     ).resolves.toBeNull();
   });
@@ -137,24 +137,24 @@ describe("getPageUrl", () => {
       .mockResolvedValueOnce({
         _id: "page-child",
         slug: "widget",
-        locale: "us-en",
+        locale: "en-us",
         parent: { _ref: "page-parent" },
         site: {
           _id: "site-a",
-          defaultLocale: "us-en",
+          defaultLocale: "en-us",
         },
       })
       .mockResolvedValueOnce({
         _id: "page-parent",
         slug: "products",
-        locale: "us-en",
+        locale: "en-us",
         site: { _ref: "site-b" },
       });
 
     await expect(
       getPageUrl("page-child", {
         expectedSiteId: "site-a",
-        expectedLocale: "us-en",
+        expectedLocale: "en-us",
       }),
     ).resolves.toBeNull();
   });
@@ -164,24 +164,24 @@ describe("getPageUrl", () => {
       .mockResolvedValueOnce({
         _id: "page-child",
         slug: "widget",
-        locale: "us-en",
+        locale: "en-us",
         parent: { _ref: "page-parent" },
         site: {
           _id: "site-a",
-          defaultLocale: "us-en",
+          defaultLocale: "en-us",
         },
       })
       .mockResolvedValueOnce({
         _id: "page-parent",
         slug: "products",
-        locale: "us-es",
+        locale: "es-us",
         site: { _ref: "site-a" },
       });
 
     await expect(
       getPageUrl("page-child", {
         expectedSiteId: "site-a",
-        expectedLocale: "us-en",
+        expectedLocale: "en-us",
       }),
     ).resolves.toBeNull();
   });
@@ -191,11 +191,11 @@ describe("getPageUrl", () => {
       .mockResolvedValueOnce({
         _id: "page-child",
         slug: "widget",
-        locale: "us-en",
+        locale: "en-us",
         parent: { _ref: "missing-parent" },
         site: {
           _id: "site-a",
-          defaultLocale: "us-en",
+          defaultLocale: "en-us",
         },
       })
       .mockResolvedValueOnce(null);
@@ -208,17 +208,17 @@ describe("getPageUrl", () => {
       .mockResolvedValueOnce({
         _id: "page-child",
         slug: "widget",
-        locale: "us-en",
+        locale: "en-us",
         parent: { _ref: "page-parent" },
         site: {
           _id: "site-a",
-          defaultLocale: "us-en",
+          defaultLocale: "en-us",
         },
       })
       .mockResolvedValueOnce({
         _id: "page-parent",
         slug: "products",
-        locale: "us-en",
+        locale: "en-us",
         site: { _ref: "site-a" },
         parent: { _ref: "page-child" },
       });

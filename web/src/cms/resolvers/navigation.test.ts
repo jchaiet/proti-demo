@@ -28,7 +28,7 @@ describe("resolveNavigation", () => {
     await expect(
       resolveNavigation({
         siteId: "site-a",
-        locale: "us-en",
+        locale: "en-us",
       }),
     ).resolves.toBeNull();
 
@@ -36,7 +36,7 @@ describe("resolveNavigation", () => {
       NAVIGATION_SET_QUERY,
       {
         siteId: "site-a",
-        locale: "us-en",
+        locale: "en-us",
         navigationSetId: null,
       },
       {
@@ -52,7 +52,7 @@ describe("resolveNavigation", () => {
 
     await resolveNavigation({
       siteId: "site-a",
-      locale: "us-en",
+      locale: "en-us",
       override: {
         mode: "custom",
         navigationSet: {
@@ -65,7 +65,7 @@ describe("resolveNavigation", () => {
       NAVIGATION_SET_QUERY,
       {
         siteId: "site-a",
-        locale: "us-en",
+        locale: "en-us",
         navigationSetId: "navigation-custom",
       },
       {
@@ -80,7 +80,7 @@ describe("resolveNavigation", () => {
     await expect(
       resolveNavigation({
         siteId: "site-a",
-        locale: "us-en",
+        locale: "en-us",
         override: {
           mode: "none",
         },
@@ -94,7 +94,7 @@ describe("resolveNavigation", () => {
     await expect(
       resolveNavigation({
         siteId: "site-a",
-        locale: "us-en",
+        locale: "en-us",
         override: {
           mode: "custom",
         },

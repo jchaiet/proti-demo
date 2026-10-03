@@ -43,20 +43,27 @@ export async function sanityFetch<T>(
   const draftEnabled = await isDraftModeEnabled();
   const perspective =
     options.perspective ?? (draftEnabled ? "drafts" : "published");
+  const isDevelopment = process.env.NODE_ENV === "development";
 
   /*
-   * Published reads stay on the normal client. This preserves the existing
-   * production path and keeps published requests out of the Live Content
-   * draft subscription flow.
+   * Published reads stay on the normal client. Production keeps the persistent
+   * Data Cache so Sanity publish webhooks can invalidate affected routes.
+   * Local development bypasses that cache so a published Studio change is
+   * visible on localhost after a normal browser refresh.
    */
   if (perspective === "published") {
     return sanityClient.fetch<T>(query, params, {
       next: {
-        revalidate: options.revalidate ?? false,
+        revalidate: isDevelopment ? 0 : (options.revalidate ?? false),
       },
     });
   }
 
+  /*
+   * `raw` is a valid Sanity Client perspective, but it is intentionally not a
+   * LivePerspective accepted by defineLive(). Keep raw infrastructure queries
+   * on a directly configured client instead of passing them to liveSanityFetch.
+   */
   if (perspective === "raw") {
     const token = process.env.SANITY_API_READ_TOKEN?.trim();
 
@@ -75,11 +82,17 @@ export async function sanityFetch<T>(
 
     return rawClient.fetch<T>(query, params, {
       next: {
-        revalidate: draftEnabled ? 0 : (options.revalidate ?? false),
+        revalidate:
+          draftEnabled || isDevelopment ? 0 : (options.revalidate ?? false),
       },
     });
   }
 
+  /*
+   * At this point TypeScript has narrowed `perspective` to "drafts", which is
+   * a supported LivePerspective. Draft reads require the Viewer token and use
+   * Sanity Live so Presentation updates without a manual refresh.
+   */
   const token = process.env.SANITY_API_READ_TOKEN?.trim();
 
   if (!token) {

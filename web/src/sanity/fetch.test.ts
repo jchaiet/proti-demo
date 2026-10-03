@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => {
   const baseFetch = vi.fn();
@@ -42,6 +42,10 @@ describe("sanityFetch", () => {
     process.env.SANITY_API_READ_TOKEN = "viewer-token";
   });
 
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   it("preserves the existing published client path outside Draft Mode", async () => {
     mocks.draftMode.mockResolvedValue({ isEnabled: false });
     mocks.baseFetch.mockResolvedValue({ title: "Published" });
@@ -67,6 +71,24 @@ describe("sanityFetch", () => {
     mocks.baseFetch.mockResolvedValue({ title: "Fresh" });
 
     await sanityFetch("*[]", {}, { revalidate: 0 });
+
+    expect(mocks.baseFetch).toHaveBeenCalledWith(
+      "*[]",
+      {},
+      {
+        next: {
+          revalidate: 0,
+        },
+      },
+    );
+  });
+
+  it("bypasses the published Data Cache during local development", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    mocks.draftMode.mockResolvedValue({ isEnabled: false });
+    mocks.baseFetch.mockResolvedValue({ title: "Fresh local publish" });
+
+    await sanityFetch("*[]");
 
     expect(mocks.baseFetch).toHaveBeenCalledWith(
       "*[]",
@@ -160,6 +182,24 @@ describe("sanityFetch", () => {
       {
         next: {
           revalidate: false,
+        },
+      },
+    );
+  });
+
+  it("bypasses the raw Data Cache during local development", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    mocks.draftMode.mockResolvedValue({ isEnabled: false });
+    mocks.rawFetch.mockResolvedValue({ title: "Fresh raw local data" });
+
+    await sanityFetch("*[]", {}, { perspective: "raw" });
+
+    expect(mocks.rawFetch).toHaveBeenCalledWith(
+      "*[]",
+      {},
+      {
+        next: {
+          revalidate: 0,
         },
       },
     );

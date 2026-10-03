@@ -43,7 +43,7 @@ interface RawTaxonomy {
 
 interface RawSearchDocument {
   _id: string;
-  _type: "page" | "blog";
+  _type: SearchContentType;
 
   _updatedAt?: string;
 
@@ -59,13 +59,13 @@ interface RawSearchDocument {
   isHomepage?: boolean;
   parentId?: string;
 
-  /*
-   * Blog fields.
-   */
   summary?: string;
   publishedAt?: string;
 
   image?: CmsImage;
+
+  fileType?: string;
+  fileSize?: string;
 
   author?: RawAuthor;
 
@@ -86,6 +86,32 @@ interface SearchSiteSettings {
   defaultIndexing?: "index" | "noindex";
 }
 
+const CONTENT_ROUTE_PREFIXES: Record<
+  Exclude<SearchContentType, "page">,
+  string
+> = {
+  article: "articles",
+  blog: "blog",
+  news: "news",
+  resource: "resources",
+};
+
+const SEARCH_TYPE_LABELS: Record<SearchContentType, string> = {
+  page: "Pages",
+  article: "Articles",
+  blog: "Blog posts",
+  news: "News",
+  resource: "Resources",
+};
+
+const SEARCH_CONTENT_TYPES: SearchContentType[] = [
+  "page",
+  "article",
+  "blog",
+  "news",
+  "resource",
+];
+
 interface IndexedDocument {
   result: SearchResult;
 
@@ -98,6 +124,8 @@ interface IndexedDocument {
   bodyText: string;
   authorText: string;
   taxonomyText: string;
+
+  filterValues: string[];
 
   sortDate?: string;
 }
@@ -464,11 +492,13 @@ function matchesTaxonomy({
   return normalizedRequested.some((value) => values.has(value));
 }
 
-function buildFacets(items: IndexedDocument[]): SearchResponse["facets"] {
-  const typeCounts: Record<SearchContentType, number> = {
-    page: 0,
-    blog: 0,
-  };
+function buildFacets(
+  items: IndexedDocument[],
+  visibleTypes: SearchContentType[],
+): SearchResponse["facets"] {
+  const typeCounts = Object.fromEntries(
+    SEARCH_CONTENT_TYPES.map((type) => [type, 0]),
+  ) as Record<SearchContentType, number>;
 
   const taxonomyCounts = new Map<
     string,
@@ -496,18 +526,11 @@ function buildFacets(items: IndexedDocument[]): SearchResponse["facets"] {
   }
 
   return {
-    types: [
-      {
-        value: "page",
-        label: "Pages",
-        count: typeCounts.page,
-      },
-      {
-        value: "blog",
-        label: "Blog posts",
-        count: typeCounts.blog,
-      },
-    ],
+    types: visibleTypes.map((type) => ({
+      value: type,
+      label: SEARCH_TYPE_LABELS[type],
+      count: typeCounts[type],
+    })),
 
     taxonomy: Array.from(taxonomyCounts.entries())
       .map(([value, item]) => ({
@@ -593,7 +616,7 @@ export async function searchContent(
 
   const page = Math.max(1, options.page ?? 1);
 
-  const pageSize = Math.min(50, Math.max(1, options.pageSize ?? 12));
+  const pageSize = Math.min(1000, Math.max(1, options.pageSize ?? 12));
 
   const sort = options.sort ?? "relevance";
 
@@ -609,7 +632,27 @@ export async function searchContent(
 
   const taxonomyMatch = options.taxonomyMatch ?? "any";
 
-  if (!query) {
+  const taxonomyScope = Array.from(
+    new Set(
+      (options.taxonomyScope ?? [])
+        .map((value) => value.trim())
+        .filter(Boolean),
+    ),
+  );
+
+  const taxonomyScopeMatch = options.taxonomyScopeMatch ?? "any";
+
+  const filters = Array.from(
+    new Set(
+      (options.filters ?? [])
+        .map((value) => normalizeText(value))
+        .filter(Boolean),
+    ),
+  );
+
+  const respectSeoVisibility = options.respectSeoVisibility ?? true;
+
+  if (!query && !options.includeAllOnEmptyQuery) {
     return {
       query,
       locale: options.locale,
@@ -629,18 +672,11 @@ export async function searchContent(
       },
 
       facets: {
-        types: [
-          {
-            value: "page",
-            label: "Pages",
-            count: 0,
-          },
-          {
-            value: "blog",
-            label: "Blog posts",
-            count: 0,
-          },
-        ],
+        types: types.map((type) => ({
+          value: type,
+          label: SEARCH_TYPE_LABELS[type],
+          count: 0,
+        })),
         taxonomy: [],
       },
 
@@ -700,18 +736,11 @@ export async function searchContent(
       },
 
       facets: {
-        types: [
-          {
-            value: "page",
-            label: "Pages",
-            count: 0,
-          },
-          {
-            value: "blog",
-            label: "Blog posts",
-            count: 0,
-          },
-        ],
+        types: types.map((type) => ({
+          value: type,
+          label: SEARCH_TYPE_LABELS[type],
+          count: 0,
+        })),
         taxonomy: [],
       },
 
@@ -738,7 +767,10 @@ export async function searchContent(
   const indexed: IndexedDocument[] = [];
 
   for (const document of documents) {
-    if (!document.title || !isIndexable(document, site)) {
+    if (
+      !document.title ||
+      (respectSeoVisibility && !isIndexable(document, site))
+    ) {
       continue;
     }
 
@@ -757,10 +789,13 @@ export async function searchContent(
         continue;
       }
 
-      href = joinPublicPath(localePrefix, `/blog/${document.slug}`);
+      const routePrefix = CONTENT_ROUTE_PREFIXES[document._type];
+
+      href = joinPublicPath(localePrefix, `/${routePrefix}/${document.slug}`);
     }
 
     if (
+      respectSeoVisibility &&
       !isCanonicalPublicUrl({
         canonicalUrl: document.seo?.canonicalUrl,
 
@@ -814,7 +849,7 @@ export async function searchContent(
         .join(" "),
     );
 
-    if (!matchesQuery(searchableText, tokens)) {
+    if (tokens.length > 0 && !matchesQuery(searchableText, tokens)) {
       continue;
     }
 
@@ -833,10 +868,7 @@ export async function searchContent(
       taxonomy: taxonomyText,
     });
 
-    const description =
-      document._type === "blog"
-        ? document.summary?.trim() || getSnippet(bodyText, query)
-        : getSnippet(bodyText, query);
+    const description = document.summary?.trim() || getSnippet(bodyText, query);
 
     const result: SearchResult = {
       id: cleanId(document._id),
@@ -849,16 +881,14 @@ export async function searchContent(
 
       href,
 
-      imageUrl:
-        document._type === "blog"
-          ? resolveSanityImagePreset(document.image, "card")
-          : undefined,
+      imageUrl: resolveSanityImagePreset(document.image, "card"),
 
-      imageAlt:
-        document._type === "blog" ? (document.image?.alt ?? "") : undefined,
+      imageAlt: document.image?.alt ?? "",
 
-      date:
-        document._type === "blog" ? document.publishedAt : document._updatedAt,
+      date: document.publishedAt ?? document._updatedAt,
+
+      fileType: document.fileType,
+      fileSize: document.fileSize,
 
       author: document.author
         ? {
@@ -887,29 +917,49 @@ export async function searchContent(
       authorText,
       taxonomyText,
 
-      sortDate:
-        document._type === "blog" ? document.publishedAt : document._updatedAt,
+      filterValues: [
+        document._type,
+        document.fileType,
+        document.fileSize,
+        ...resultTaxonomy.flatMap((item) => [item.id, item.title, item.path]),
+      ]
+        .map((value) => normalizeText(value))
+        .filter(Boolean),
+
+      sortDate: document.publishedAt ?? document._updatedAt,
     });
   }
 
   /*
-   * Facets are calculated from every query-matching,
-   * indexable document before the currently selected
-   * filters are applied. This keeps the filter UI useful
-   * after a user narrows the result set.
+   * Authored Taxonomy scope is applied before visitor filters. This keeps a
+   * Dynamic Document List inside its configured content boundary while still
+   * allowing visitors to filter that scoped set independently.
    */
-  const facets = buildFacets(indexed);
-
-  const filtered = indexed.filter((item) => {
+  const scoped = indexed.filter((item) => {
     if (!types.includes(item.result.type)) {
       return false;
     }
 
-    if (taxonomy.length === 0) {
-      return true;
-    }
+    return matchesTaxonomy({
+      resultTaxonomy: item.result.taxonomy ?? [],
 
-    if (item.result.type === "page") {
+      requested: taxonomyScope,
+
+      mode: taxonomyScopeMatch,
+    });
+  });
+
+  /*
+   * Facets are calculated from every query-matching document inside the
+   * authored scope before the currently selected visitor filters are applied.
+   */
+  const facets = buildFacets(scoped, types);
+
+  const filtered = scoped.filter((item) => {
+    if (
+      filters.length > 0 &&
+      !filters.some((filter) => item.filterValues.includes(filter))
+    ) {
       return false;
     }
 
@@ -924,7 +974,13 @@ export async function searchContent(
 
   const sorted = sortResults(filtered, sort);
 
-  const total = sorted.length;
+  const maxResults = options.maxResults
+    ? Math.min(Math.max(options.maxResults, 1), 1000)
+    : undefined;
+
+  const limited = maxResults ? sorted.slice(0, maxResults) : sorted;
+
+  const total = limited.length;
 
   const totalPages = total === 0 ? 0 : Math.ceil(total / pageSize);
 
@@ -932,7 +988,7 @@ export async function searchContent(
 
   const start = (safePage - 1) * pageSize;
 
-  const results = sorted
+  const results = limited
     .slice(start, start + pageSize)
     .map((item) => item.result);
 

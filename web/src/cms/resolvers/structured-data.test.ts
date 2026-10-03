@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   fetch: vi.fn(),
@@ -32,7 +32,7 @@ import {
 const site = {
   name: "Proti",
   origin: "https://example.com",
-  locales: ["us-en", "us-es"],
+  locales: ["en-us", "es-us"],
   organization: {
     name: "Proti Inc.",
     legalName: "Proti Incorporated",
@@ -77,7 +77,7 @@ it("resolves Site origin and organization logo through the logo image preset", a
   mocks.fetch.mockResolvedValue({
     name: "Proti",
     domains: ["example.com"],
-    locales: [{ code: "us-en" }, { code: "us-es" }],
+    locales: [{ code: "en-us" }, { code: "es-us" }],
     organization: {
       name: "Proti Inc.",
       logo,
@@ -103,7 +103,7 @@ it("resolves Site origin and organization logo through the logo image preset", a
   expect(result).toEqual({
     name: "Proti",
     origin: "https://example.com",
-    locales: ["us-en", "us-es"],
+    locales: ["en-us", "es-us"],
     organization: {
       name: "Proti Inc.",
       logo,
@@ -235,7 +235,7 @@ it("builds a ProfilePage that points at the Author Person entity", () => {
     url: "https://example.com/authors/jane-smith",
     name: "Jane Smith",
     description: "Nutrition expert.",
-    locale: "us-en",
+    locale: "en-us",
     mainEntityId: "https://example.com/#person-jane-smith",
     breadcrumbId: "https://example.com/authors/jane-smith#breadcrumb",
   });
@@ -307,10 +307,10 @@ it("normalizes locale in WebPage structured data", () => {
   expect(
     buildWebPageSchema({
       site,
-      url: "https://example.com/us-es/products/widget",
+      url: "https://example.com/es-us/products/widget",
       name: "Widget",
       description: "Descripción",
-      locale: "us-es",
+      locale: "es-us",
       reviewedBy: {
         _id: "author-reviewer",
         name: "Reviewer",
@@ -320,7 +320,7 @@ it("normalizes locale in WebPage structured data", () => {
     }),
   ).toMatchObject({
     "@type": "WebPage",
-    "@id": "https://example.com/us-es/products/widget#webpage",
+    "@id": "https://example.com/es-us/products/widget#webpage",
     inLanguage: "es-US",
     isPartOf: {
       "@id": "https://example.com/#website",
@@ -337,9 +337,9 @@ it("normalizes locale in WebPage structured data", () => {
   expect(
     buildWebPageSchema({
       site,
-      url: "https://example.com/us-es/products/widget",
+      url: "https://example.com/es-us/products/widget",
       name: "Widget",
-      locale: "us-es",
+      locale: "es-us",
     }),
   ).not.toHaveProperty("about");
 });
@@ -355,7 +355,7 @@ it("builds BlogPosting with Person reference, localized keywords, and modified-d
     site,
     url: "https://example.com/blog/nutrition",
     headline: "Nutrition",
-    locale: "us-en",
+    locale: "en-us",
     imageUrl: "https://cdn.example.com/nutrition.jpg",
     publishedAt: "2026-09-01T12:00:00Z",
     author,
@@ -420,7 +420,7 @@ it("uses an explicit editorial modified date when provided", () => {
     site,
     url: "https://example.com/blog/updated",
     headline: "Updated article",
-    locale: "us-en",
+    locale: "en-us",
     publishedAt: "2026-09-01T12:00:00Z",
     modifiedAt: "2026-09-21T15:30:00Z",
   });
@@ -436,7 +436,7 @@ it("builds Taxonomy CollectionPage ItemList entries in supplied order", () => {
     site,
     url: "https://example.com/blog/topics/nutrition",
     name: "Nutrition",
-    locale: "us-en",
+    locale: "en-us",
     items: [
       {
         name: "First article",
@@ -501,7 +501,7 @@ it("connects WebPage to its primary entity and breadcrumb by stable @id", () => 
       site,
       url: "https://example.com/blog/nutrition",
       name: "Nutrition",
-      locale: "us-en",
+      locale: "en-us",
       mainEntityId: "https://example.com/blog/nutrition#blogposting",
       breadcrumbId: "https://example.com/blog/nutrition#breadcrumb",
       primaryImageId: "https://example.com/blog/nutrition#primaryimage",

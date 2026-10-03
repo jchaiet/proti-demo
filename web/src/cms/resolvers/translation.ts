@@ -42,8 +42,8 @@ export type DocumentTranslations = {
    *
    * Example:
    * {
-   *   "us-en": "/products/widget",
-   *   "us-es": "/us-es/products/widget"
+   *   "en-us": "/products/widget",
+   *   "es-us": "/es-us/products/widget"
    * }
    */
   localeHrefs: Record<string, string>;
@@ -51,7 +51,7 @@ export type DocumentTranslations = {
   /**
    * SEO alternate URLs keyed by hreflang value.
    *
-   * The CMS uses region-language codes such as `us-es`, while hreflang
+   * The CMS uses region-language codes such as `es-us`, while hreflang
    * expects language-region ordering such as `es-US`.
    */
   languageAlternates: Record<string, string>;

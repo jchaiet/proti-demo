@@ -1,6 +1,7 @@
 import type { CmsBlog, CmsCitationSource } from "@/cms/types";
 
 import { BlockRenderer } from "@/components/BlockRenderer";
+import { siteLocaleToLanguageTag } from "@/lib/routing/locale";
 import { BlogHero } from "./BlogHero";
 
 import styles from "./styles.module.css";
@@ -56,16 +57,6 @@ function getAuthorHref(
   return `${prefix}/authors/${slug}`;
 }
 
-function getIntlLocale(locale: string): string {
-  const [region, language] = locale.split("-");
-
-  if (!region || !language) {
-    return locale;
-  }
-
-  return `${language.toLowerCase()}-${region.toUpperCase()}`;
-}
-
 function formatPublishedDate(
   date: string | undefined,
   locale: string,
@@ -81,7 +72,7 @@ function formatPublishedDate(
   }
 
   try {
-    return new Intl.DateTimeFormat(getIntlLocale(locale), {
+    return new Intl.DateTimeFormat(siteLocaleToLanguageTag(locale), {
       year: "numeric",
       month: "long",
       day: "numeric",
@@ -146,6 +137,7 @@ export async function BlogTemplate({
       <BlogHero
         title={blog.title}
         summary={blog.summary}
+        showSummary={blog.showSummaryInArticle}
         authorName={blog.author?.name}
         authorHref={getAuthorHref(blog.author, localePrefix)}
         taxonomy={blog.taxonomy}

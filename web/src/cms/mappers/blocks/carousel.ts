@@ -5,7 +5,7 @@ import type {
 
 import type { CmsCarouselBlock, CmsCarouselItem } from "@/cms/types";
 
-import { mapCtas } from "@/cms/mappers/cta";
+import { mapCtaGroup } from "@/cms/mappers/cta-group";
 
 import {
   mapArticleCard,
@@ -136,8 +136,13 @@ async function mapCarouselItems(
 export async function mapCarouselBlock(
   block: CmsCarouselBlock,
 ): Promise<CarouselBlockProps> {
-  const [ctas, items] = await Promise.all([
-    mapCtas(block.ctas),
+  const [ctaGroup, items] = await Promise.all([
+    mapCtaGroup(block.ctaGroup, {
+      legacyItems: block.ctas,
+      legacyAlignment: block.ctaAlignment,
+      legacyStackOnMobile: block.ctaStackOnMobile,
+      fallbackAlignment: block.alignment ?? "left",
+    }),
 
     mapCarouselItems(block.items),
   ]);
@@ -153,11 +158,9 @@ export async function mapCarouselBlock(
 
     mediaPosition: block.mediaPosition ?? "right",
 
-    ctas,
+    ctas: ctaGroup.ctas,
 
-    ctaGroupProps: {
-      stackOnMobile: block.ctaStackOnMobile ?? true,
-    },
+    ctaGroupProps: ctaGroup.ctaGroupProps,
 
     items,
 

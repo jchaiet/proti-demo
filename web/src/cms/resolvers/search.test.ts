@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   fetch: vi.fn(),
@@ -33,7 +33,7 @@ type MockTaxonomy = Record<string, unknown>;
 const site: MockSite = {
   _id: "site-proti",
   domains: ["example.com"],
-  defaultLocale: "us-en",
+  defaultLocale: "en-us",
   defaultIndexing: "index",
 };
 
@@ -41,23 +41,23 @@ let documents: MockDocument[] = [];
 let taxonomy: MockTaxonomy[] = [];
 
 function installFetchMock(currentSite: MockSite | null = site) {
-  mocks.fetch.mockImplementation(
-    async (query: string, params: Record<string, unknown>) => {
-      if (query.includes('"defaultIndexing"')) {
-        return currentSite;
-      }
+  mocks.fetch.mockImplementation(async (query: string) => {
+    if (query.includes('"defaultIndexing"')) {
+      return currentSite;
+    }
 
-      if (query.includes('_type in ["page", "blog"]')) {
-        return documents;
-      }
+    if (
+      query.includes('_type in ["page", "article", "blog", "news", "resource"]')
+    ) {
+      return documents;
+    }
 
-      if (query.includes('_type == "taxonomy"')) {
-        return taxonomy;
-      }
+    if (query.includes('_type == "taxonomy"')) {
+      return taxonomy;
+    }
 
-      throw new Error(`Unexpected Search query: ${query.slice(0, 80)}`);
-    },
-  );
+    throw new Error(`Unexpected Search query: ${query.slice(0, 80)}`);
+  });
 }
 
 beforeEach(() => {
@@ -75,7 +75,7 @@ beforeEach(() => {
 it("does not query Sanity for a blank search term", async () => {
   const response = await searchContent({
     siteId: "site-proti",
-    locale: "us-en",
+    locale: "en-us",
     query: "   ",
   });
 
@@ -90,7 +90,7 @@ it("passes Site and locale into every Search data query", async () => {
       _id: "page-1",
       _type: "page",
       title: "Nutrition",
-      locale: "us-es",
+      locale: "es-us",
       slug: "nutrition",
       sections: [],
     },
@@ -98,7 +98,7 @@ it("passes Site and locale into every Search data query", async () => {
 
   await searchContent({
     siteId: "site-proti",
-    locale: "us-es",
+    locale: "es-us",
     query: "nutrition",
   });
 
@@ -107,7 +107,7 @@ it("passes Site and locale into every Search data query", async () => {
   for (const [, params, fetchOptions] of mocks.fetch.mock.calls) {
     expect(params).toMatchObject({
       siteId: "site-proti",
-      locale: "us-es",
+      locale: "es-us",
     });
 
     expect(fetchOptions).toEqual({
@@ -124,7 +124,7 @@ it("matches visible content rendered through a referenced Singleton", async () =
       _id: "page-singleton",
       _type: "page",
       title: "Shared promotion",
-      locale: "us-en",
+      locale: "en-us",
       slug: "shared-promotion",
       sections: [
         {
@@ -133,7 +133,7 @@ it("matches visible content rendered through a referenced Singleton", async () =
             _id: "singleton-global-cta",
             title: "Global CTA",
             key: "global-cta",
-            locale: "us-en",
+            locale: "en-us",
             component: {
               _type: "contentBlock",
               body: "Schedule your nutrition consultation today.",
@@ -146,7 +146,7 @@ it("matches visible content rendered through a referenced Singleton", async () =
 
   const response = await searchContent({
     siteId: "site-proti",
-    locale: "us-en",
+    locale: "en-us",
     query: "consultation",
   });
 
@@ -161,7 +161,7 @@ it("matches visible body content but rejects a term that exists only in href/scr
       _id: "page-visible",
       _type: "page",
       title: "Healthy Living",
-      locale: "us-en",
+      locale: "en-us",
       slug: "healthy-living",
       sections: [
         {
@@ -179,7 +179,7 @@ it("matches visible body content but rejects a term that exists only in href/scr
       _id: "page-hidden",
       _type: "page",
       title: "Unrelated Article",
-      locale: "us-en",
+      locale: "en-us",
       slug: "unrelated",
       sections: [
         {
@@ -194,7 +194,7 @@ it("matches visible body content but rejects a term that exists only in href/scr
 
   const response = await searchContent({
     siteId: "site-proti",
-    locale: "us-en",
+    locale: "en-us",
     query: "nutrition",
   });
 
@@ -207,7 +207,7 @@ it("builds default-locale Page and Blog URLs without a locale prefix", async () 
       _id: "page-parent",
       _type: "page",
       title: "Products",
-      locale: "us-en",
+      locale: "en-us",
       slug: "products",
       sections: [],
     },
@@ -215,7 +215,7 @@ it("builds default-locale Page and Blog URLs without a locale prefix", async () 
       _id: "page-child",
       _type: "page",
       title: "Nutrition Widget",
-      locale: "us-en",
+      locale: "en-us",
       slug: "widget",
       parentId: "page-parent",
       sections: [],
@@ -224,7 +224,7 @@ it("builds default-locale Page and Blog URLs without a locale prefix", async () 
       _id: "blog-1",
       _type: "blog",
       title: "Nutrition Basics",
-      locale: "us-en",
+      locale: "en-us",
       slug: "nutrition-basics",
       summary: "Nutrition overview",
       publishedAt: "2026-09-08T16:44:40Z",
@@ -234,7 +234,7 @@ it("builds default-locale Page and Blog URLs without a locale prefix", async () 
 
   const response = await searchContent({
     siteId: "site-proti",
-    locale: "us-en",
+    locale: "en-us",
     query: "nutrition",
   });
 
@@ -258,7 +258,7 @@ it("adds the active non-default locale prefix to result URLs", async () => {
       _id: "page-es",
       _type: "page",
       title: "Nutrición",
-      locale: "us-es",
+      locale: "es-us",
       slug: "nutricion",
       sections: [],
     },
@@ -266,7 +266,7 @@ it("adds the active non-default locale prefix to result URLs", async () => {
       _id: "blog-es",
       _type: "blog",
       title: "Nutrición Básica",
-      locale: "us-es",
+      locale: "es-us",
       slug: "nutricion-basica",
       summary: "Guía de nutrición",
       sections: [],
@@ -275,7 +275,7 @@ it("adds the active non-default locale prefix to result URLs", async () => {
 
   const response = await searchContent({
     siteId: "site-proti",
-    locale: "us-es",
+    locale: "es-us",
     query: "nutrición",
   });
 
@@ -283,11 +283,11 @@ it("adds the active non-default locale prefix to result URLs", async () => {
     expect.arrayContaining([
       expect.objectContaining({
         id: "page-es",
-        href: "/us-es/nutricion",
+        href: "/es-us/nutricion",
       }),
       expect.objectContaining({
         id: "blog-es",
-        href: "/us-es/blog/nutricion-basica",
+        href: "/es-us/blog/nutricion-basica",
       }),
     ]),
   );
@@ -299,7 +299,7 @@ it("excludes noindex documents", async () => {
       _id: "page-index",
       _type: "page",
       title: "Nutrition Public",
-      locale: "us-en",
+      locale: "en-us",
       slug: "nutrition-public",
       sections: [],
       seo: {
@@ -310,7 +310,7 @@ it("excludes noindex documents", async () => {
       _id: "page-noindex",
       _type: "page",
       title: "Nutrition Private",
-      locale: "us-en",
+      locale: "en-us",
       slug: "nutrition-private",
       sections: [],
       seo: {
@@ -321,11 +321,72 @@ it("excludes noindex documents", async () => {
 
   const response = await searchContent({
     siteId: "site-proti",
-    locale: "us-en",
+    locale: "en-us",
     query: "nutrition",
   });
 
   expect(response.results.map((result) => result.id)).toEqual(["page-index"]);
+});
+
+it("can include noindex content for an editorial Dynamic Document List", async () => {
+  documents = [
+    {
+      _id: "page-noindex",
+      _type: "page",
+      title: "Nutrition Internal",
+      locale: "en-us",
+      slug: "nutrition-internal",
+      sections: [],
+      seo: {
+        indexing: "noindex",
+      },
+    },
+  ];
+
+  const response = await searchContent({
+    siteId: "site-proti",
+    locale: "en-us",
+    query: "nutrition",
+    types: ["page"],
+    respectSeoVisibility: false,
+  });
+
+  expect(response.results.map((result) => result.id)).toEqual(["page-noindex"]);
+});
+
+it("can return a capped initial Page listing without a search term", async () => {
+  documents = [
+    {
+      _id: "page-a",
+      _type: "page",
+      title: "Alpha",
+      locale: "en-us",
+      slug: "alpha",
+      sections: [],
+    },
+    {
+      _id: "page-b",
+      _type: "page",
+      title: "Beta",
+      locale: "en-us",
+      slug: "beta",
+      sections: [],
+    },
+  ];
+
+  const response = await searchContent({
+    siteId: "site-proti",
+    locale: "en-us",
+    query: "",
+    includeAllOnEmptyQuery: true,
+    types: ["page"],
+    sort: "title-asc",
+    maxResults: 1,
+    respectSeoVisibility: false,
+  });
+
+  expect(response.total).toBe(1);
+  expect(response.results.map((result) => result.id)).toEqual(["page-a"]);
 });
 
 it("excludes a result whose authored canonical points somewhere else", async () => {
@@ -334,7 +395,7 @@ it("excludes a result whose authored canonical points somewhere else", async () 
       _id: "page-canonical",
       _type: "page",
       title: "Nutrition Canonical",
-      locale: "us-en",
+      locale: "en-us",
       slug: "nutrition",
       sections: [],
       seo: {
@@ -345,7 +406,7 @@ it("excludes a result whose authored canonical points somewhere else", async () 
 
   const response = await searchContent({
     siteId: "site-proti",
-    locale: "us-en",
+    locale: "en-us",
     query: "nutrition",
   });
 
@@ -358,7 +419,7 @@ it("keeps a matching canonical URL even when trailing-slash style differs", asyn
       _id: "page-canonical",
       _type: "page",
       title: "Nutrition Canonical",
-      locale: "us-en",
+      locale: "en-us",
       slug: "nutrition",
       sections: [],
       seo: {
@@ -369,7 +430,7 @@ it("keeps a matching canonical URL even when trailing-slash style differs", asyn
 
   const response = await searchContent({
     siteId: "site-proti",
-    locale: "us-en",
+    locale: "en-us",
     query: "nutrition",
   });
 
@@ -383,7 +444,7 @@ it("ranks an exact title match above weaker visible-body matches", async () => {
       _id: "page-body",
       _type: "page",
       title: "Healthy Food",
-      locale: "us-en",
+      locale: "en-us",
       slug: "healthy-food",
       sections: [
         {
@@ -395,7 +456,7 @@ it("ranks an exact title match above weaker visible-body matches", async () => {
       _id: "page-exact",
       _type: "page",
       title: "Nutrition",
-      locale: "us-en",
+      locale: "en-us",
       slug: "nutrition",
       sections: [],
     },
@@ -403,7 +464,7 @@ it("ranks an exact title match above weaker visible-body matches", async () => {
 
   const response = await searchContent({
     siteId: "site-proti",
-    locale: "us-en",
+    locale: "en-us",
     query: "nutrition",
     sort: "relevance",
   });
@@ -456,7 +517,7 @@ it("returns localized Author job title, localized Taxonomy, and hotspot-aware Bl
       _id: "blog-es",
       _type: "blog",
       title: "Nutrición para todos",
-      locale: "us-es",
+      locale: "es-us",
       slug: "nutricion-para-todos",
       summary: "Una guía de nutrición.",
       publishedAt: "2026-09-08T16:44:40Z",
@@ -480,7 +541,7 @@ it("returns localized Author job title, localized Taxonomy, and hotspot-aware Bl
 
   const response = await searchContent({
     siteId: "site-proti",
-    locale: "us-es",
+    locale: "es-us",
     query: "nutrición",
   });
 
@@ -488,7 +549,7 @@ it("returns localized Author job title, localized Taxonomy, and hotspot-aware Bl
 
   expect(response.results[0]).toMatchObject({
     id: "blog-es",
-    href: "/us-es/blog/nutricion-para-todos",
+    href: "/es-us/blog/nutricion-para-todos",
     imageUrl: "resolved-card-image",
     imageAlt: "Healthy food",
     author: {
@@ -533,7 +594,7 @@ it("supports taxonomy any/all filtering using Taxonomy IDs or paths", async () =
       _id: "blog-both",
       _type: "blog",
       title: "Nutrition Food Guide",
-      locale: "us-en",
+      locale: "en-us",
       slug: "both",
       summary: "Nutrition and food",
       taxonomy: [
@@ -554,7 +615,7 @@ it("supports taxonomy any/all filtering using Taxonomy IDs or paths", async () =
       _id: "blog-one",
       _type: "blog",
       title: "Nutrition Guide",
-      locale: "us-en",
+      locale: "en-us",
       slug: "one",
       summary: "Nutrition only",
       taxonomy: [
@@ -570,7 +631,7 @@ it("supports taxonomy any/all filtering using Taxonomy IDs or paths", async () =
 
   const anyResponse = await searchContent({
     siteId: "site-proti",
-    locale: "us-en",
+    locale: "en-us",
     query: "nutrition",
     taxonomy: ["food", "nutrition"],
     taxonomyMatch: "any",
@@ -583,7 +644,7 @@ it("supports taxonomy any/all filtering using Taxonomy IDs or paths", async () =
 
   const allResponse = await searchContent({
     siteId: "site-proti",
-    locale: "us-en",
+    locale: "en-us",
     query: "nutrition",
     taxonomy: ["food", "nutrition"],
     taxonomyMatch: "all",
@@ -593,7 +654,7 @@ it("supports taxonomy any/all filtering using Taxonomy IDs or paths", async () =
 
   const idResponse = await searchContent({
     siteId: "site-proti",
-    locale: "us-en",
+    locale: "en-us",
     query: "nutrition",
     taxonomy: ["taxonomy-nutrition"],
     taxonomyMatch: "any",
@@ -602,13 +663,89 @@ it("supports taxonomy any/all filtering using Taxonomy IDs or paths", async () =
   expect(idResponse.results).toHaveLength(2);
 });
 
+it("combines authored Taxonomy scope with visitor Taxonomy filters", async () => {
+  taxonomy = [
+    {
+      _id: "taxonomy-health",
+      title: "Health",
+      slug: "health",
+    },
+    {
+      _id: "taxonomy-nutrition",
+      title: "Nutrition",
+      slug: "nutrition",
+    },
+    {
+      _id: "taxonomy-fitness",
+      title: "Fitness",
+      slug: "fitness",
+    },
+  ];
+
+  documents = [
+    {
+      _id: "blog-health-nutrition",
+      _type: "blog",
+      title: "Nutrition Health Guide",
+      locale: "en-us",
+      slug: "nutrition-health",
+      summary: "Nutrition and health",
+      taxonomy: [
+        {
+          _id: "taxonomy-health",
+          title: "Health",
+          slug: "health",
+        },
+        {
+          _id: "taxonomy-nutrition",
+          title: "Nutrition",
+          slug: "nutrition",
+        },
+      ],
+      sections: [],
+    },
+    {
+      _id: "blog-fitness",
+      _type: "blog",
+      title: "Fitness Guide",
+      locale: "en-us",
+      slug: "fitness",
+      summary: "Fitness",
+      taxonomy: [
+        {
+          _id: "taxonomy-fitness",
+          title: "Fitness",
+          slug: "fitness",
+        },
+      ],
+      sections: [],
+    },
+  ];
+
+  const response = await searchContent({
+    siteId: "site-proti",
+    locale: "en-us",
+    query: "",
+    includeAllOnEmptyQuery: true,
+    types: ["blog"],
+    taxonomyScope: ["taxonomy-health"],
+    taxonomyScopeMatch: "any",
+    taxonomy: ["taxonomy-nutrition"],
+    taxonomyMatch: "any",
+  });
+
+  expect(response.results.map((result) => result.id)).toEqual([
+    "blog-health-nutrition",
+  ]);
+});
+
 it("sorts newest/oldest using raw ISO timestamps and paginates safely", async () => {
   documents = [
     {
       _id: "blog-old",
       _type: "blog",
       title: "Nutrition Old",
-      locale: "us-en",
+      locale: "en-us",
       slug: "old",
       summary: "Nutrition",
       publishedAt: "2026-08-01T12:00:00Z",
@@ -618,7 +755,7 @@ it("sorts newest/oldest using raw ISO timestamps and paginates safely", async ()
       _id: "blog-new",
       _type: "blog",
       title: "Nutrition New",
-      locale: "us-en",
+      locale: "en-us",
       slug: "new",
       summary: "Nutrition",
       publishedAt: "2026-09-01T12:00:00Z",
@@ -628,7 +765,7 @@ it("sorts newest/oldest using raw ISO timestamps and paginates safely", async ()
 
   const newest = await searchContent({
     siteId: "site-proti",
-    locale: "us-en",
+    locale: "en-us",
     query: "nutrition",
     sort: "newest",
     pageSize: 1,
@@ -641,7 +778,7 @@ it("sorts newest/oldest using raw ISO timestamps and paginates safely", async ()
 
   const oldest = await searchContent({
     siteId: "site-proti",
-    locale: "us-en",
+    locale: "en-us",
     query: "nutrition",
     sort: "oldest",
   });

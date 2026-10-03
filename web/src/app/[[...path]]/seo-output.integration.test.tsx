@@ -14,7 +14,6 @@ const mocks = vi.hoisted(() => ({
   getAuthorSlug: vi.fn(),
   getBlogSlug: vi.fn(),
   getBlogTaxonomySegments: vi.fn(),
-  isSearchRoute: vi.fn(),
   resolveRoute: vi.fn(),
 
   getAuthorBySlug: vi.fn(),
@@ -66,7 +65,6 @@ vi.mock("@/cms/resolvers/route", () => ({
   getAuthorSlug: mocks.getAuthorSlug,
   getBlogSlug: mocks.getBlogSlug,
   getBlogTaxonomySegments: mocks.getBlogTaxonomySegments,
-  isSearchRoute: mocks.isSearchRoute,
   resolveRoute: mocks.resolveRoute,
 }));
 
@@ -128,10 +126,6 @@ vi.mock("@/components/Blog/BlogTaxonomyTemplate", () => ({
   BlogTaxonomyTemplate: () => <div data-testid="taxonomy-template" />,
 }));
 
-vi.mock("@/components/Search", () => ({
-  SearchTemplate: () => <div data-testid="search-template" />,
-}));
-
 import Page, { generateMetadata } from "./page";
 
 const site = {
@@ -139,14 +133,14 @@ const site = {
   name: "Proti",
   key: "proti",
   domains: ["example.com"],
-  defaultLocale: "us-en",
+  defaultLocale: "en-us",
   locales: [
     {
-      code: "us-en",
+      code: "en-us",
       label: "English",
     },
     {
-      code: "us-es",
+      code: "es-us",
       label: "Español",
     },
   ],
@@ -155,7 +149,7 @@ const site = {
 const structuredSite = {
   name: "Proti",
   origin: "https://example.com",
-  locales: ["us-en", "us-es"],
+  locales: ["en-us", "es-us"],
   organization: {
     name: "Proti Health",
     legalName: "Proti Health, Inc.",
@@ -165,24 +159,24 @@ const structuredSite = {
 
 const englishTranslations = {
   localeHrefs: {
-    "us-en": "/products/widget",
-    "us-es": "/us-es/products/widget",
+    "en-us": "/products/widget",
+    "es-us": "/es-us/products/widget",
   },
   languageAlternates: {
     "en-US": "https://example.com/products/widget",
-    "es-US": "https://example.com/us-es/products/widget",
+    "es-US": "https://example.com/es-us/products/widget",
     "x-default": "https://example.com/products/widget",
   },
 };
 
 const spanishTranslations = {
   localeHrefs: {
-    "us-en": "/products/widget",
-    "us-es": "/us-es/products/widget",
+    "en-us": "/products/widget",
+    "es-us": "/es-us/products/widget",
   },
   languageAlternates: {
     "en-US": "https://example.com/products/widget",
-    "es-US": "https://example.com/us-es/products/widget",
+    "es-US": "https://example.com/es-us/products/widget",
     "x-default": "https://example.com/products/widget",
   },
 };
@@ -223,7 +217,7 @@ const blog = {
   _id: "blog-nutrition",
   _type: "blog" as const,
   siteId: "site-proti",
-  locale: "us-en",
+  locale: "en-us",
   title: "Nutrition Basics",
   summary: "A practical guide to nutrition.",
   slug: "nutrition-basics",
@@ -259,13 +253,13 @@ const blog = {
 };
 
 function createSiteSeoRecord(locale: string) {
-  const spanish = locale === "us-es";
+  const spanish = locale === "es-us";
 
   return {
     _id: "site-proti",
     name: "Proti",
     domains: ["example.com"],
-    defaultLocale: "us-en",
+    defaultLocale: "en-us",
     defaults: {
       locale,
       siteTitle: spanish ? "Proti Salud" : "Proti Health",
@@ -327,18 +321,17 @@ beforeEach(() => {
   mocks.getAuthorSlug.mockReturnValue(null);
   mocks.getBlogSlug.mockReturnValue(null);
   mocks.getBlogTaxonomySegments.mockReturnValue(null);
-  mocks.isSearchRoute.mockReturnValue(false);
 
   mocks.resolveDocumentTranslations.mockResolvedValue(englishTranslations);
 
   mocks.buildAuthorLocaleLinks.mockReturnValue({
     localeHrefs: {
-      "us-en": "/authors/jane-smith",
-      "us-es": "/us-es/authors/jane-smith",
+      "en-us": "/authors/jane-smith",
+      "es-us": "/es-us/authors/jane-smith",
     },
     languageAlternates: {
       "en-US": "https://example.com/authors/jane-smith",
-      "es-US": "https://example.com/us-es/authors/jane-smith",
+      "es-US": "https://example.com/es-us/authors/jane-smith",
       "x-default": "https://example.com/authors/jane-smith",
     },
   });
@@ -349,7 +342,7 @@ beforeEach(() => {
 
   mocks.sanityFetch.mockImplementation(
     (_query: string, params?: Record<string, unknown>) =>
-      Promise.resolve(createSiteSeoRecord(String(params?.locale ?? "us-en"))),
+      Promise.resolve(createSiteSeoRecord(String(params?.locale ?? "en-us"))),
   );
 
   mocks.notFound.mockImplementation(() => {
@@ -370,7 +363,7 @@ describe("rendered SEO metadata output", () => {
     mocks.resolvePageBySegments.mockResolvedValue({
       _id: "page-widget",
       title: "Widget",
-      locale: "us-en",
+      locale: "en-us",
     });
 
     const metadata = await generateMetadata(pageProps(["products", "widget"]));
@@ -399,7 +392,7 @@ describe("rendered SEO metadata output", () => {
     mocks.resolvePageBySegments.mockResolvedValue({
       _id: "page-widget-es",
       title: "Widget",
-      locale: "us-es",
+      locale: "es-us",
       seo: {
         metaTitle: "Widget en Español",
         metaDescription: "Descripción del widget.",
@@ -409,14 +402,14 @@ describe("rendered SEO metadata output", () => {
     mocks.resolveDocumentTranslations.mockResolvedValue(spanishTranslations);
 
     const metadata = await generateMetadata(
-      pageProps(["us-es", "products", "widget"]),
+      pageProps(["es-us", "products", "widget"]),
     );
 
     expect(metadata).toMatchObject({
       title: "Widget en Español | Proti Salud",
       description: "Descripción del widget.",
       alternates: {
-        canonical: "https://example.com/us-es/products/widget",
+        canonical: "https://example.com/es-us/products/widget",
         languages: spanishTranslations.languageAlternates,
       },
       robots: {
@@ -427,7 +420,7 @@ describe("rendered SEO metadata output", () => {
         type: "website",
         title: "Widget en Español | Proti Salud",
         description: "Descripción del widget.",
-        url: "https://example.com/us-es/products/widget",
+        url: "https://example.com/es-us/products/widget",
         locale: "es_US",
         alternateLocale: ["en_US"],
       },
@@ -443,7 +436,7 @@ describe("rendered SEO metadata output", () => {
     mocks.resolvePageBySegments.mockResolvedValue({
       _id: "page-widget",
       title: "Widget",
-      locale: "us-en",
+      locale: "en-us",
       seo: {
         metaTitle: "Canonical Widget",
         canonicalUrl: "https://canonical.example.org/widget",
@@ -474,12 +467,12 @@ describe("rendered SEO metadata output", () => {
     mocks.getBlogBySlug.mockResolvedValue(blog);
     mocks.resolveDocumentTranslations.mockResolvedValue({
       localeHrefs: {
-        "us-en": "/blog/nutrition-basics",
-        "us-es": "/us-es/blog/nutrition-basics",
+        "en-us": "/blog/nutrition-basics",
+        "es-us": "/es-us/blog/nutrition-basics",
       },
       languageAlternates: {
         "en-US": "https://example.com/blog/nutrition-basics",
-        "es-US": "https://example.com/us-es/blog/nutrition-basics",
+        "es-US": "https://example.com/es-us/blog/nutrition-basics",
         "x-default": "https://example.com/blog/nutrition-basics",
       },
     });
@@ -509,19 +502,50 @@ describe("rendered SEO metadata output", () => {
     });
   });
 
-  it("keeps Search routes canonical but explicitly noindex/follow", async () => {
-    mocks.isSearchRoute.mockReturnValue(true);
+  it("uses normal authored Page metadata for /search", async () => {
+    mocks.resolvePageBySegments.mockResolvedValue({
+      _id: "page-search",
+      title: "Search",
+      locale: "en-us",
+      seo: {
+        metaTitle: "Search the site",
+        metaDescription: "Find pages, articles, and other content.",
+      },
+    });
+
+    mocks.resolveDocumentTranslations.mockResolvedValue({
+      localeHrefs: {
+        "en-us": "/search",
+        "es-us": "/es-us/search",
+      },
+      languageAlternates: {
+        "en-US": "https://example.com/search",
+        "es-US": "https://example.com/es-us/search",
+        "x-default": "https://example.com/search",
+      },
+    });
 
     const metadata = await generateMetadata(pageProps(["search"]));
 
-    expect(metadata.alternates?.canonical).toBe("https://example.com/search");
-    expect(metadata.robots).toEqual({
-      index: false,
-      follow: true,
-      googleBot: {
-        index: false,
-        follow: true,
+    expect(metadata).toMatchObject({
+      title: "Search the site | Proti Health",
+      description: "Find pages, articles, and other content.",
+      alternates: {
+        canonical: "https://example.com/search",
+        languages: {
+          "en-US": "https://example.com/search",
+          "es-US": "https://example.com/es-us/search",
+          "x-default": "https://example.com/search",
+        },
       },
+    });
+
+    expect(mocks.resolveDocumentTranslations).toHaveBeenCalledWith({
+      siteId: "site-proti",
+      documentId: "page-search",
+      documentType: "page",
+      defaultLocale: "en-us",
+      domains: ["example.com"],
     });
   });
 });
@@ -533,7 +557,7 @@ describe("rendered JSON-LD output", () => {
       page: {
         _id: "page-widget",
         title: "Widget",
-        locale: "us-en",
+        locale: "en-us",
         seo: {
           metaDescription: "Widget description.",
         },
@@ -574,7 +598,7 @@ describe("rendered JSON-LD output", () => {
     mocks.resolveRoute.mockResolvedValue({
       type: "author",
       authorPage: {
-        locale: "us-en",
+        locale: "en-us",
         author,
         articles: [],
       },
@@ -614,7 +638,7 @@ describe("rendered JSON-LD output", () => {
 
     mocks.resolveDocumentTranslations.mockResolvedValue({
       localeHrefs: {
-        "us-en": "/blog/nutrition-basics",
+        "en-us": "/blog/nutrition-basics",
       },
       languageAlternates: {
         "en-US": "https://example.com/blog/nutrition-basics",
@@ -672,7 +696,7 @@ describe("rendered JSON-LD output", () => {
       page: {
         _id: "drafts.page-widget",
         title: "Unpublished Widget Title",
-        locale: "us-en",
+        locale: "en-us",
         sections: [],
       },
     });

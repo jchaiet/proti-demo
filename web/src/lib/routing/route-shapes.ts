@@ -22,13 +22,13 @@ export function getBlogTaxonomySegments(segments: string[]): string[] | null {
   return segments.slice(1);
 }
 
-export function isSearchRoute(segments: string[]): boolean {
-  return segments.length === 1 && segments[0] === "search";
-}
-
 export function isReservedPageRoute(segments: string[]): boolean {
+  /*
+   * Authored Pages such as /search, /about, and /contact are intentionally not
+   * reserved here. Only application-owned content route shapes are excluded
+   * from normal Page resolution.
+   */
   return Boolean(
-    isSearchRoute(segments) ||
     getAuthorSlug(segments) ||
     getBlogSlug(segments) ||
     getBlogTaxonomySegments(segments),

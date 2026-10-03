@@ -4,6 +4,7 @@ export const CTA_FRAGMENT = `
   _key,
 
   label,
+  actionType,
 
   variant,
   size,
@@ -14,5 +15,9 @@ export const CTA_FRAGMENT = `
 
   link {
     ${LINK_FRAGMENT}
+  },
+
+  modal {
+    _ref
   }
 `;

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   fetch: vi.fn(),
@@ -21,9 +21,9 @@ const siteRecord = {
   _id: "site-proti",
   name: "Proti",
   domains: ["example.com"],
-  defaultLocale: "us-en",
+  defaultLocale: "en-us",
   defaults: {
-    locale: "us-en",
+    locale: "en-us",
     siteTitle: "Proti Health",
     titleTemplate: "%s | Proti Health",
     metaDescription: "Default Site description.",
@@ -56,7 +56,7 @@ beforeEach(() => {
 it("uses locale Site title directly for a Homepage without an explicit meta title", async () => {
   const metadata = await buildSeoMetadata({
     siteId: "site-proti",
-    locale: "us-en",
+    locale: "en-us",
     publicPath: "/",
     title: "Homepage document title",
     isHomepage: true,
@@ -70,7 +70,7 @@ it("uses locale Site title directly for a Homepage without an explicit meta titl
 it("applies the Site title template to normal documents", async () => {
   const metadata = await buildSeoMetadata({
     siteId: "site-proti",
-    locale: "us-en",
+    locale: "en-us",
     publicPath: "/products/widget",
     title: "Widget",
   });
@@ -84,7 +84,7 @@ it("applies the Site title template to normal documents", async () => {
 it("prefers authored SEO title/description/canonical overrides", async () => {
   const metadata = await buildSeoMetadata({
     siteId: "site-proti",
-    locale: "us-en",
+    locale: "en-us",
     publicPath: "/products/widget",
     title: "Widget",
     description: "Content description",
@@ -105,15 +105,15 @@ it("prefers authored SEO title/description/canonical overrides", async () => {
 it("emits hreflang/x-default and Open Graph alternate locales consistently", async () => {
   const languageAlternates = {
     "en-US": "https://example.com/products/widget",
-    "es-US": "https://example.com/us-es/products/widget",
-    "fr-CA": "https://example.com/ca-fr/products/widget",
+    "es-US": "https://example.com/es-us/products/widget",
+    "fr-CA": "https://example.com/fr-ca/products/widget",
     "x-default": "https://example.com/products/widget",
   };
 
   const metadata = await buildSeoMetadata({
     siteId: "site-proti",
-    locale: "us-es",
-    publicPath: "/us-es/products/widget",
+    locale: "es-us",
+    publicPath: "/es-us/products/widget",
     title: "Widget",
     languageAlternates,
   });
@@ -129,7 +129,7 @@ it("emits hreflang/x-default and Open Graph alternate locales consistently", asy
 it("inherits robots defaults and honors document-level noindex/nofollow overrides", async () => {
   const inherited = await buildSeoMetadata({
     siteId: "site-proti",
-    locale: "us-en",
+    locale: "en-us",
     publicPath: "/page",
     title: "Page",
   });
@@ -141,7 +141,7 @@ it("inherits robots defaults and honors document-level noindex/nofollow override
 
   const overridden = await buildSeoMetadata({
     siteId: "site-proti",
-    locale: "us-en",
+    locale: "en-us",
     publicPath: "/private",
     title: "Private",
     seo: {
@@ -159,7 +159,7 @@ it("inherits robots defaults and honors document-level noindex/nofollow override
 it("emits Blog article Open Graph fields, absolute Author URLs, and cleaned tags", async () => {
   const metadata = await buildSeoMetadata({
     siteId: "site-proti",
-    locale: "us-en",
+    locale: "en-us",
     publicPath: "/blog/nutrition",
     title: "Nutrition",
     type: "article",
@@ -181,7 +181,7 @@ it("emits Blog article Open Graph fields, absolute Author URLs, and cleaned tags
 it("uses SEO image override before content and Site defaults", async () => {
   const metadata = await buildSeoMetadata({
     siteId: "site-proti",
-    locale: "us-en",
+    locale: "en-us",
     publicPath: "/blog/nutrition",
     title: "Nutrition",
     imageUrl: "/content-image.jpg",
@@ -210,7 +210,7 @@ it("uses SEO image override before content and Site defaults", async () => {
 it("uses the hotspot-aware Site social preset as the final image fallback", async () => {
   const metadata = await buildSeoMetadata({
     siteId: "site-proti",
-    locale: "us-en",
+    locale: "en-us",
     publicPath: "/page",
     title: "Page",
   });
@@ -238,7 +238,7 @@ it("uses http for localhost Site domains", async () => {
 
   const metadata = await buildSeoMetadata({
     siteId: "site-proti",
-    locale: "us-en",
+    locale: "en-us",
     publicPath: "/page",
     title: "Page",
   });
@@ -252,7 +252,7 @@ it("returns empty metadata when the Site SEO record cannot be resolved", async (
   await expect(
     buildSeoMetadata({
       siteId: "missing",
-      locale: "us-en",
+      locale: "en-us",
       publicPath: "/",
     }),
   ).resolves.toEqual({});
@@ -261,7 +261,7 @@ it("returns empty metadata when the Site SEO record cannot be resolved", async (
 it("suppresses hreflang when an explicit canonical points away from the public route", async () => {
   const metadata = await buildSeoMetadata({
     siteId: "site-proti",
-    locale: "us-en",
+    locale: "en-us",
     publicPath: "/products/widget",
     title: "Widget",
     seo: {
@@ -269,7 +269,7 @@ it("suppresses hreflang when an explicit canonical points away from the public r
     },
     languageAlternates: {
       "en-US": "https://example.com/products/widget",
-      "es-US": "https://example.com/us-es/products/widget",
+      "es-US": "https://example.com/es-us/products/widget",
       "x-default": "https://example.com/products/widget",
     },
   });

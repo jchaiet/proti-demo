@@ -23,6 +23,7 @@ const REVERSE_DEPENDENCY_TYPES = [
   "page",
   "blog",
   "singleton",
+  "modal",
   "navigationHeader",
   "navigationFooter",
   "navigationSet",
@@ -480,6 +481,19 @@ async function addSnapshotPath(
       break;
     }
 
+    case "modal": {
+      /*
+       * ModalRegistry is mounted by SiteLayout, so a Modal document is part of
+       * every public route for its Site. Keep the invalidation intentionally
+       * broad until the registry is narrowed to route-specific Modal IDs.
+       */
+      for (const path of buildAllSitePublicPaths(index)) {
+        paths.add(path);
+      }
+
+      break;
+    }
+
     case "site": {
       for (const path of buildAllSitePublicPaths(index, snapshot)) {
         paths.add(path);
@@ -915,7 +929,6 @@ export async function resolveRevalidationPlan(
   }
 
   if (document._type === "site") {
-    paths.add("/api/search");
     paths.add("/robots.txt");
   }
 

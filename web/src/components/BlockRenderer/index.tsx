@@ -28,15 +28,16 @@ export interface BlockRendererContext {
   locale: string;
   localePrefix?: string;
   visualEditing?: boolean;
+  searchParams?: Record<string, string | string[] | undefined>;
 }
 
 type Props = {
-  blocks?: CmsBlock[];
+  blocks?: CmsBlock[] | null;
   context: BlockRendererContext;
 };
 
-export async function BlockRenderer({ blocks = [], context }: Props) {
-  if (!blocks.length) {
+export async function BlockRenderer({ blocks, context }: Props) {
+  if (!blocks?.length) {
     return null;
   }
 

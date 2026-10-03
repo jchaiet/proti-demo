@@ -20,7 +20,7 @@ export const SEARCH_SITE_SETTINGS_QUERY = `
 
 export const SEARCH_CONTENT_QUERY = `
   *[
-    _type in ["page", "blog"] &&
+    _type in ["page", "article", "blog", "news", "resource"] &&
     site._ref == $siteId &&
     locale == $locale
   ]{
@@ -36,23 +36,35 @@ export const SEARCH_CONTENT_QUERY = `
       canonicalUrl
     },
 
+    "summary": coalesce(
+      summary,
+      excerpt,
+      description
+    ),
+
+    "slug": select(
+      _type == "page" => slug,
+      slug.current
+    ),
+
+    "publishedAt": coalesce(
+      publishedAt,
+      publishDate,
+      date
+    ),
+
+    fileType,
+    fileSize,
+
     _type == "page" => {
-      slug,
       isHomepage,
 
       "parentId":
         parent._ref
     },
 
-    _type == "blog" => {
-      summary,
-
-      "slug":
-        slug.current,
-
-      publishedAt,
-
-      "image": {
+    "image": select(
+      defined(mainImage.asset) => {
         "asset": mainImage.asset,
         "crop": mainImage.crop,
         "hotspot": mainImage.hotspot,
@@ -62,40 +74,60 @@ export const SEARCH_CONTENT_QUERY = `
         )
       },
 
-      author->{
-        _id,
-
-        "name": coalesce(
-          translations[
-            locale == $locale
-          ][0].name,
-          name
-        ),
-
-        "jobTitle": coalesce(
-          translations[
-            locale == $locale
-          ][0].jobTitle,
-          jobTitle
+      defined(image.asset) => {
+        "asset": image.asset,
+        "crop": image.crop,
+        "hotspot": image.hotspot,
+        "alt": coalesce(
+          image.alt,
+          ""
         )
       },
 
-      taxonomy[]->{
-        _id,
-
-        "title": coalesce(
-          translations[
-            locale == $locale
-          ][0].title,
-          title
-        ),
-
-        "slug":
-          slug.current,
-
-        "parentId":
-          parent._ref
+      defined(thumbnail.asset) => {
+        "asset": thumbnail.asset,
+        "crop": thumbnail.crop,
+        "hotspot": thumbnail.hotspot,
+        "alt": coalesce(
+          thumbnail.alt,
+          ""
+        )
       }
+    ),
+
+    author->{
+      _id,
+
+      "name": coalesce(
+        translations[
+          locale == $locale
+        ][0].name,
+        name
+      ),
+
+      "jobTitle": coalesce(
+        translations[
+          locale == $locale
+        ][0].jobTitle,
+        jobTitle
+      )
+    },
+
+    taxonomy[]->{
+      _id,
+
+      "title": coalesce(
+        translations[
+          locale == $locale
+        ][0].title,
+        title
+      ),
+
+      "slug":
+        slug.current,
+
+      "parentId":
+        parent._ref
     },
 
     sections[]{
@@ -107,14 +139,14 @@ export const SEARCH_CONTENT_QUERY = `
         "singleton": select(
           singleton->site._ref == $siteId &&
           singleton->locale == $locale => singleton->{
-          _id,
-          title,
-          key,
-          locale,
+            _id,
+            title,
+            key,
+            locale,
 
-          "component": component[0]{
-            ...
-          }
+            "component": component[0]{
+              ...
+            }
           }
         )
       }

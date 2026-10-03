@@ -134,6 +134,8 @@ export function BlogTaxonomyTemplate({
   const filterOptions = getFilterOptions(page);
 
   const mapped: MappedDocumentListBlock = {
+    sourceMode: "manual",
+
     props: {
       eyebrow: "Blog",
       title: page.taxonomy.title,

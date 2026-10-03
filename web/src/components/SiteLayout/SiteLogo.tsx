@@ -1,3 +1,5 @@
+import Image from "next/image";
+
 import type { MappedNavigationLogo } from "@/cms/mappers/navigation";
 
 import styles from "./styles.module.css";
@@ -17,7 +19,15 @@ export function SiteLogo({ logo, href }: SiteLogoProps) {
       aria-label={`${accessibleLabel} home`}
     >
       {logo.src ? (
-        <img src={logo.src} alt={logo.alt} className={styles.logoImage} />
+        <Image
+          src={logo.src}
+          alt={logo.alt}
+          width={180}
+          height={40}
+          className={styles.logoImage}
+          loading="eager"
+          unoptimized
+        />
       ) : (
         <span className={styles.logoText}>{logo.text}</span>
       )}

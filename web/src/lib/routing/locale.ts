@@ -41,26 +41,41 @@ export function segmentsToPath(segments: string[]): string {
 }
 
 export function siteLocaleToLanguageTag(locale: string): string {
-  const parts = locale.split("-").filter(Boolean);
+  const normalized = locale.trim().toLowerCase();
 
   /*
-   * Proti Site locale codes use region-language ordering:
+   * Proti Site locale codes use standard BCP 47 language-region ordering:
    *
-   * us-en -> en-US
-   * us-es -> es-US
-   * ca-fr -> fr-CA
+   * en-us -> en-US
+   * es-us -> es-US
+   * fr-ca -> fr-CA
    *
-   * A single-part code such as "en" remains valid as-is.
+   * Keep these legacy aliases temporarily while older fixtures/content are
+   * being migrated.
    */
-  if (parts.length === 2) {
-    const [region, language] = parts;
+  const legacyLocaleMap: Record<string, string> = {
+    "us-en": "en-US",
+    "us-es": "es-US",
+    "ca-fr": "fr-CA",
+  };
 
-    if (region && language) {
+  const legacyTag = legacyLocaleMap[normalized];
+
+  if (legacyTag) {
+    return legacyTag;
+  }
+
+  const parts = normalized.split("-").filter(Boolean);
+
+  if (parts.length === 2) {
+    const [language, region] = parts;
+
+    if (language && region) {
       return `${language.toLowerCase()}-${region.toUpperCase()}`;
     }
   }
 
-  return locale || "en";
+  return normalized || "en";
 }
 
 export function resolveLocaleCodeFromPathname({

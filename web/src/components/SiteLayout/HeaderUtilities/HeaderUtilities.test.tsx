@@ -15,11 +15,11 @@ import { HeaderUtilities } from "./HeaderUtilities";
 
 const locales = [
   {
-    code: "us-en",
+    code: "en-us",
     label: "English",
   },
   {
-    code: "us-es",
+    code: "es-us",
     label: "Spanish",
   },
 ];
@@ -33,16 +33,16 @@ describe("HeaderUtilities language selector", () => {
   it("shows the currently-selected language code", () => {
     render(
       <HeaderUtilities
-        locale="us-en"
-        defaultLocale="us-en"
+        locale="en-us"
+        defaultLocale="en-us"
         locales={locales}
         localeHrefs={{
-          "us-en": "/products/widget",
-          "us-es": "/us-es/products/widget",
+          "en-us": "/products/widget",
+          "es-us": "/es-us/products/widget",
         }}
         localeHomeHrefs={{
-          "us-en": "/",
-          "us-es": "/us-es",
+          "en-us": "/",
+          "es-us": "/es-us",
         }}
       />,
     );
@@ -57,16 +57,16 @@ describe("HeaderUtilities language selector", () => {
   it("uses an exact translated equivalent when one exists", () => {
     render(
       <HeaderUtilities
-        locale="us-en"
-        defaultLocale="us-en"
+        locale="en-us"
+        defaultLocale="en-us"
         locales={locales}
         localeHrefs={{
-          "us-en": "/products/widget",
-          "us-es": "/us-es/products/widget",
+          "en-us": "/products/widget",
+          "es-us": "/es-us/products/widget",
         }}
         localeHomeHrefs={{
-          "us-en": "/",
-          "us-es": "/us-es",
+          "en-us": "/",
+          "es-us": "/es-us",
         }}
       />,
     );
@@ -83,21 +83,21 @@ describe("HeaderUtilities language selector", () => {
           name: "ES",
         })
         .getAttribute("href"),
-    ).toBe("/us-es/products/widget");
+    ).toBe("/es-us/products/widget");
   });
 
   it("falls back to the target locale Homepage when the exact translation is missing", () => {
     render(
       <HeaderUtilities
-        locale="us-en"
-        defaultLocale="us-en"
+        locale="en-us"
+        defaultLocale="en-us"
         locales={locales}
         localeHrefs={{
-          "us-en": "/products/widget",
+          "en-us": "/products/widget",
         }}
         localeHomeHrefs={{
-          "us-en": "/",
-          "us-es": "/us-es",
+          "en-us": "/",
+          "es-us": "/es-us",
         }}
       />,
     );
@@ -114,20 +114,20 @@ describe("HeaderUtilities language selector", () => {
           name: "ES",
         })
         .getAttribute("href"),
-    ).toBe("/us-es");
+    ).toBe("/es-us");
   });
 
   it("hides the language selector when no alternate translation or Homepage exists", () => {
     render(
       <HeaderUtilities
-        locale="us-en"
-        defaultLocale="us-en"
+        locale="en-us"
+        defaultLocale="en-us"
         locales={locales}
         localeHrefs={{
-          "us-en": "/products/widget",
+          "en-us": "/products/widget",
         }}
         localeHomeHrefs={{
-          "us-en": "/",
+          "en-us": "/",
         }}
       />,
     );
@@ -144,15 +144,15 @@ describe("HeaderUtilities language selector", () => {
 
     render(
       <HeaderUtilities
-        locale="us-en"
-        defaultLocale="us-en"
+        locale="en-us"
+        defaultLocale="en-us"
         locales={locales}
         localeHrefs={{
-          "us-en": "/products/widget",
+          "en-us": "/products/widget",
         }}
         localeHomeHrefs={{
-          "us-en": "/",
-          "us-es": "/us-es",
+          "en-us": "/",
+          "es-us": "/es-us",
         }}
       />,
     );
@@ -169,7 +169,42 @@ describe("HeaderUtilities language selector", () => {
           name: "ES",
         })
         .getAttribute("href"),
-    ).toBe("/us-es?q=nutrition&page=2");
+    ).toBe("/es-us?q=nutrition&page=2");
+  });
+
+  it("preserves the authored Search page when switching locales", () => {
+    navigation.pathname = "/search";
+    navigation.queryString = "q=nutrition&page=2";
+
+    render(
+      <HeaderUtilities
+        locale="en-us"
+        defaultLocale="en-us"
+        locales={locales}
+        localeHrefs={{
+          "en-us": "/search",
+          "es-us": "/es-us/search",
+        }}
+        localeHomeHrefs={{
+          "en-us": "/",
+          "es-us": "/es-us",
+        }}
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /current language: en/i,
+      }),
+    );
+
+    expect(
+      screen
+        .getByRole("menuitem", {
+          name: "ES",
+        })
+        .getAttribute("href"),
+    ).toBe("/es-us/search?q=nutrition&page=2");
   });
 
   it("uses an exact generated Author locale route when provided", () => {
@@ -177,16 +212,16 @@ describe("HeaderUtilities language selector", () => {
 
     render(
       <HeaderUtilities
-        locale="us-en"
-        defaultLocale="us-en"
+        locale="en-us"
+        defaultLocale="en-us"
         locales={locales}
         localeHrefs={{
-          "us-en": "/authors/jane-smith",
-          "us-es": "/us-es/authors/jane-smith",
+          "en-us": "/authors/jane-smith",
+          "es-us": "/es-us/authors/jane-smith",
         }}
         localeHomeHrefs={{
-          "us-en": "/",
-          "us-es": "/us-es",
+          "en-us": "/",
+          "es-us": "/es-us",
         }}
       />,
     );
@@ -203,7 +238,7 @@ describe("HeaderUtilities language selector", () => {
           name: "ES",
         })
         .getAttribute("href"),
-    ).toBe("/us-es/authors/jane-smith");
+    ).toBe("/es-us/authors/jane-smith");
   });
 
   it("uses an exact generated Taxonomy locale route when provided", () => {
@@ -211,16 +246,16 @@ describe("HeaderUtilities language selector", () => {
 
     render(
       <HeaderUtilities
-        locale="us-en"
-        defaultLocale="us-en"
+        locale="en-us"
+        defaultLocale="en-us"
         locales={locales}
         localeHrefs={{
-          "us-en": "/blog/topics/nutrition",
-          "us-es": "/us-es/blog/topics/nutrition",
+          "en-us": "/blog/topics/nutrition",
+          "es-us": "/es-us/blog/topics/nutrition",
         }}
         localeHomeHrefs={{
-          "us-en": "/",
-          "us-es": "/us-es",
+          "en-us": "/",
+          "es-us": "/es-us",
         }}
       />,
     );
@@ -237,37 +272,37 @@ describe("HeaderUtilities language selector", () => {
           name: "ES",
         })
         .getAttribute("href"),
-    ).toBe("/us-es/blog/topics/nutrition");
+    ).toBe("/es-us/blog/topics/nutrition");
   });
 
   it("shows ES as selected when the active locale is Spanish", () => {
-    navigation.pathname = "/us-es/products/widget";
+    navigation.pathname = "/es-us/products/widget";
 
     render(
       <HeaderUtilities
-        locale="us-es"
-        defaultLocale="us-en"
+        locale="es-us"
+        defaultLocale="en-us"
         locales={locales}
         localeHrefs={{
-          "us-en": "/products/widget",
-          "us-es": "/us-es/products/widget",
+          "en-us": "/products/widget",
+          "es-us": "/es-us/products/widget",
         }}
         localeHomeHrefs={{
-          "us-en": "/",
-          "us-es": "/us-es",
+          "en-us": "/",
+          "es-us": "/es-us",
         }}
       />,
     );
 
     expect(
       screen.getByRole("button", {
-        name: /current language: es/i,
+        name: /idioma actual: es/i,
       }),
     ).toBeTruthy();
 
     fireEvent.click(
       screen.getByRole("button", {
-        name: /current language: es/i,
+        name: /idioma actual: es/i,
       }),
     );
 
@@ -278,5 +313,42 @@ describe("HeaderUtilities language selector", () => {
         })
         .getAttribute("href"),
     ).toBe("/products/widget");
+  });
+  it("localizes utility accessibility labels for Spanish", () => {
+    navigation.pathname = "/es-us/search";
+
+    render(
+      <HeaderUtilities
+        locale="es-us"
+        defaultLocale="en-us"
+        locales={locales}
+        localeHrefs={{
+          "en-us": "/search",
+          "es-us": "/es-us/search",
+        }}
+        localeHomeHrefs={{
+          "en-us": "/",
+          "es-us": "/es-us",
+        }}
+      />,
+    );
+
+    expect(
+      screen.getByRole("link", {
+        name: "Buscar",
+      }),
+    ).toBeTruthy();
+
+    const languageButton = screen.getByRole("button", {
+      name: /idioma actual: es/i,
+    });
+
+    fireEvent.click(languageButton);
+
+    expect(
+      screen.getByRole("menu", {
+        name: "Idiomas disponibles",
+      }),
+    ).toBeTruthy();
   });
 });

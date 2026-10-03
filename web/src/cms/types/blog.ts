@@ -40,6 +40,7 @@ export interface CmsBlog {
 
   title: string;
   summary?: string;
+  showSummaryInArticle?: boolean;
 
   slug: string;
   publishedAt?: string;

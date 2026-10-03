@@ -12,27 +12,27 @@ describe("public URL helpers", () => {
   it("omits the default locale and prefixes non-default locales", () => {
     expect(
       buildLocalePublicPath({
-        locale: "us-en",
-        defaultLocale: "us-en",
+        locale: "en-us",
+        defaultLocale: "en-us",
         path: "/products/widget/",
       }),
     ).toBe("/products/widget");
 
     expect(
       buildLocalePublicPath({
-        locale: "us-es",
-        defaultLocale: "us-en",
+        locale: "es-us",
+        defaultLocale: "en-us",
         path: "/products/widget/",
       }),
-    ).toBe("/us-es/products/widget");
+    ).toBe("/es-us/products/widget");
 
     expect(
       buildLocalePublicPath({
-        locale: "us-es",
-        defaultLocale: "us-en",
+        locale: "es-us",
+        defaultLocale: "en-us",
         path: "/",
       }),
-    ).toBe("/us-es");
+    ).toBe("/es-us");
   });
 
   it("uses https for public hosts and http for local development hosts", () => {
@@ -44,18 +44,18 @@ describe("public URL helpers", () => {
     expect(
       buildLocaleLinks({
         routePath: "/products/widget",
-        defaultLocale: "us-en",
-        locales: [{ code: "us-en" }, { code: "us-es" }],
+        defaultLocale: "en-us",
+        locales: [{ code: "en-us" }, { code: "es-us" }],
         domains: ["example.com"],
       }),
     ).toEqual({
       localeHrefs: {
-        "us-en": "/products/widget",
-        "us-es": "/us-es/products/widget",
+        "en-us": "/products/widget",
+        "es-us": "/es-us/products/widget",
       },
       languageAlternates: {
         "en-US": "https://example.com/products/widget",
-        "es-US": "https://example.com/us-es/products/widget",
+        "es-US": "https://example.com/es-us/products/widget",
         "x-default": "https://example.com/products/widget",
       },
     });
@@ -65,9 +65,9 @@ describe("public URL helpers", () => {
     expect(
       buildLocaleLinks({
         routePath: "/products/widget",
-        defaultLocale: "us-en",
-        locales: [{ code: "us-en" }, { code: "us-es" }],
-        availableLocales: ["us-en"],
+        defaultLocale: "en-us",
+        locales: [{ code: "en-us" }, { code: "es-us" }],
+        availableLocales: ["en-us"],
         domains: ["example.com"],
       }).languageAlternates,
     ).toEqual({

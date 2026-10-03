@@ -58,7 +58,6 @@ import {
   getAuthorSlug,
   getBlogSlug,
   getBlogTaxonomySegments,
-  isSearchRoute,
   resolveRoute,
 } from "./route";
 
@@ -71,10 +70,7 @@ beforeEach(() => {
 });
 
 describe("route shape helpers", () => {
-  it("recognizes reserved application and content route shapes", () => {
-    expect(isSearchRoute(["search"])).toBe(true);
-    expect(isSearchRoute(["search", "extra"])).toBe(false);
-
+  it("recognizes reserved content route shapes", () => {
     expect(getAuthorSlug(["authors", "jane-doe"])).toBe("jane-doe");
     expect(getAuthorSlug(["authors"])).toBeNull();
 
@@ -93,7 +89,7 @@ describe("resolveRoute", () => {
     await expect(
       resolveRoute({
         siteId: "",
-        locale: "us-en",
+        locale: "en-us",
         segments: [],
       }),
     ).resolves.toEqual({ type: "notFound" });
@@ -111,7 +107,7 @@ describe("resolveRoute", () => {
     await expect(
       resolveRoute({
         siteId: "site-a",
-        locale: "us-en",
+        locale: "en-us",
         segments: ["search"],
       }),
     ).resolves.toEqual({
@@ -133,7 +129,7 @@ describe("resolveRoute", () => {
     await expect(
       resolveRoute({
         siteId: "site-a",
-        locale: "us-en",
+        locale: "en-us",
         segments: ["products", "widget"],
         explicitDefaultLocale: true,
       }),
@@ -144,34 +140,59 @@ describe("resolveRoute", () => {
 
     expect(mocks.resolveRedirect).toHaveBeenCalledWith({
       siteId: "site-a",
-      locale: "us-en",
+      locale: "en-us",
       sourcePath: "/products/widget",
       localePrefix: "",
     });
     expect(mocks.resolvePageBySegments).not.toHaveBeenCalled();
   });
 
-  it("reserves /search for the application route before Page resolution", async () => {
-    mocks.resolvePageBySegments.mockResolvedValueOnce({
+  it("resolves /search exactly like any other authored Page", async () => {
+    const searchPage = {
       _id: "page-search",
       title: "Search",
-      locale: "us-en",
-    });
+      locale: "en-us",
+    } as ResolvedPage;
+
+    mocks.resolvePageBySegments.mockResolvedValueOnce(searchPage);
 
     await expect(
       resolveRoute({
         siteId: "site-a",
-        locale: "us-en",
+        locale: "en-us",
         segments: ["search"],
       }),
-    ).resolves.toEqual({ type: "search" });
+    ).resolves.toEqual({
+      type: "page",
+      page: searchPage,
+    });
 
-    expect(mocks.resolvePageBySegments).not.toHaveBeenCalled();
+    expect(mocks.resolvePageBySegments).toHaveBeenCalledWith(
+      "site-a",
+      "en-us",
+      ["search"],
+    );
+  });
+
+  it("returns notFound when the authored /search Page does not exist", async () => {
+    await expect(
+      resolveRoute({
+        siteId: "site-a",
+        locale: "en-us",
+        segments: ["search"],
+      }),
+    ).resolves.toEqual({ type: "notFound" });
+
+    expect(mocks.resolvePageBySegments).toHaveBeenCalledWith(
+      "site-a",
+      "en-us",
+      ["search"],
+    );
   });
 
   it("resolves Author routes within the requested Site and Locale", async () => {
     const authorPage = {
-      locale: "us-es",
+      locale: "es-us",
       author: {
         _id: "author-1",
         _type: "author" as const,
@@ -187,9 +208,9 @@ describe("resolveRoute", () => {
     await expect(
       resolveRoute({
         siteId: "site-a",
-        locale: "us-es",
+        locale: "es-us",
         segments: ["authors", "jane-doe"],
-        localePrefix: "/us-es",
+        localePrefix: "/es-us",
       }),
     ).resolves.toEqual({
       type: "author",
@@ -198,14 +219,14 @@ describe("resolveRoute", () => {
 
     expect(mocks.getAuthorPage).toHaveBeenCalledWith({
       siteId: "site-a",
-      locale: "us-es",
+      locale: "es-us",
       slug: "jane-doe",
     });
     expect(mocks.resolveRedirect).toHaveBeenCalledWith({
       siteId: "site-a",
-      locale: "us-es",
+      locale: "es-us",
       sourcePath: "/authors/jane-doe",
-      localePrefix: "/us-es",
+      localePrefix: "/es-us",
     });
     expect(mocks.resolvePageBySegments).not.toHaveBeenCalled();
   });
@@ -214,7 +235,7 @@ describe("resolveRoute", () => {
     await expect(
       resolveRoute({
         siteId: "site-a",
-        locale: "us-en",
+        locale: "en-us",
         segments: ["authors", "missing"],
       }),
     ).resolves.toEqual({ type: "notFound" });
@@ -238,7 +259,7 @@ describe("resolveRoute", () => {
     await expect(
       resolveRoute({
         siteId: "site-a",
-        locale: "us-es",
+        locale: "es-us",
         segments: ["blog", "conditions", "nutrition"],
       }),
     ).resolves.toEqual({
@@ -248,7 +269,7 @@ describe("resolveRoute", () => {
 
     expect(mocks.getBlogTaxonomyPage).toHaveBeenCalledWith({
       siteId: "site-a",
-      locale: "us-es",
+      locale: "es-us",
       segments: ["conditions", "nutrition"],
     });
     expect(mocks.getBlogBySlug).not.toHaveBeenCalled();
@@ -259,7 +280,7 @@ describe("resolveRoute", () => {
     await expect(
       resolveRoute({
         siteId: "site-a",
-        locale: "us-en",
+        locale: "en-us",
         segments: ["blog", "conditions", "missing"],
       }),
     ).resolves.toEqual({ type: "notFound" });
@@ -272,7 +293,7 @@ describe("resolveRoute", () => {
       _id: "blog-1",
       _type: "blog" as const,
       siteId: "site-a",
-      locale: "us-es",
+      locale: "es-us",
       title: "Artículo",
       slug: "article",
     };
@@ -282,7 +303,7 @@ describe("resolveRoute", () => {
     await expect(
       resolveRoute({
         siteId: "site-a",
-        locale: "us-es",
+        locale: "es-us",
         segments: ["blog", "article"],
       }),
     ).resolves.toEqual({
@@ -292,7 +313,7 @@ describe("resolveRoute", () => {
 
     expect(mocks.getBlogBySlug).toHaveBeenCalledWith({
       siteId: "site-a",
-      locale: "us-es",
+      locale: "es-us",
       slug: "article",
     });
     expect(mocks.resolvePageBySegments).not.toHaveBeenCalled();
@@ -303,7 +324,7 @@ describe("resolveRoute", () => {
       _id: "blog-topics",
       _type: "blog" as const,
       siteId: "site-a",
-      locale: "us-en",
+      locale: "en-us",
       title: "Topics",
       slug: "topics",
     };
@@ -313,7 +334,7 @@ describe("resolveRoute", () => {
     await expect(
       resolveRoute({
         siteId: "site-a",
-        locale: "us-en",
+        locale: "en-us",
         segments: ["blog", "topics"],
       }),
     ).resolves.toEqual({
@@ -328,7 +349,7 @@ describe("resolveRoute", () => {
     await expect(
       resolveRoute({
         siteId: "site-a",
-        locale: "us-en",
+        locale: "en-us",
         segments: ["blog", "missing"],
       }),
     ).resolves.toEqual({ type: "notFound" });
@@ -340,8 +361,9 @@ describe("resolveRoute", () => {
     const homepage = {
       _id: "home",
       title: "Home",
-      locale: "us-en",
+      locale: "en-us",
       isHomepage: true,
+      sections: [],
     };
 
     mocks.resolvePageBySegments.mockResolvedValueOnce(homepage);
@@ -349,7 +371,7 @@ describe("resolveRoute", () => {
     await expect(
       resolveRoute({
         siteId: "site-a",
-        locale: "us-en",
+        locale: "en-us",
         segments: [],
       }),
     ).resolves.toEqual({
@@ -359,15 +381,16 @@ describe("resolveRoute", () => {
 
     expect(mocks.resolvePageBySegments).toHaveBeenLastCalledWith(
       "site-a",
-      "us-en",
+      "en-us",
       [],
     );
 
     const nestedPage = {
       _id: "widget",
       title: "Widget",
-      locale: "us-es",
+      locale: "es-us",
       slug: "widget",
+      sections: [],
     };
 
     mocks.resolvePageBySegments.mockResolvedValueOnce(nestedPage);
@@ -375,7 +398,7 @@ describe("resolveRoute", () => {
     await expect(
       resolveRoute({
         siteId: "site-a",
-        locale: "us-es",
+        locale: "es-us",
         segments: ["products", "widget"],
       }),
     ).resolves.toEqual({
@@ -385,7 +408,7 @@ describe("resolveRoute", () => {
 
     expect(mocks.resolvePageBySegments).toHaveBeenLastCalledWith(
       "site-a",
-      "us-es",
+      "es-us",
       ["products", "widget"],
     );
   });
@@ -394,7 +417,7 @@ describe("resolveRoute", () => {
     await expect(
       resolveRoute({
         siteId: "site-a",
-        locale: "us-en",
+        locale: "en-us",
         segments: ["does-not-exist"],
       }),
     ).resolves.toEqual({ type: "notFound" });

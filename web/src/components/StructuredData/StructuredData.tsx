@@ -12,7 +12,9 @@ function removeContext(item: JsonLdObject): JsonLdObject {
    * The StructuredData component owns the single shared
    * Schema.org context for the entire graph.
    */
-  const { ["@context"]: _context, ...node } = item;
+  const node = { ...item };
+
+  delete node["@context"];
 
   return node;
 }

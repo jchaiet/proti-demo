@@ -11,7 +11,7 @@ vi.mock("next/navigation", () => ({
 
 import { HtmlLanguageSync } from "./HtmlLanguageSync";
 
-const locales = ["us-en", "us-es", "ca-fr"];
+const locales = ["en-us", "es-us", "fr-ca"];
 
 beforeEach(() => {
   navigation.pathname = "/";
@@ -20,29 +20,29 @@ beforeEach(() => {
 
 describe("HtmlLanguageSync", () => {
   it("sets the default locale language tag on an unprefixed route", () => {
-    render(<HtmlLanguageSync defaultLocale="us-en" locales={locales} />);
+    render(<HtmlLanguageSync defaultLocale="en-us" locales={locales} />);
 
     expect(document.documentElement.lang).toBe("en-US");
   });
 
   it("sets the localized language tag on a prefixed route", () => {
-    navigation.pathname = "/us-es/products/widget";
+    navigation.pathname = "/es-us/products/widget";
 
-    render(<HtmlLanguageSync defaultLocale="us-en" locales={locales} />);
+    render(<HtmlLanguageSync defaultLocale="en-us" locales={locales} />);
 
     expect(document.documentElement.lang).toBe("es-US");
   });
 
   it("updates the html language after client-side locale navigation", () => {
     const { rerender } = render(
-      <HtmlLanguageSync defaultLocale="us-en" locales={locales} />,
+      <HtmlLanguageSync defaultLocale="en-us" locales={locales} />,
     );
 
     expect(document.documentElement.lang).toBe("en-US");
 
-    navigation.pathname = "/ca-fr/blog/example";
+    navigation.pathname = "/fr-ca/blog/example";
 
-    rerender(<HtmlLanguageSync defaultLocale="us-en" locales={locales} />);
+    rerender(<HtmlLanguageSync defaultLocale="en-us" locales={locales} />);
 
     expect(document.documentElement.lang).toBe("fr-CA");
   });

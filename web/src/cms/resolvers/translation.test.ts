@@ -31,10 +31,10 @@ describe("resolveDocumentTranslations - Page", () => {
       domains: ["example.com"],
       locales: [
         {
-          code: "us-en",
+          code: "en-us",
         },
         {
-          code: "us-es",
+          code: "es-us",
         },
       ],
     });
@@ -43,25 +43,25 @@ describe("resolveDocumentTranslations - Page", () => {
 
     mocks.resolvePageIdBySegments.mockImplementation(
       async (_siteId: string, locale: string) =>
-        locale === "us-en" ? "page-en" : "page-es",
+        locale === "en-us" ? "page-en" : "page-es",
     );
 
     const result = await resolveDocumentTranslations({
       siteId: "site-proti",
       documentId: "page-en",
       documentType: "page",
-      defaultLocale: "us-en",
+      defaultLocale: "en-us",
       domains: ["example.com"],
     });
 
     expect(result.localeHrefs).toEqual({
-      "us-en": "/products/widget",
-      "us-es": "/us-es/products/widget",
+      "en-us": "/products/widget",
+      "es-us": "/es-us/products/widget",
     });
 
     expect(result.languageAlternates).toEqual({
       "en-US": "https://example.com/products/widget",
-      "es-US": "https://example.com/us-es/products/widget",
+      "es-US": "https://example.com/es-us/products/widget",
       "x-default": "https://example.com/products/widget",
     });
   });
@@ -71,10 +71,10 @@ describe("resolveDocumentTranslations - Page", () => {
       domains: ["example.com"],
       locales: [
         {
-          code: "us-en",
+          code: "en-us",
         },
         {
-          code: "us-es",
+          code: "es-us",
         },
       ],
     });
@@ -83,19 +83,19 @@ describe("resolveDocumentTranslations - Page", () => {
 
     mocks.resolvePageIdBySegments.mockImplementation(
       async (_siteId: string, locale: string) =>
-        locale === "us-en" ? "page-en" : null,
+        locale === "en-us" ? "page-en" : null,
     );
 
     const result = await resolveDocumentTranslations({
       siteId: "site-proti",
       documentId: "page-en",
       documentType: "page",
-      defaultLocale: "us-en",
+      defaultLocale: "en-us",
       domains: ["example.com"],
     });
 
     expect(result.localeHrefs).toEqual({
-      "us-en": "/products/widget",
+      "en-us": "/products/widget",
     });
 
     expect(result.languageAlternates).toEqual({
@@ -103,7 +103,7 @@ describe("resolveDocumentTranslations - Page", () => {
       "x-default": "https://example.com/products/widget",
     });
 
-    expect(result.localeHrefs["us-es"]).toBeUndefined();
+    expect(result.localeHrefs["es-us"]).toBeUndefined();
     expect(result.languageAlternates["es-US"]).toBeUndefined();
   });
 });
@@ -115,10 +115,10 @@ describe("resolveDocumentTranslations - Blog", () => {
         domains: ["example.com"],
         locales: [
           {
-            code: "us-en",
+            code: "en-us",
           },
           {
-            code: "us-es",
+            code: "es-us",
           },
         ],
       })
@@ -136,18 +136,18 @@ describe("resolveDocumentTranslations - Blog", () => {
       siteId: "site-proti",
       documentId: "blog-en",
       documentType: "blog",
-      defaultLocale: "us-en",
+      defaultLocale: "en-us",
       domains: ["example.com"],
     });
 
     expect(result.localeHrefs).toEqual({
-      "us-en": "/blog/nutrition-basics",
-      "us-es": "/us-es/blog/nutrition-basics",
+      "en-us": "/blog/nutrition-basics",
+      "es-us": "/es-us/blog/nutrition-basics",
     });
 
     expect(result.languageAlternates).toEqual({
       "en-US": "https://example.com/blog/nutrition-basics",
-      "es-US": "https://example.com/us-es/blog/nutrition-basics",
+      "es-US": "https://example.com/es-us/blog/nutrition-basics",
       "x-default": "https://example.com/blog/nutrition-basics",
     });
   });
@@ -158,10 +158,10 @@ describe("resolveDocumentTranslations - Blog", () => {
         domains: ["example.com"],
         locales: [
           {
-            code: "us-en",
+            code: "en-us",
           },
           {
-            code: "us-es",
+            code: "es-us",
           },
         ],
       })
@@ -177,12 +177,12 @@ describe("resolveDocumentTranslations - Blog", () => {
       siteId: "site-proti",
       documentId: "blog-en",
       documentType: "blog",
-      defaultLocale: "us-en",
+      defaultLocale: "en-us",
       domains: ["example.com"],
     });
 
     expect(result.localeHrefs).toEqual({
-      "us-en": "/blog/nutrition-basics",
+      "en-us": "/blog/nutrition-basics",
     });
 
     expect(result.languageAlternates["es-US"]).toBeUndefined();

@@ -1,4 +1,5 @@
 import type { CmsCta } from "../cta";
+import type { CmsCtaGroup } from "../cta-group";
 
 import type { CmsSectionHeading } from "../section-heading";
 
@@ -30,8 +31,15 @@ export interface CmsAccordionBlock {
 
   accordionPosition?: CmsAccordionPosition;
 
+  ctaGroup?: CmsCtaGroup;
+
+  /** @deprecated Read-only compatibility for pre-ctaGroup Sanity documents. */
   ctas?: CmsCta[];
 
+  /** @deprecated Read-only compatibility for pre-ctaGroup Sanity documents. */
+  ctaAlignment?: CmsAccordionAlignment;
+
+  /** @deprecated Read-only compatibility for pre-ctaGroup Sanity documents. */
   ctaStackOnMobile?: boolean;
 
   items?: CmsAccordionItem[];

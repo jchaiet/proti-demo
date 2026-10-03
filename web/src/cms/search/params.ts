@@ -20,7 +20,13 @@ export interface ParsedSearchParams {
 
 export type SearchParamRecord = Record<string, string | string[] | undefined>;
 
-const VALID_TYPES = new Set<SearchContentType>(["page", "blog"]);
+const VALID_TYPES = new Set<SearchContentType>([
+  "page",
+  "article",
+  "blog",
+  "news",
+  "resource",
+]);
 
 const VALID_SORTS = new Set<SearchSort>([
   "relevance",

@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 
 import { usePathname, useSearchParams } from "next/navigation";
 
+import { getAppMessages } from "@/i18n/messages";
+
 import styles from "./styles.module.css";
 
 export interface HeaderLocale {
@@ -93,10 +95,19 @@ function ChevronDownIcon() {
   );
 }
 
+function formatMessage(
+  template: string,
+  values: Record<string, string>,
+): string {
+  return template.replace(/\{(\w+)\}/g, (match, key: string) => {
+    return values[key] ?? match;
+  });
+}
+
 function getLanguageCode(locale: string): string {
   const parts = locale.split("-").filter(Boolean);
 
-  const language = parts.at(-1) ?? locale;
+  const language = parts.at(0) ?? locale;
 
   return language.toUpperCase();
 }
@@ -173,6 +184,8 @@ export function HeaderUtilities({
   const searchParams = useSearchParams();
 
   const queryString = searchParams.toString();
+
+  const uiLabels = getAppMessages(locale).headerUtilities;
 
   const [isLanguageMenuOpen, setIsLanguageMenuOpen] = useState(false);
 
@@ -306,7 +319,9 @@ export function HeaderUtilities({
           ref={languageTriggerRef}
           type="button"
           className={`${styles.utilityButton} ${styles.languageTrigger}`}
-          aria-label={`Current language: ${currentLocaleLabel}. Choose language`}
+          aria-label={formatMessage(uiLabels.currentLanguage, {
+            language: currentLocaleLabel,
+          })}
           aria-haspopup="menu"
           aria-expanded={isLanguageMenuOpen}
           onClick={() => setIsLanguageMenuOpen((open) => !open)}
@@ -330,7 +345,7 @@ export function HeaderUtilities({
           <div
             className={styles.languageMenu}
             role="menu"
-            aria-label="Available languages"
+            aria-label={uiLabels.availableLanguages}
           >
             {availableLocales.map(({ locale: targetLocale, href }) => (
               <a
@@ -355,7 +370,7 @@ export function HeaderUtilities({
       <a
         href={searchHref}
         className={`${styles.utilityButton} ${styles.searchButton}`}
-        aria-label="Search"
+        aria-label={uiLabels.search}
       >
         <span className={styles.utilityIcon}>
           <SearchIcon />

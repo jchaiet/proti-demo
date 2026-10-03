@@ -1,4 +1,5 @@
 import type { CmsCta } from "../cta";
+import type { CmsCtaGroup } from "../cta-group";
 import type { CmsImage } from "../image";
 import type { CmsSectionHeading } from "../section-heading";
 
@@ -57,7 +58,14 @@ export interface CmsContentBlock {
 
   splitMediaPosition?: CmsContentSplitMediaPosition;
 
+  ctaGroup?: CmsCtaGroup;
+
+  /** @deprecated Read-only compatibility for pre-ctaGroup Sanity documents. */
   ctas?: CmsCta[];
 
+  /** @deprecated Read-only compatibility for pre-ctaGroup Sanity documents. */
+  ctaAlignment?: CmsContentAlignment;
+
+  /** @deprecated Read-only compatibility for pre-ctaGroup Sanity documents. */
   ctaStackOnMobile?: boolean;
 }

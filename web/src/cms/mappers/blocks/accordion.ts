@@ -1,7 +1,7 @@
 import type { AccordionBlockProps } from "mino-ui/blocks/AccordionBlock";
 import type { AccordionItem } from "mino-ui/core/Accordion";
 import type { CmsAccordionBlock, CmsAccordionItem } from "@/cms/types";
-import { mapCtas } from "@/cms/mappers/cta";
+import { mapCtaGroup } from "@/cms/mappers/cta-group";
 import { mapSectionHeading } from "@/cms/mappers/section-heading";
 
 function mapAccordionItem(item: CmsAccordionItem): AccordionItem {
@@ -29,7 +29,12 @@ function mapAccordionItems(
 export async function mapAccordionBlock(
   block: CmsAccordionBlock,
 ): Promise<AccordionBlockProps> {
-  const ctas = await mapCtas(block.ctas);
+  const ctaGroup = await mapCtaGroup(block.ctaGroup, {
+    legacyItems: block.ctas,
+    legacyAlignment: block.ctaAlignment,
+    legacyStackOnMobile: block.ctaStackOnMobile,
+    fallbackAlignment: block.alignment ?? "left",
+  });
 
   const heading = mapSectionHeading(block.heading);
 
@@ -44,11 +49,9 @@ export async function mapAccordionBlock(
 
     accordionPosition: block.accordionPosition ?? "right",
 
-    ctas,
+    ctas: ctaGroup.ctas,
 
-    ctaGroupProps: {
-      stackOnMobile: block.ctaStackOnMobile ?? true,
-    },
+    ctaGroupProps: ctaGroup.ctaGroupProps,
 
     accordionProps: {
       items,

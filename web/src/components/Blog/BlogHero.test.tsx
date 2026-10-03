@@ -31,6 +31,46 @@ beforeEach(() => {
 });
 
 describe("BlogHero taxonomy Search links", () => {
+  it("renders the Blog title as the page h1", () => {
+    render(<BlogHero title="Nutrition article" />);
+
+    const props = mocks.heroProps as {
+      headingProps?: {
+        level?: number;
+      };
+    };
+
+    expect(props.headingProps).toMatchObject({
+      level: 1,
+    });
+  });
+
+  it("does not show the Summary in the article hero by default", () => {
+    render(<BlogHero title="Nutrition article" summary="Article summary" />);
+
+    const props = mocks.heroProps as {
+      description?: string;
+    };
+
+    expect(props.description).toBeUndefined();
+  });
+
+  it("shows the Summary when article display is explicitly enabled", () => {
+    render(
+      <BlogHero
+        title="Nutrition article"
+        summary="Article summary"
+        showSummary
+      />,
+    );
+
+    const props = mocks.heroProps as {
+      description?: string;
+    };
+
+    expect(props.description).toBe("Article summary");
+  });
+
   it("links a default-locale taxonomy chip to /search?q=<term>", () => {
     render(
       <BlogHero
@@ -56,7 +96,7 @@ describe("BlogHero taxonomy Search links", () => {
     render(
       <BlogHero
         title="Nutrición"
-        localePrefix="/us-es"
+        localePrefix="/es-us"
         taxonomy={[createTaxonomyTerm("Nutrición", "nutricion")]}
       />,
     );
@@ -67,8 +107,18 @@ describe("BlogHero taxonomy Search links", () => {
 
     expect(props.categories[0]).toMatchObject({
       label: "Nutrición",
-      href: "/us-es/search?q=nutrici%C3%B3n",
+      href: "/es-us/search?q=nutrici%C3%B3n",
     });
+  });
+
+  it("renders without taxonomy when Sanity returns null for an unset array", () => {
+    render(<BlogHero title="Article without tags" taxonomy={null} />);
+
+    const props = mocks.heroProps as {
+      categories: Array<Record<string, unknown>>;
+    };
+
+    expect(props.categories).toEqual([]);
   });
 
   it("normalizes and URL-encodes multi-word taxonomy terms", () => {

@@ -7,6 +7,7 @@ import type { CmsTaxonomyTerm } from "@/cms/types";
 export interface BlogHeroProps {
   title: string;
   summary?: string;
+  showSummary?: boolean;
   publishedDate?: string;
   imageUrl?: string;
   imageAlt?: string;
@@ -14,13 +15,13 @@ export interface BlogHeroProps {
   authorName?: string;
   authorHref?: string;
 
-  taxonomy?: CmsTaxonomyTerm[];
+  taxonomy?: CmsTaxonomyTerm[] | null;
 
   /**
    * Empty for the default locale.
    *
    * Example:
-   * /us-es
+   * /es-us
    */
   localePrefix?: string;
 }
@@ -53,15 +54,16 @@ function getTaxonomySearchHref(
 export function BlogHero({
   title,
   summary,
+  showSummary = false,
   publishedDate,
   imageUrl,
   imageAlt = "",
   authorName,
   authorHref,
-  taxonomy = [],
+  taxonomy,
   localePrefix,
 }: BlogHeroProps) {
-  const categories = taxonomy
+  const categories = (taxonomy ?? [])
     .filter((term) => Boolean(term.title))
     .map((term) => ({
       id: term._id,
@@ -76,7 +78,10 @@ export function BlogHero({
       vAlignment="bottom"
       eyebrow={publishedDate}
       title={title}
-      description={summary}
+      headingProps={{
+        level: 1,
+      }}
+      description={showSummary ? summary : undefined}
       imageSrc={imageUrl}
       imageAlt={imageAlt}
       categories={categories}

@@ -17,6 +17,7 @@ const CTA_PROJECTION = `
   _type,
 
   label,
+  actionType,
   variant,
   size,
   inverted,
@@ -25,6 +26,10 @@ const CTA_PROJECTION = `
 
   link {
     ${LINK_PROJECTION}
+  },
+
+  modal {
+    _ref
   }
 `;
 

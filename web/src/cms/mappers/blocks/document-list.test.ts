@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, expect, it, vi } from "vitest";
 
 import type { CmsDocumentListBlock } from "@/cms/types";
 
@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   mapTestimonialCard: vi.fn(),
   mapSectionHeading: vi.fn(),
   resolveDynamicDocumentList: vi.fn(),
+  searchContent: vi.fn(),
   siteLocaleToLanguageTag: vi.fn(),
 }));
 
@@ -23,6 +24,10 @@ vi.mock("@/cms/mappers/section-heading", () => ({
 
 vi.mock("@/cms/resolvers/document-list", () => ({
   resolveDynamicDocumentList: mocks.resolveDynamicDocumentList,
+}));
+
+vi.mock("@/cms/resolvers/search", () => ({
+  searchContent: mocks.searchContent,
 }));
 
 vi.mock("@/lib/routing/locale", () => ({
@@ -41,6 +46,7 @@ beforeEach(() => {
   mocks.mapTestimonialCard.mockReset();
   mocks.mapSectionHeading.mockReset();
   mocks.resolveDynamicDocumentList.mockReset();
+  mocks.searchContent.mockReset();
   mocks.siteLocaleToLanguageTag.mockReset();
 
   mocks.mapSectionHeading.mockReturnValue({
@@ -49,7 +55,7 @@ beforeEach(() => {
   });
 
   mocks.siteLocaleToLanguageTag.mockImplementation((locale: string) => {
-    if (locale === "us-es") {
+    if (locale === "es-us") {
       return "es-US";
     }
 
@@ -86,7 +92,7 @@ it("maps a manual ArticleCard without formatting away the raw ISO date", async (
     }),
     {
       siteId: "site-proti",
-      locale: "us-en",
+      locale: "en-us",
     },
   );
 
@@ -110,6 +116,8 @@ it("maps a manual ArticleCard without formatting away the raw ISO date", async (
   ]);
 
   expect(mapped.props.dateLocale).toBe("en-US");
+  expect(mapped.props.labels?.clearFilters).toBe("Clear Filters");
+  expect(mapped.props.labels?.next).toBe("Next");
 });
 
 it("maps manual Resource and Testimonial cards into DocumentItem shapes", async () => {
@@ -153,7 +161,7 @@ it("maps manual Resource and Testimonial cards into DocumentItem shapes", async 
     }),
     {
       siteId: "site-proti",
-      locale: "us-en",
+      locale: "en-us",
     },
   );
 
@@ -201,20 +209,21 @@ it("drops manual card entries whose card mapper returns null", async () => {
     }),
     {
       siteId: "site-proti",
-      locale: "us-en",
+      locale: "en-us",
     },
   );
 
   expect(mapped.props.documents).toEqual([]);
 });
 
-it("passes dynamic taxonomy refs/IDs, match logic, sort, and limit to the resolver", async () => {
+it("keeps an unsearched non-Page Dynamic list on the lightweight resolver", async () => {
   mocks.resolveDynamicDocumentList.mockResolvedValue([
     {
       id: "blog-1",
-      title: "Nutrition",
-      url: "/blog/nutrition",
+      contentType: "blog",
       cardType: "article",
+      title: "Nutrition",
+      url: "/es-us/blog/nutrition",
     },
   ]);
 
@@ -240,24 +249,361 @@ it("passes dynamic taxonomy refs/IDs, match logic, sort, and limit to the resolv
     }),
     {
       siteId: "site-proti",
-      locale: "us-es",
-      localePrefix: "/us-es",
+      locale: "es-us",
+      localePrefix: "/es-us",
     },
   );
 
   expect(mocks.resolveDynamicDocumentList).toHaveBeenCalledWith({
     siteId: "site-proti",
-    locale: "us-es",
-    localePrefix: "/us-es",
+    locale: "es-us",
+    localePrefix: "/es-us",
     contentTypes: ["blog", "article"],
     taxonomyIds: ["taxonomy-nutrition", "taxonomy-health"],
     taxonomyMatchLogic: "all",
     sort: "oldest",
     limit: 24,
+    visualEditing: undefined,
   });
 
-  expect(mapped.props.documents).toHaveLength(1);
+  expect(mocks.searchContent).not.toHaveBeenCalled();
+  expect(mapped.props.documents).toEqual([
+    expect.objectContaining({
+      id: "blog-1",
+      contentType: "blog",
+      cardType: "article",
+      title: "Nutrition",
+      url: "/es-us/blog/nutrition",
+    }),
+  ]);
+  expect(mapped.serverState).toEqual({
+    searchQuery: "",
+    selectedFilter: "all",
+    selectedTaxonomy: [],
+    selectedSort: "oldest",
+    currentPage: 1,
+    totalPages: 1,
+    totalResults: 1,
+  });
   expect(mapped.props.dateLocale).toBe("es-US");
+  expect(mapped.props.labels?.clearFilters).toBe("Limpiar filtros");
+  expect(mapped.props.labels?.next).toBe("Siguiente");
+});
+
+it("uses the full resolver for an unsearched Dynamic list that includes Pages", async () => {
+  mocks.searchContent.mockResolvedValue({
+    query: "",
+    locale: "en-us",
+    page: 1,
+    pageSize: 9,
+    total: 1,
+    totalPages: 1,
+    sort: "newest",
+    filters: {
+      types: ["page", "blog"],
+      taxonomy: [],
+      taxonomyMatch: "any",
+    },
+    facets: {
+      types: [],
+      taxonomy: [],
+    },
+    results: [
+      {
+        id: "page-child",
+        type: "page",
+        title: "Widget",
+        href: "/products/widget",
+      },
+    ],
+  });
+
+  const mapped = await mapDocumentListBlock(
+    asBlock({
+      _key: "document-list",
+      _type: "documentListBlock",
+      sourceMode: "dynamic",
+      dynamicContentTypes: ["page", "blog"],
+      dynamicLimit: 30,
+    }),
+    {
+      siteId: "site-proti",
+      locale: "en-us",
+    },
+  );
+
+  expect(mocks.searchContent).toHaveBeenCalledWith(
+    expect.objectContaining({
+      siteId: "site-proti",
+      locale: "en-us",
+      query: "",
+      includeAllOnEmptyQuery: true,
+      types: ["page", "blog"],
+      respectSeoVisibility: false,
+      maxResults: 30,
+    }),
+  );
+  expect(mocks.resolveDynamicDocumentList).not.toHaveBeenCalled();
+  expect(mapped.props.documents[0]).toMatchObject({
+    id: "page-child",
+    contentType: "page",
+    url: "/products/widget",
+  });
+});
+
+it("uses the URL query to search all selected Dynamic content types, including Pages", async () => {
+  mocks.searchContent.mockResolvedValue({
+    query: "nutrition",
+    locale: "en-us",
+    page: 2,
+    pageSize: 12,
+    total: 18,
+    totalPages: 2,
+    sort: "relevance",
+    filters: {
+      types: ["page", "blog"],
+      taxonomy: [],
+      taxonomyMatch: "any",
+    },
+    facets: {
+      types: [],
+      taxonomy: [],
+    },
+    results: [
+      {
+        id: "page-1",
+        type: "page",
+        title: "Nutrition",
+        href: "/nutrition",
+      },
+    ],
+  });
+
+  const mapped = await mapDocumentListBlock(
+    asBlock({
+      _key: "document-list",
+      _type: "documentListBlock",
+      sourceMode: "dynamic",
+      dynamicContentTypes: ["page", "blog"],
+      enableSearch: true,
+      enablePagination: true,
+      itemsPerPage: 12,
+    }),
+    {
+      siteId: "site-proti",
+      locale: "en-us",
+      searchParams: {
+        q: "nutrition",
+        page: "2",
+      },
+    },
+  );
+
+  expect(mocks.searchContent).toHaveBeenCalledWith(
+    expect.objectContaining({
+      siteId: "site-proti",
+      locale: "en-us",
+      query: "nutrition",
+      page: 2,
+      pageSize: 12,
+      types: ["page", "blog"],
+      sort: "relevance",
+      maxResults: undefined,
+    }),
+  );
+
+  expect(mapped.props.documents[0]).toMatchObject({
+    id: "page-1",
+    contentType: "page",
+    cardType: "article",
+    url: "/nutrition",
+  });
+});
+
+it("excludes Taxonomy Groups and non-filterable Terms from visitor filter options", async () => {
+  mocks.searchContent.mockResolvedValueOnce({
+    query: "",
+    locale: "en-us",
+    page: 1,
+    pageSize: 12,
+    total: 0,
+    totalPages: 0,
+    sort: "relevance",
+    filters: {
+      types: ["page"],
+      taxonomy: [],
+      taxonomyMatch: "any",
+    },
+    facets: {
+      types: [],
+      taxonomy: [],
+    },
+    results: [],
+  });
+
+  const mapped = await mapDocumentListBlock(
+    asBlock({
+      _key: "document-list",
+      _type: "documentListBlock",
+      sourceMode: "dynamic",
+      dynamicContentTypes: ["page"],
+      enableFilters: true,
+      filterTaxonomy: [
+        {
+          _id: "taxonomy-group",
+          title: "Categories",
+          kind: "group",
+        },
+        {
+          _id: "taxonomy-hidden",
+          title: "Internal Topic",
+          kind: "term",
+          includeInFilters: false,
+        },
+        {
+          _id: "taxonomy-visible",
+          title: "Mental Health",
+          kind: "term",
+          includeInFilters: true,
+        },
+      ],
+    }),
+    {
+      siteId: "site-proti",
+      locale: "en-us",
+    },
+  );
+
+  expect(mapped.props.filterGroups).toEqual([
+    {
+      id: "taxonomy",
+      title: "Topics",
+      options: [
+        {
+          label: "Mental Health",
+          value: "taxonomy-visible",
+        },
+      ],
+      logic: "checkbox",
+    },
+  ]);
+});
+
+it("maps localized Taxonomy references into a separate visitor filter group", async () => {
+  mocks.searchContent.mockResolvedValueOnce({
+    query: "nutrition",
+    locale: "es-us",
+    page: 1,
+    pageSize: 12,
+    total: 0,
+    totalPages: 0,
+    sort: "relevance",
+    filters: {
+      types: ["page", "blog"],
+      taxonomy: ["taxonomy-nutrition"],
+      taxonomyMatch: "any",
+    },
+    facets: {
+      types: [],
+      taxonomy: [],
+    },
+    results: [],
+  });
+
+  const mapped = await mapDocumentListBlock(
+    asBlock({
+      _key: "document-list",
+      _type: "documentListBlock",
+      sourceMode: "dynamic",
+      dynamicContentTypes: ["page", "blog"],
+      enableSearch: true,
+      enableFilters: true,
+      filterTitle: "Tipo de contenido",
+      filterLogic: "radio",
+      filterOptions: [
+        {
+          label: "Páginas",
+          value: "page",
+        },
+        {
+          label: "Blog",
+          value: "blog",
+        },
+      ],
+      taxonomyFilterTitle: "Temas",
+      taxonomyFilterLogic: "checkbox",
+      taxonomyFilterMatchLogic: "any",
+      filterTaxonomy: [
+        {
+          _id: "taxonomy-nutrition",
+          title: "Nutrición",
+        },
+        {
+          _ref: "taxonomy-fitness",
+          title: "Ejercicio",
+        },
+      ],
+    }),
+    {
+      siteId: "site-proti",
+      locale: "es-us",
+      searchParams: {
+        q: "nutrition",
+        filter: "blog",
+        taxonomy: "taxonomy-nutrition",
+      },
+    },
+  );
+
+  expect(mapped.props.filterGroups).toEqual([
+    {
+      id: "content",
+      title: "Tipo de contenido",
+      options: [
+        {
+          label: "Páginas",
+          value: "page",
+        },
+        {
+          label: "Blog",
+          value: "blog",
+        },
+      ],
+      logic: "radio",
+    },
+    {
+      id: "taxonomy",
+      title: "Temas",
+      options: [
+        {
+          label: "Nutrición",
+          value: "taxonomy-nutrition",
+        },
+        {
+          label: "Ejercicio",
+          value: "taxonomy-fitness",
+        },
+      ],
+      logic: "checkbox",
+    },
+  ]);
+
+  expect(mocks.searchContent).toHaveBeenCalledWith(
+    expect.objectContaining({
+      filters: ["blog"],
+      taxonomy: ["taxonomy-nutrition"],
+      taxonomyMatch: "any",
+      taxonomyScope: [],
+      taxonomyScopeMatch: "any",
+    }),
+  );
+
+  expect(mapped.serverState).toEqual(
+    expect.objectContaining({
+      selectedFilter: "blog",
+      selectedTaxonomy: ["taxonomy-nutrition"],
+    }),
+  );
 });
 
 it("maps enabled filter/sort options and ignores blank options", async () => {
@@ -281,7 +627,7 @@ it("maps enabled filter/sort options and ignores blank options", async () => {
       enableSorting: true,
       sortOptions: [
         {
-          label: "Newest",
+          label: "Legacy newest label",
           value: "newest",
         },
         {
@@ -292,7 +638,7 @@ it("maps enabled filter/sort options and ignores blank options", async () => {
     }),
     {
       siteId: "site-proti",
-      locale: "us-en",
+      locale: "en-us",
     },
   );
 
@@ -311,6 +657,188 @@ it("maps enabled filter/sort options and ignores blank options", async () => {
   ]);
 });
 
+it("localizes standard sort labels from the current locale", async () => {
+  const mapped = await mapDocumentListBlock(
+    asBlock({
+      _key: "document-list",
+      _type: "documentListBlock",
+      sourceMode: "manual",
+      documents: [],
+      enableSorting: true,
+      sortOptions: [
+        {
+          label: "Stored English label is ignored",
+          value: "relevance",
+        },
+        {
+          label: "Stored English label is ignored",
+          value: "newest",
+        },
+        {
+          label: "Stored English label is ignored",
+          value: "oldest",
+        },
+      ],
+    }),
+    {
+      siteId: "site-proti",
+      locale: "es-us",
+    },
+  );
+
+  expect(mapped.props.sortOptions).toEqual([
+    {
+      label: "Relevancia",
+      value: "relevance",
+    },
+    {
+      label: "Más recientes",
+      value: "newest",
+    },
+    {
+      label: "Más antiguos",
+      value: "oldest",
+    },
+  ]);
+});
+
+it("can require a search query before loading a Dynamic Page list", async () => {
+  const mapped = await mapDocumentListBlock(
+    asBlock({
+      _key: "document-list",
+      _type: "documentListBlock",
+      sourceMode: "dynamic",
+      dynamicContentTypes: ["page", "blog", "article"],
+      enableSearch: true,
+      requireSearchQuery: true,
+      initialStateText: "Search the site to begin.",
+      enableSorting: true,
+      sortOptions: [
+        {
+          label: "Relevance",
+          value: "Relevance",
+        },
+        {
+          label: "Newest",
+          value: "Newest",
+        },
+      ],
+    }),
+    {
+      siteId: "site-proti",
+      locale: "en-us",
+    },
+  );
+
+  expect(mocks.searchContent).not.toHaveBeenCalled();
+  expect(mocks.resolveDynamicDocumentList).not.toHaveBeenCalled();
+  expect(mapped.props.documents).toEqual([]);
+  expect(mapped.props.emptyStateText).toBe("Search the site to begin.");
+  expect(mapped.props.sortOptions).toEqual([
+    {
+      label: "Relevance",
+      value: "relevance",
+    },
+    {
+      label: "Newest",
+      value: "newest",
+    },
+  ]);
+  expect(mapped.serverState).toEqual({
+    searchQuery: "",
+    selectedFilter: "all",
+    selectedTaxonomy: [],
+    selectedSort: "newest",
+    currentPage: 1,
+    totalPages: 1,
+    totalResults: 0,
+  });
+});
+
+it("normalizes configured filter and sort values before a server search", async () => {
+  mocks.searchContent.mockResolvedValue({
+    query: "nutrition",
+    locale: "en-us",
+    page: 1,
+    pageSize: 9,
+    total: 1,
+    totalPages: 1,
+    sort: "newest",
+    filters: {
+      types: ["page", "blog", "article"],
+      taxonomy: [],
+      taxonomyMatch: "any",
+    },
+    facets: {
+      types: [],
+      taxonomy: [],
+    },
+    results: [
+      {
+        id: "page-1",
+        type: "page",
+        title: "Nutrition",
+        href: "/nutrition",
+      },
+    ],
+  });
+
+  const mapped = await mapDocumentListBlock(
+    asBlock({
+      _key: "document-list",
+      _type: "documentListBlock",
+      sourceMode: "dynamic",
+      dynamicContentTypes: ["page", "blog", "article"],
+      enableSearch: true,
+      requireSearchQuery: true,
+      enableFilters: true,
+      filterOptions: [
+        {
+          label: "Pages",
+          value: "Page",
+        },
+      ],
+      enableSorting: true,
+      sortOptions: [
+        {
+          label: "Newest",
+          value: "Newest",
+        },
+      ],
+    }),
+    {
+      siteId: "site-proti",
+      locale: "en-us",
+      searchParams: {
+        q: "nutrition",
+        filter: "Page",
+        sort: "Newest",
+      },
+    },
+  );
+
+  expect(mocks.searchContent).toHaveBeenCalledWith(
+    expect.objectContaining({
+      query: "nutrition",
+      types: ["page", "blog", "article"],
+      filters: ["page"],
+      sort: "newest",
+    }),
+  );
+  expect(mapped.props.filterOptions).toEqual([
+    {
+      label: "Pages",
+      value: "page",
+    },
+  ]);
+  expect(mapped.props.sortOptions).toEqual([
+    {
+      label: "Newest",
+      value: "newest",
+    },
+  ]);
+});
+
 it("preserves established defaults", async () => {
   const mapped = await mapDocumentListBlock(
     asBlock({
@@ -319,7 +847,7 @@ it("preserves established defaults", async () => {
     }),
     {
       siteId: "site-proti",
-      locale: "us-en",
+      locale: "en-us",
     },
   );
 

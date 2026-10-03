@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 import {
   FaBluesky,
   FaFacebookF,
@@ -12,7 +14,11 @@ import {
   FaYoutube,
 } from "react-icons/fa6";
 
-import { ContentBlock } from "mino-ui/blocks/ContentBlock";
+import { Button } from "mino-ui/core/Button";
+import { ButtonGroup } from "mino-ui/core/ButtonGroup";
+import { Divider } from "mino-ui/core/Divider";
+import { Heading } from "mino-ui/core/Heading";
+
 import type { ContentBlockProps } from "mino-ui/blocks/ContentBlock";
 
 import { DocumentListBlock } from "mino-ui/blocks/DocumentListBlock";
@@ -26,6 +32,10 @@ import type {
   CmsAuthorPage,
 } from "@/cms/types/author";
 
+import { getAppMessages } from "@/i18n";
+
+import { siteLocaleToLanguageTag } from "@/lib/routing/locale";
+
 import styles from "./styles.module.css";
 
 export interface AuthorTemplateProps {
@@ -35,7 +45,7 @@ export interface AuthorTemplateProps {
    * Empty for the default locale.
    *
    * Example:
-   * /us-es
+   * /es-us
    */
   localePrefix?: string;
 }
@@ -56,16 +66,6 @@ function getBlogHref(slug: string, localePrefix?: string): string {
   return `${prefix}/blog/${slug}`;
 }
 
-function getIntlLocale(locale: string): string {
-  const [region, language] = locale.split("-");
-
-  if (!region || !language) {
-    return locale;
-  }
-
-  return `${language.toLowerCase()}-${region.toUpperCase()}`;
-}
-
 function formatPublishedDate(
   date: string | undefined,
   locale: string,
@@ -81,7 +81,7 @@ function formatPublishedDate(
   }
 
   try {
-    return new Intl.DateTimeFormat(getIntlLocale(locale), {
+    return new Intl.DateTimeFormat(siteLocaleToLanguageTag(locale), {
       year: "numeric",
       month: "long",
       day: "numeric",
@@ -152,7 +152,7 @@ function getSocialNetwork(url: string): SocialNetwork {
   return "website";
 }
 
-function getSocialLabel(url: string): string {
+function getSocialLabel(url: string, websiteLabel: string): string {
   const network = getSocialNetwork(url);
 
   switch (network) {
@@ -183,7 +183,7 @@ function getSocialLabel(url: string): string {
     default: {
       const hostname = getHostname(url);
 
-      return hostname || "Website";
+      return hostname || websiteLabel;
     }
   }
 }
@@ -227,6 +227,7 @@ function getSocialIcon(url: string) {
 
 function buildSocialCtas(
   author: CmsAuthor,
+  websiteLabel: string,
 ): NonNullable<ContentBlockProps["ctas"]> {
   const urls = Array.from(
     new Set(
@@ -239,7 +240,7 @@ function buildSocialCtas(
   return urls.map((url) => ({
     as: "a" as const,
     href: url,
-    label: getSocialLabel(url),
+    label: getSocialLabel(url, websiteLabel),
     variant: "link" as const,
     size: "sm" as const,
     icon: getSocialIcon(url),
@@ -247,6 +248,15 @@ function buildSocialCtas(
     target: "_blank",
     rel: "noopener noreferrer",
   }));
+}
+
+function formatAuthorMessage(
+  template: string,
+  values: Record<string, string>,
+): string {
+  return template.replace(/\{([a-zA-Z0-9_]+)\}/g, (match, key: string) => {
+    return values[key] ?? match;
+  });
 }
 
 function mapArticle(
@@ -283,7 +293,9 @@ function mapArticle(
 export function AuthorTemplate({ page, localePrefix }: AuthorTemplateProps) {
   const { author, articles } = page;
 
-  const socialCtas = buildSocialCtas(author);
+  const messages = getAppMessages(page.locale).author;
+
+  const socialCtas = buildSocialCtas(author, messages.website);
 
   const documents = articles.map((article) =>
     mapArticle(article, author, page.locale, localePrefix),
@@ -297,130 +309,171 @@ export function AuthorTemplate({ page, localePrefix }: AuthorTemplateProps) {
     author.affiliation?.name,
   );
 
+  const hasProfileRail = Boolean(author.imageUrl || hasExpertiseDetails);
+
   return (
     <article className={styles.authorPage}>
-      <ContentBlock
-        className={styles.profileHeader}
-        layout="split"
-        mediaPosition="left"
-        vAlignment="center"
-        alignment="left"
-        title={author.name}
-        headingProps={{
-          level: 1,
-          size: "2xl",
-        }}
-        description={author.jobTitle}
-        ctas={socialCtas}
-        ctaGroupProps={{
-          stackOnMobile: false,
-        }}
-        imageSrc={author.imageUrl}
-        imageAlt={author.imageAlt ?? ""}
-        imageShape="circle"
-        imageSize="sm"
-      />
+      <section className={styles.profile} aria-labelledby="author-name">
+        {hasProfileRail ? (
+          <div className={styles.profileRail}>
+            {author.imageUrl ? (
+              <div className={styles.portraitFrame}>
+                <Image
+                  className={styles.portrait}
+                  src={author.imageUrl}
+                  alt={author.imageAlt ?? ""}
+                  width={480}
+                  height={480}
+                  sizes="(max-width: 900px) 240px, 300px"
+                  unoptimized
+                />
+              </div>
+            ) : null}
+
+            {hasExpertiseDetails ? (
+              <aside
+                className={styles.expertise}
+                aria-labelledby="author-expertise-heading"
+              >
+                {/* <Heading
+                  id="author-expertise-heading"
+                  level={2}
+                  size="lg"
+                  className={styles.expertiseHeading}
+                >
+                  {messages.expertiseAndCredentials}
+                </Heading> */}
+
+                {author.expertise?.length ? (
+                  <section className={styles.expertiseSection}>
+                    <Heading level={3} size="sm">
+                      {messages.areasOfExpertise}
+                    </Heading>
+
+                    <ul className={styles.expertiseList}>
+                      {author.expertise.map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
+                    </ul>
+                  </section>
+                ) : null}
+
+                {author.credentials?.length ? (
+                  <section className={styles.expertiseSection}>
+                    <Heading level={3} size="sm">
+                      {messages.credentials}
+                    </Heading>
+
+                    <ul className={styles.credentialList}>
+                      {author.credentials.map((credential, index) => (
+                        <li key={`${credential.name}-${index}`}>
+                          {credential.url ? (
+                            <a
+                              href={credential.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              {credential.name}
+                            </a>
+                          ) : (
+                            credential.name
+                          )}
+
+                          {[
+                            credential.category,
+                            credential.recognizedBy,
+                            credential.identifier,
+                          ].filter(Boolean).length ? (
+                            <span className={styles.credentialMeta}>
+                              {[
+                                credential.category,
+                                credential.recognizedBy,
+                                credential.identifier,
+                              ]
+                                .filter(Boolean)
+                                .join(" • ")}
+                            </span>
+                          ) : null}
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                ) : null}
+
+                {author.affiliation?.name ? (
+                  <section className={styles.expertiseSection}>
+                    <Heading level={3} size="sm">
+                      {messages.affiliation}
+                    </Heading>
+
+                    <p className={styles.affiliation}>
+                      {author.affiliation.url ? (
+                        <a
+                          href={author.affiliation.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          {author.affiliation.name}
+                        </a>
+                      ) : (
+                        author.affiliation.name
+                      )}
+                    </p>
+                  </section>
+                ) : null}
+              </aside>
+            ) : null}
+          </div>
+        ) : null}
+
+        <div className={styles.profileContent}>
+          <header className={styles.identity}>
+            <Heading
+              id="author-name"
+              level={1}
+              size="3xl"
+              className={styles.authorName}
+            >
+              {author.name}
+            </Heading>
+
+            {author.jobTitle ? (
+              <p className={styles.jobTitle}>{author.jobTitle}</p>
+            ) : null}
+
+            {socialCtas.length > 0 ? (
+              <ButtonGroup
+                alignment="left"
+                stackOnMobile={false}
+                className={styles.socialLinks}
+              >
+                {socialCtas.map((ctaProps, index) => (
+                  <Button key={`author-social-${index}`} {...ctaProps} />
+                ))}
+              </ButtonGroup>
+            ) : null}
+          </header>
+
+          {hasBio ? (
+            <RichTextBlock
+              className={styles.bio}
+              content={author.bioRichText ?? author.bio ?? ""}
+              alignment="left"
+              maxWidth="full"
+            />
+          ) : null}
+        </div>
+      </section>
 
       <div className={styles.dividerWrap} aria-hidden="true">
-        <hr className={styles.divider} />
+        <Divider className={styles.divider} />
       </div>
-
-      {hasBio ? (
-        <RichTextBlock
-          className={styles.bio}
-          content={author.bioRichText ?? author.bio ?? ""}
-          alignment="left"
-          maxWidth="full"
-        />
-      ) : null}
-
-      {hasExpertiseDetails ? (
-        <section
-          className={styles.expertise}
-          aria-labelledby="author-expertise-heading"
-        >
-          <h2 id="author-expertise-heading">Expertise &amp; Credentials</h2>
-
-          {author.expertise?.length ? (
-            <div>
-              <h3>Areas of expertise</h3>
-              <ul className={styles.expertiseList}>
-                {author.expertise.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-
-          {author.credentials?.length ? (
-            <div>
-              <h3>Credentials</h3>
-              <ul className={styles.credentialList}>
-                {author.credentials.map((credential, index) => (
-                  <li key={`${credential.name}-${index}`}>
-                    {credential.url ? (
-                      <a
-                        href={credential.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        {credential.name}
-                      </a>
-                    ) : (
-                      credential.name
-                    )}
-
-                    {[
-                      credential.category,
-                      credential.recognizedBy,
-                      credential.identifier,
-                    ].filter(Boolean).length ? (
-                      <span className={styles.credentialMeta}>
-                        {[
-                          credential.category,
-                          credential.recognizedBy,
-                          credential.identifier,
-                        ]
-                          .filter(Boolean)
-                          .join(" • ")}
-                      </span>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-
-          {author.affiliation?.name ? (
-            <div>
-              <h3>Affiliation</h3>
-              <p>
-                {author.affiliation.url ? (
-                  <a
-                    href={author.affiliation.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    {author.affiliation.name}
-                  </a>
-                ) : (
-                  author.affiliation.name
-                )}
-              </p>
-            </div>
-          ) : null}
-        </section>
-      ) : null}
-
-      {hasBio || hasExpertiseDetails ? (
-        <div className={styles.dividerWrap} aria-hidden="true">
-          <hr className={styles.divider} />
-        </div>
-      ) : null}
 
       <DocumentListBlock
         className={styles.articles}
-        title={`Articles written by ${author.name}`}
+        title={formatAuthorMessage(messages.articlesWrittenBy, {
+          name: author.name,
+        })}
         headingProps={{
           level: 2,
           size: "2xl",
@@ -430,7 +483,9 @@ export function AuthorTemplate({ page, localePrefix }: AuthorTemplateProps) {
         alignment="left"
         gridCols={3}
         totalResults={documents.length}
-        emptyStateText={`No published articles by ${author.name} yet.`}
+        emptyStateText={formatAuthorMessage(messages.noPublishedArticles, {
+          name: author.name,
+        })}
       />
     </article>
   );

@@ -14,7 +14,6 @@ import {
   getAuthorSlug,
   getBlogSlug,
   getBlogTaxonomySegments,
-  isSearchRoute,
 } from "@/lib/routing/route-shapes";
 
 import {
@@ -26,7 +25,6 @@ export {
   getAuthorSlug,
   getBlogSlug,
   getBlogTaxonomySegments,
-  isSearchRoute,
 } from "@/lib/routing/route-shapes";
 
 export interface ResolveRouteOptions {
@@ -46,9 +44,6 @@ export type ResolvedRoute =
   | {
       type: "canonicalRedirect";
       destination: string;
-    }
-  | {
-      type: "search";
     }
   | {
       type: "author";
@@ -77,7 +72,6 @@ export type ResolvedRoute =
  *
  *   CMS Redirect
  *   -> explicit default-locale canonicalization
- *   -> Search application route
  *   -> Author profile route
  *   -> Blog Taxonomy route
  *   -> Blog detail route
@@ -127,10 +121,6 @@ export async function resolveRoute({
       type: "canonicalRedirect",
       destination: sourcePath,
     };
-  }
-
-  if (isSearchRoute(segments)) {
-    return { type: "search" };
   }
 
   const authorSlug = getAuthorSlug(segments);

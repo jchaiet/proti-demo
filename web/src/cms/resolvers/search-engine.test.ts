@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   fetch: vi.fn(),
@@ -29,31 +29,29 @@ type FixtureState = {
 let state: FixtureState;
 
 function installFetchMock() {
-  mocks.fetch.mockImplementation(
-    async (query: string, params: Record<string, unknown>) => {
-      if (query.includes("$host in domains")) {
-        return state.site;
-      }
+  mocks.fetch.mockImplementation(async (query: string) => {
+    if (query.includes("$host in domains")) {
+      return state.site;
+    }
 
-      if (query.includes('_type == "page"')) {
-        return state.pages;
-      }
+    if (query.includes('_type == "page"')) {
+      return state.pages;
+    }
 
-      if (query.includes('_type == "blog"')) {
-        return state.blogs;
-      }
+    if (query.includes('_type == "blog"')) {
+      return state.blogs;
+    }
 
-      if (query.includes('_type == "taxonomy"')) {
-        return state.taxonomy;
-      }
+    if (query.includes('_type == "taxonomy"')) {
+      return state.taxonomy;
+    }
 
-      if (query.includes('_type == "author"')) {
-        return state.authors;
-      }
+    if (query.includes('_type == "author"')) {
+      return state.authors;
+    }
 
-      throw new Error(`Unexpected search-engine query: ${query.slice(0, 120)}`);
-    },
-  );
+    throw new Error(`Unexpected search-engine query: ${query.slice(0, 120)}`);
+  });
 }
 
 beforeEach(() => {
@@ -64,29 +62,29 @@ beforeEach(() => {
       _id: "site-proti",
       name: "Proti",
       domains: ["example.com"],
-      defaultLocale: "us-en",
+      defaultLocale: "en-us",
       locales: [
         {
-          code: "us-en",
+          code: "en-us",
         },
         {
-          code: "us-es",
+          code: "es-us",
         },
         {
-          code: "ca-fr",
+          code: "fr-ca",
         },
       ],
       seoDefaults: [
         {
-          locale: "us-en",
+          locale: "en-us",
           indexing: "index",
         },
         {
-          locale: "us-es",
+          locale: "es-us",
           indexing: "index",
         },
         {
-          locale: "ca-fr",
+          locale: "fr-ca",
           indexing: "noindex",
         },
       ],
@@ -124,10 +122,10 @@ it("returns an empty sitemap for an unknown Site or Site without an origin", asy
 
   state.site = {
     _id: "site-no-domain",
-    defaultLocale: "us-en",
+    defaultLocale: "en-us",
     locales: [
       {
-        code: "us-en",
+        code: "en-us",
       },
     ],
     domains: [],
@@ -141,17 +139,17 @@ it("emits indexable Page/Blog, shared Taxonomy, and shared Author URLs using loc
     {
       _id: "home-en",
       _updatedAt: "2026-09-01T12:00:00Z",
-      locale: "us-en",
+      locale: "en-us",
       isHomepage: true,
     },
     {
       _id: "home-es",
-      locale: "us-es",
+      locale: "es-us",
       isHomepage: true,
     },
     {
       _id: "page-en",
-      locale: "us-en",
+      locale: "en-us",
       slug: "products",
       seo: {
         indexing: "inherit",
@@ -159,12 +157,12 @@ it("emits indexable Page/Blog, shared Taxonomy, and shared Author URLs using loc
     },
     {
       _id: "page-es",
-      locale: "us-es",
+      locale: "es-us",
       slug: "productos",
     },
     {
       _id: "page-fr",
-      locale: "ca-fr",
+      locale: "fr-ca",
       slug: "produits",
     },
     {
@@ -177,17 +175,17 @@ it("emits indexable Page/Blog, shared Taxonomy, and shared Author URLs using loc
   state.blogs = [
     {
       _id: "blog-en",
-      locale: "us-en",
+      locale: "en-us",
       slug: "nutrition",
     },
     {
       _id: "blog-es",
-      locale: "us-es",
+      locale: "es-us",
       slug: "nutricion",
     },
     {
       _id: "blog-fr",
-      locale: "ca-fr",
+      locale: "fr-ca",
       slug: "nutrition-fr",
     },
   ];
@@ -218,24 +216,24 @@ it("emits indexable Page/Blog, shared Taxonomy, and shared Author URLs using loc
   expect(urls).toEqual(
     expect.arrayContaining([
       "https://example.com/",
-      "https://example.com/us-es",
+      "https://example.com/es-us",
       "https://example.com/products",
-      "https://example.com/us-es/productos",
+      "https://example.com/es-us/productos",
       "https://example.com/blog/nutrition",
-      "https://example.com/us-es/blog/nutricion",
+      "https://example.com/es-us/blog/nutricion",
       "https://example.com/blog/topics/nutrition",
-      "https://example.com/us-es/blog/topics/nutrition",
+      "https://example.com/es-us/blog/topics/nutrition",
       "https://example.com/authors/jane-smith",
-      "https://example.com/us-es/authors/jane-smith",
+      "https://example.com/es-us/authors/jane-smith",
     ]),
   );
 
   expect(urls).not.toEqual(
     expect.arrayContaining([
-      "https://example.com/ca-fr/produits",
-      "https://example.com/ca-fr/blog/nutrition-fr",
-      "https://example.com/ca-fr/blog/topics/nutrition",
-      "https://example.com/ca-fr/authors/jane-smith",
+      "https://example.com/fr-ca/produits",
+      "https://example.com/fr-ca/blog/nutrition-fr",
+      "https://example.com/fr-ca/blog/topics/nutrition",
+      "https://example.com/fr-ca/authors/jane-smith",
       "https://example.com/uk-en/unsupported",
       "https://example.com/blog/topics",
     ]),
@@ -254,7 +252,7 @@ it("prefers the Blog editorial lastModifiedAt value for sitemap lastModified", a
       _id: "blog-updated",
       _updatedAt: "2026-09-24T12:00:00Z",
       lastModifiedAt: "2026-09-20T15:30:00Z",
-      locale: "us-en",
+      locale: "en-us",
       slug: "updated-article",
     },
   ];
@@ -272,7 +270,7 @@ it("honors Page/Blog noindex overrides even when the locale default is index", a
   state.pages = [
     {
       _id: "page-private",
-      locale: "us-en",
+      locale: "en-us",
       slug: "private",
       seo: {
         indexing: "noindex",
@@ -280,7 +278,7 @@ it("honors Page/Blog noindex overrides even when the locale default is index", a
     },
     {
       _id: "page-public",
-      locale: "us-en",
+      locale: "en-us",
       slug: "public",
       seo: {
         indexing: "index",
@@ -291,7 +289,7 @@ it("honors Page/Blog noindex overrides even when the locale default is index", a
   state.blogs = [
     {
       _id: "blog-private",
-      locale: "us-en",
+      locale: "en-us",
       slug: "private-blog",
       seo: {
         indexing: "noindex",
@@ -299,7 +297,7 @@ it("honors Page/Blog noindex overrides even when the locale default is index", a
     },
     {
       _id: "blog-public",
-      locale: "us-en",
+      locale: "en-us",
       slug: "public-blog",
     },
   ];
@@ -319,7 +317,7 @@ it("excludes non-matching canonical duplicates but accepts trailing-slash equiva
   state.pages = [
     {
       _id: "page-good-canonical",
-      locale: "us-en",
+      locale: "en-us",
       slug: "nutrition",
       seo: {
         canonicalUrl: "https://example.com/nutrition/",
@@ -327,7 +325,7 @@ it("excludes non-matching canonical duplicates but accepts trailing-slash equiva
     },
     {
       _id: "page-other-canonical",
-      locale: "us-en",
+      locale: "en-us",
       slug: "duplicate",
       seo: {
         canonicalUrl: "https://example.com/canonical-owner",
@@ -347,19 +345,19 @@ it("omits malformed Page hierarchies instead of emitting broken URLs", async () 
   state.pages = [
     {
       _id: "page-missing-parent",
-      locale: "us-en",
+      locale: "en-us",
       slug: "child",
       parentId: "does-not-exist",
     },
     {
       _id: "page-a",
-      locale: "us-en",
+      locale: "en-us",
       slug: "a",
       parentId: "page-b",
     },
     {
       _id: "page-b",
-      locale: "us-en",
+      locale: "en-us",
       slug: "b",
       parentId: "page-a",
     },
@@ -372,39 +370,39 @@ it("omits Page routes that cannot resolve under the runtime route contract", asy
   state.pages = [
     {
       _id: "home-en",
-      locale: "us-en",
+      locale: "en-us",
       isHomepage: true,
     },
     {
       _id: "parent-es",
-      locale: "us-es",
+      locale: "es-us",
       slug: "productos",
     },
     {
       _id: "wrong-locale-child",
-      locale: "us-en",
+      locale: "en-us",
       slug: "widget",
       parentId: "parent-es",
     },
     {
       _id: "homepage-child",
-      locale: "us-en",
+      locale: "en-us",
       slug: "hidden",
       parentId: "home-en",
     },
     {
       _id: "search-page",
-      locale: "us-en",
+      locale: "en-us",
       slug: "search",
     },
     {
       _id: "blog-root",
-      locale: "us-en",
+      locale: "en-us",
       slug: "blog",
     },
     {
       _id: "blog-child",
-      locale: "us-en",
+      locale: "en-us",
       slug: "article",
       parentId: "blog-root",
     },
@@ -419,7 +417,7 @@ it("omits Page routes that cannot resolve under the runtime route contract", asy
 
   expect(urls).not.toContain("https://example.com/productos/widget");
   expect(urls).not.toContain("https://example.com/hidden");
-  expect(urls).not.toContain("https://example.com/search");
+  expect(urls).toContain("https://example.com/search");
   expect(urls).not.toContain("https://example.com/blog/article");
 });
 
@@ -427,12 +425,12 @@ it("deduplicates accidental duplicate URLs", async () => {
   state.blogs = [
     {
       _id: "blog-1",
-      locale: "us-en",
+      locale: "en-us",
       slug: "nutrition",
     },
     {
       _id: "blog-2",
-      locale: "us-en",
+      locale: "en-us",
       slug: "nutrition",
     },
   ];
@@ -468,7 +466,7 @@ it("disallows crawling for unknown hosts or Sites without an origin", async () =
 
   state.site = {
     _id: "site-no-domain",
-    defaultLocale: "us-en",
+    defaultLocale: "en-us",
     domains: [],
   };
 

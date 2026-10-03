@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useIsPresentationTool } from "next-sanity/hooks";
 
 export function DisableDraftMode() {
@@ -10,8 +11,9 @@ export function DisableDraftMode() {
   }
 
   return (
-    <a
+    <Link
       href="/api/draft-mode/disable"
+      prefetch={false}
       style={{
         position: "fixed",
         right: "1rem",
@@ -27,6 +29,6 @@ export function DisableDraftMode() {
       }}
     >
       Exit preview
-    </a>
+    </Link>
   );
 }

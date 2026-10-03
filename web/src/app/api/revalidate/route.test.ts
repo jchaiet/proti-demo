@@ -104,7 +104,7 @@ describe("POST /api/revalidate", () => {
     resolveRevalidationPlanMock.mockResolvedValueOnce({
       documentId: "singleton-a",
       documentType: "singleton",
-      paths: ["/", "/products", "/us-es/products"],
+      paths: ["/", "/products", "/es-us/products"],
     });
 
     const response = await POST(createRequest());
@@ -114,7 +114,7 @@ describe("POST /api/revalidate", () => {
     expect(revalidatePathMock.mock.calls).toEqual([
       ["/"],
       ["/products"],
-      ["/us-es/products"],
+      ["/es-us/products"],
     ]);
     expect(json).toMatchObject({
       revalidated: true,
