@@ -29,6 +29,18 @@ export type CmsDocumentListDynamicSort =
   | "title-asc"
   | "title-desc";
 
+export type CmsDocumentListStandardSort =
+  | "relevance"
+  | CmsDocumentListDynamicSort;
+
+export type CmsDocumentListCustomSortField =
+  | "date"
+  | "title"
+  | "content-type"
+  | "file-type";
+
+export type CmsDocumentListSortDirection = "asc" | "desc";
+
 export type CmsDocumentListTaxonomyMatchLogic = "any" | "all";
 
 /**
@@ -81,6 +93,28 @@ export interface CmsDocumentListSortOption {
   label: string;
 
   value: string;
+}
+
+export interface CmsDocumentListCustomSortOption {
+  _key?: string;
+
+  label?: string;
+
+  field?: CmsDocumentListCustomSortField;
+
+  direction?: CmsDocumentListSortDirection;
+}
+
+export interface CmsDocumentListTaxonomyFilterGroup {
+  _key?: string;
+
+  title?: string;
+
+  logic?: CmsDocumentListFilterLogic;
+
+  matchLogic?: CmsDocumentListTaxonomyMatchLogic;
+
+  taxonomy?: CmsDocumentListTaxonomyReference[];
 }
 
 export type CmsDocumentListResourceItem = CmsResourceCard & {
@@ -171,6 +205,9 @@ export interface CmsDocumentListBlock {
 
   filterOptions?: CmsDocumentListFilterOption[];
 
+  taxonomyFilterGroups?: CmsDocumentListTaxonomyFilterGroup[];
+
+  /** Legacy singular Taxonomy filter configuration. */
   taxonomyFilterTitle?: string;
 
   taxonomyFilterLogic?: CmsDocumentListFilterLogic;
@@ -181,6 +218,11 @@ export interface CmsDocumentListBlock {
 
   enableSorting?: boolean;
 
+  standardSortOptions?: CmsDocumentListStandardSort[];
+
+  customSortOptions?: CmsDocumentListCustomSortOption[];
+
+  /** Legacy array-based sort configuration. */
   sortOptions?: CmsDocumentListSortOption[];
 
   enablePagination?: boolean;

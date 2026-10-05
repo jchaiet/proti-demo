@@ -2,7 +2,10 @@ import {defineArrayMember, defineField, defineType} from 'sanity'
 
 import {TaxonomyFilterPickerInput} from '../../components/inputs/TaxonomyFilterPickerInput'
 
-import {validateDocumentListTaxonomyReferences} from '../validation/documentListTaxonomy'
+import {
+  validateDocumentListTaxonomyFilterGroups,
+  validateDocumentListTaxonomyReferences,
+} from '../validation/documentListTaxonomy'
 import {
   taxonomyTermReferenceFilter,
   taxonomyVisitorFilterReferenceFilter,
@@ -569,139 +572,207 @@ export const documentListBlockType = defineType({
     }),
 
     defineField({
-      name: 'taxonomyFilterTitle',
-      title: 'Taxonomy Filter Title',
-      type: 'string',
-
-      description: 'Heading displayed above the visitor-facing Taxonomy filter group.',
-
-      initialValue: 'Topics',
-
-      hidden: ({parent}) =>
-        !parent?.enableFilters ||
-        parent?.sourceMode !== 'dynamic' ||
-        !Array.isArray(parent?.filterTaxonomy) ||
-        parent.filterTaxonomy.length === 0,
-    }),
-
-    defineField({
-      name: 'taxonomyFilterLogic',
-      title: 'Taxonomy Filter Selection',
-      type: 'string',
-
-      description:
-        'Single Selection allows one Taxonomy Term at a time. Multiple Selection allows several.',
-
-      initialValue: 'checkbox',
-
-      hidden: ({parent}) =>
-        !parent?.enableFilters ||
-        parent?.sourceMode !== 'dynamic' ||
-        !Array.isArray(parent?.filterTaxonomy) ||
-        parent.filterTaxonomy.length === 0,
-
-      options: {
-        list: [
-          {
-            title: 'Single Selection',
-            value: 'radio',
-          },
-          {
-            title: 'Multiple Selection',
-            value: 'checkbox',
-          },
-        ],
-
-        layout: 'radio',
-      },
-    }),
-
-    defineField({
-      name: 'taxonomyFilterMatchLogic',
-      title: 'Taxonomy Match',
-      type: 'string',
-
-      description:
-        'Any Match includes content assigned to at least one selected visitor Taxonomy filter. All Match requires every selected Taxonomy filter.',
-
-      initialValue: 'any',
-
-      hidden: ({parent}) =>
-        !parent?.enableFilters ||
-        parent?.sourceMode !== 'dynamic' ||
-        parent?.taxonomyFilterLogic !== 'checkbox' ||
-        !Array.isArray(parent?.filterTaxonomy) ||
-        parent.filterTaxonomy.length === 0,
-
-      options: {
-        list: [
-          {
-            title: 'Any Match',
-            value: 'any',
-          },
-          {
-            title: 'All Match',
-            value: 'all',
-          },
-        ],
-
-        layout: 'radio',
-      },
-    }),
-
-    defineField({
-      name: 'filterTaxonomy',
-      title: 'Taxonomy Filters',
+      name: 'taxonomyFilterGroups',
+      title: 'Taxonomy Filter Groups',
       type: 'array',
 
       description:
-        'Choose the Site Taxonomy Terms visitors may use as filters. Labels are pulled automatically from the Taxonomy Term and localized for the current document Locale.',
+        "Create visitor-facing filter groups such as Type or Treatment. Groups are combined with AND; selections inside each group use that group's matching rules.",
 
       hidden: ({parent}) => !parent?.enableFilters || parent?.sourceMode !== 'dynamic',
 
-      components: {
-        input: TaxonomyFilterPickerInput,
-      },
-
       of: [
         defineArrayMember({
-          type: 'reference',
+          name: 'taxonomyFilterGroup',
+          title: 'Filter Group',
+          type: 'object',
 
-          to: [
-            {
-              type: 'taxonomy',
-            },
+          fields: [
+            defineField({
+              name: 'title',
+              title: 'Group Title',
+              type: 'string',
+
+              description:
+                'Public heading displayed above this group, for example Type or Treatment.',
+
+              validation: (Rule) => Rule.required(),
+            }),
+
+            defineField({
+              name: 'logic',
+              title: 'Selection',
+              type: 'string',
+
+              description:
+                'Single Selection allows one Taxonomy Term at a time. Multiple Selection allows several.',
+
+              initialValue: 'checkbox',
+
+              options: {
+                list: [
+                  {
+                    title: 'Single Selection',
+                    value: 'radio',
+                  },
+                  {
+                    title: 'Multiple Selection',
+                    value: 'checkbox',
+                  },
+                ],
+
+                layout: 'radio',
+              },
+
+              validation: (Rule) => Rule.required(),
+            }),
+
+            defineField({
+              name: 'matchLogic',
+              title: 'Match Within Group',
+              type: 'string',
+
+              description:
+                'Any Match includes content assigned to at least one selected Term. All Match requires every selected Term. Separate Filter Groups are always combined with AND.',
+
+              initialValue: 'any',
+
+              hidden: ({parent}) => parent?.logic !== 'checkbox',
+
+              options: {
+                list: [
+                  {
+                    title: 'Any Match',
+                    value: 'any',
+                  },
+                  {
+                    title: 'All Match',
+                    value: 'all',
+                  },
+                ],
+
+                layout: 'radio',
+              },
+            }),
+
+            defineField({
+              name: 'taxonomy',
+              title: 'Taxonomy Terms',
+              type: 'array',
+
+              description:
+                'Choose the filterable Taxonomy Terms shown inside this group. Full Taxonomy paths are shown while authoring, while the public UI uses each Term label.',
+
+              components: {
+                input: TaxonomyFilterPickerInput,
+              },
+
+              of: [
+                defineArrayMember({
+                  type: 'reference',
+
+                  to: [
+                    {
+                      type: 'taxonomy',
+                    },
+                  ],
+
+                  options: {
+                    disableNew: true,
+
+                    filter: ({document}) => taxonomyVisitorFilterReferenceFilter(document),
+                  },
+                }),
+              ],
+
+              validation: (Rule) =>
+                Rule.required()
+                  .min(1)
+                  .unique()
+                  .custom((value, context) =>
+                    validateDocumentListTaxonomyReferences(
+                      value as TaxonomyReference[] | undefined,
+                      context,
+                      {
+                        requireFilterable: true,
+                      },
+                    ),
+                  ),
+            }),
           ],
 
-          options: {
-            disableNew: true,
+          preview: {
+            select: {
+              title: 'title',
+              taxonomy: 'taxonomy',
+              logic: 'logic',
+            },
 
-            filter: ({document}) => taxonomyVisitorFilterReferenceFilter(document),
+            prepare({title, taxonomy, logic}) {
+              const count = Array.isArray(taxonomy) ? taxonomy.length : 0
+              const selection = logic === 'radio' ? 'Single' : 'Multiple'
+
+              return {
+                title: title || 'Filter Group',
+                subtitle: `${selection} · ${count} term${count === 1 ? '' : 's'}`,
+              }
+            },
           },
         }),
       ],
 
       validation: (Rule) =>
-        Rule.unique().custom((value, context) => {
-          const parent = context.parent as
-            | {
-                enableFilters?: boolean
-                sourceMode?: string
-              }
-            | undefined
+        Rule.custom((value) =>
+          validateDocumentListTaxonomyFilterGroups(
+            value as
+              | {
+                  _key?: string
+                  title?: string
+                  taxonomy?: TaxonomyReference[]
+                }[]
+              | undefined,
+          ),
+        ),
+    }),
 
-          if (!parent?.enableFilters || parent.sourceMode !== 'dynamic') {
-            return true
-          }
+    /*
+     * Legacy singular Taxonomy filter fields are retained in the schema so
+     * existing Document Lists keep their stored configuration without a
+     * migration. New authoring uses taxonomyFilterGroups above.
+     */
+    defineField({
+      name: 'taxonomyFilterTitle',
+      title: 'Legacy Taxonomy Filter Title',
+      type: 'string',
+      hidden: true,
+    }),
 
-          return validateDocumentListTaxonomyReferences(
-            value as TaxonomyReference[] | undefined,
-            context,
-            {
-              requireFilterable: true,
-            },
-          )
+    defineField({
+      name: 'taxonomyFilterLogic',
+      title: 'Legacy Taxonomy Filter Selection',
+      type: 'string',
+      hidden: true,
+    }),
+
+    defineField({
+      name: 'taxonomyFilterMatchLogic',
+      title: 'Legacy Taxonomy Match',
+      type: 'string',
+      hidden: true,
+    }),
+
+    defineField({
+      name: 'filterTaxonomy',
+      title: 'Legacy Taxonomy Filters',
+      type: 'array',
+      hidden: true,
+
+      of: [
+        defineArrayMember({
+          type: 'reference',
+          to: [{type: 'taxonomy'}],
         }),
+      ],
     }),
 
     /* === Visitor Sorting === */
@@ -717,14 +788,157 @@ export const documentListBlockType = defineType({
     }),
 
     defineField({
-      name: 'sortOptions',
-      title: 'Sort Options',
+      name: 'standardSortOptions',
+      title: 'Standard Sort Options',
       type: 'array',
 
       description:
-        'Choose which standard sort options visitors can use. Public labels are localized automatically from the page Locale.',
+        'Select the common sort choices visitors should see. Labels are localized automatically from the page Locale.',
+
+      initialValue: ['relevance', 'newest', 'oldest', 'title-asc', 'title-desc'],
 
       hidden: ({parent}) => !parent?.enableSorting,
+
+      of: [
+        defineArrayMember({
+          type: 'string',
+        }),
+      ],
+
+      options: {
+        list: [
+          {
+            title: 'Relevance',
+            value: 'relevance',
+          },
+          {
+            title: 'Newest',
+            value: 'newest',
+          },
+          {
+            title: 'Oldest',
+            value: 'oldest',
+          },
+          {
+            title: 'Title A–Z',
+            value: 'title-asc',
+          },
+          {
+            title: 'Title Z–A',
+            value: 'title-desc',
+          },
+        ],
+      },
+
+      validation: (Rule) => Rule.unique(),
+    }),
+
+    defineField({
+      name: 'customSortOptions',
+      title: 'Custom Sort Options',
+      type: 'array',
+
+      description:
+        'Add a special sort only when the standard options are not enough. Sort fields are intentionally restricted to supported document data.',
+
+      hidden: ({parent}) => !parent?.enableSorting,
+
+      of: [
+        defineArrayMember({
+          name: 'customSortOption',
+          title: 'Custom Sort Option',
+          type: 'object',
+
+          fields: [
+            defineField({
+              name: 'label',
+              title: 'Label',
+              type: 'string',
+
+              description: 'Visitor-facing label for this custom sort option.',
+
+              validation: (Rule) => Rule.required(),
+            }),
+
+            defineField({
+              name: 'field',
+              title: 'Sort Field',
+              type: 'string',
+
+              options: {
+                list: [
+                  {
+                    title: 'Published / Content Date',
+                    value: 'date',
+                  },
+                  {
+                    title: 'Title',
+                    value: 'title',
+                  },
+                  {
+                    title: 'Content Type',
+                    value: 'content-type',
+                  },
+                  {
+                    title: 'File Type',
+                    value: 'file-type',
+                  },
+                ],
+              },
+
+              validation: (Rule) => Rule.required(),
+            }),
+
+            defineField({
+              name: 'direction',
+              title: 'Direction',
+              type: 'string',
+
+              initialValue: 'asc',
+
+              options: {
+                list: [
+                  {
+                    title: 'Ascending',
+                    value: 'asc',
+                  },
+                  {
+                    title: 'Descending',
+                    value: 'desc',
+                  },
+                ],
+
+                layout: 'radio',
+              },
+
+              validation: (Rule) => Rule.required(),
+            }),
+          ],
+
+          preview: {
+            select: {
+              title: 'label',
+              field: 'field',
+              direction: 'direction',
+            },
+
+            prepare({title, field, direction}) {
+              return {
+                title: title || 'Custom Sort Option',
+                subtitle: [field, direction].filter(Boolean).join(' · '),
+              }
+            },
+          },
+        }),
+      ],
+    }),
+
+    /* Legacy sort items remain readable for existing content. */
+    defineField({
+      name: 'sortOptions',
+      title: 'Legacy Sort Options',
+      type: 'array',
+      hidden: true,
 
       of: [
         defineArrayMember({
@@ -735,72 +949,15 @@ export const documentListBlockType = defineType({
           fields: [
             defineField({
               name: 'label',
-              title: 'Legacy Label',
+              title: 'Label',
               type: 'string',
-
-              description:
-                'Legacy stored label retained for existing content. The public label is localized automatically from Sort Value.',
-
-              hidden: true,
             }),
-
             defineField({
               name: 'value',
               title: 'Sort Value',
               type: 'string',
-
-              description: 'Choose the machine value used by the Document List query.',
-
-              options: {
-                list: [
-                  {
-                    title: 'Relevance',
-                    value: 'relevance',
-                  },
-                  {
-                    title: 'Newest',
-                    value: 'newest',
-                  },
-                  {
-                    title: 'Oldest',
-                    value: 'oldest',
-                  },
-                  {
-                    title: 'Title A–Z',
-                    value: 'title-asc',
-                  },
-                  {
-                    title: 'Title Z–A',
-                    value: 'title-desc',
-                  },
-                ],
-              },
-
-              validation: (Rule) => Rule.required(),
             }),
           ],
-
-          preview: {
-            select: {
-              value: 'value',
-            },
-
-            prepare({value}) {
-              const titles: Record<string, string> = {
-                relevance: 'Relevance',
-                newest: 'Newest',
-                oldest: 'Oldest',
-                'title-asc': 'Title A–Z',
-                'title-desc': 'Title Z–A',
-              }
-
-              return {
-                title: titles[value] || 'Sort Option',
-
-                subtitle: value || undefined,
-              }
-            },
-          },
         }),
       ],
     }),

@@ -5,14 +5,32 @@ export type SearchContentType =
   | "news"
   | "resource";
 
-export type SearchSort =
+export type SearchCustomSortField =
+  | "date"
+  | "title"
+  | "content-type"
+  | "file-type";
+
+export type SearchSortDirection = "asc" | "desc";
+
+export type SearchStandardSort =
   | "relevance"
   | "newest"
   | "oldest"
   | "title-asc"
   | "title-desc";
 
+export type SearchCustomSort =
+  `custom:${SearchCustomSortField}:${SearchSortDirection}`;
+
+export type SearchSort = SearchStandardSort | SearchCustomSort;
+
 export type SearchTaxonomyMatch = "any" | "all";
+
+export interface SearchTaxonomyFilterGroup {
+  taxonomy: string[];
+  taxonomyMatch: SearchTaxonomyMatch;
+}
 
 export interface SearchTaxonomyItem {
   id: string;
@@ -111,6 +129,15 @@ export interface SearchContentOptions {
    */
   taxonomy?: string[];
   taxonomyMatch?: SearchTaxonomyMatch;
+
+  /**
+   * Optional independent visitor Taxonomy groups. Each group applies its own
+   * any/all matching and every active group must match.
+   *
+   * The legacy taxonomy/taxonomyMatch pair above remains supported for
+   * callers that expose one Taxonomy filter group.
+   */
+  taxonomyGroups?: SearchTaxonomyFilterGroup[];
 
   /**
    * Optional authored Taxonomy scope applied before visitor filters.

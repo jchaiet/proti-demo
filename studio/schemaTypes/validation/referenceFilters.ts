@@ -145,6 +145,34 @@ export function taxonomyTermReferenceFilter(
 }
 
 /**
+ * Restricts Blog Taxonomy pickers to assignable Taxonomy Terms that are
+ * explicitly available for Blog tagging. Existing Terms with the field unset
+ * remain available for backwards compatibility.
+ */
+export function taxonomyBlogTagReferenceFilter(
+  document: Record<string, unknown> | undefined,
+): ReferenceFilterResult {
+  const site = document?.site as SiteDocument['site']
+
+  if (!site?._ref) {
+    return {
+      filter: 'false',
+    }
+  }
+
+  return {
+    filter: `
+      site._ref == $siteId &&
+      coalesce(kind, "term") != "group" &&
+      includeInBlogTags != false
+    `,
+    params: {
+      siteId: cleanId(site._ref),
+    },
+  }
+}
+
+/**
  * Restricts Taxonomy reference pickers used for visitor-facing filters.
  *
  * In addition to excluding Groups, Terms explicitly marked

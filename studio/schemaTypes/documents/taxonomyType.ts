@@ -17,6 +17,7 @@ const taxonomyPreviewSelect = {
   site: 'site.name',
   kind: 'kind',
   includeInFilters: 'includeInFilters',
+  includeInBlogTags: 'includeInBlogTags',
   translationCount: 'translations',
   ...createTaxonomyPreviewAncestorSelect(),
 }
@@ -186,6 +187,20 @@ export const taxonomyType = defineType({
     }),
 
     defineField({
+      name: 'includeInBlogTags',
+      title: 'Available for Blog Tagging',
+      type: 'boolean',
+      group: 'usage',
+
+      description:
+        'When enabled, this Taxonomy Term can be selected on Blog articles. Disable this for administrative or internal Terms that should remain unavailable to Blog authors.',
+
+      initialValue: true,
+
+      hidden: ({parent}) => parent?.kind === 'group',
+    }),
+
+    defineField({
       name: 'site',
       title: 'Site',
       type: 'reference',
@@ -265,14 +280,16 @@ export const taxonomyType = defineType({
     select: taxonomyPreviewSelect,
 
     prepare(selection) {
-      const {title, slug, site, kind, includeInFilters, translationCount} = selection as {
-        title?: string
-        slug?: string
-        site?: string
-        kind?: string
-        includeInFilters?: boolean
-        translationCount?: unknown[]
-      } & Record<string, unknown>
+      const {title, slug, site, kind, includeInFilters, includeInBlogTags, translationCount} =
+        selection as {
+          title?: string
+          slug?: string
+          site?: string
+          kind?: string
+          includeInFilters?: boolean
+          includeInBlogTags?: boolean
+          translationCount?: unknown[]
+        } & Record<string, unknown>
 
       const translatedLocales = Array.isArray(translationCount) ? translationCount.length : 0
 
@@ -285,6 +302,13 @@ export const taxonomyType = defineType({
             ? 'Hidden from filters'
             : undefined
 
+      const blogTagStatus =
+        kind === 'group'
+          ? undefined
+          : includeInBlogTags === false
+            ? 'Hidden from Blog tagging'
+            : undefined
+
       const path = buildTaxonomyPreviewPath(slug, selection as Record<string, unknown>)
 
       return {
@@ -293,6 +317,7 @@ export const taxonomyType = defineType({
           site,
           taxonomyKind,
           filterStatus,
+          blogTagStatus,
           path,
           translatedLocales > 0
             ? `${translatedLocales} translation${translatedLocales === 1 ? '' : 's'}`

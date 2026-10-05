@@ -4,6 +4,7 @@ import {
   siteLocaleReferenceFilter,
   siteOwnedReferenceFilter,
   siteReferenceFilter,
+  taxonomyBlogTagReferenceFilter,
   taxonomyTermReferenceFilter,
   taxonomyVisitorFilterReferenceFilter,
 } from '../referenceFilters'
@@ -197,6 +198,33 @@ describe('taxonomyTermReferenceFilter', () => {
 
     expect(result.filter).toContain('site._ref == $siteId')
     expect(result.filter).toContain('coalesce(kind, "term") != "group"')
+
+    if ('params' in result) {
+      expect(result.params).toEqual({
+        siteId: 'site-1',
+      })
+    }
+  })
+})
+
+describe('taxonomyBlogTagReferenceFilter', () => {
+  it('blocks the picker when Site is missing', () => {
+    expect(taxonomyBlogTagReferenceFilter({})).toEqual({
+      filter: 'false',
+    })
+  })
+
+  it('restricts Blog tagging to enabled non-Group Taxonomy Terms on the same Site', () => {
+    const result = taxonomyBlogTagReferenceFilter({
+      site: {
+        _type: 'reference',
+        _ref: 'drafts.site-1',
+      },
+    })
+
+    expect(result.filter).toContain('site._ref == $siteId')
+    expect(result.filter).toContain('coalesce(kind, "term") != "group"')
+    expect(result.filter).toContain('includeInBlogTags != false')
 
     if ('params' in result) {
       expect(result.params).toEqual({

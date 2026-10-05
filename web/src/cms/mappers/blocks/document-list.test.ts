@@ -280,6 +280,7 @@ it("keeps an unsearched non-Page Dynamic list on the lightweight resolver", asyn
     searchQuery: "",
     selectedFilter: "all",
     selectedTaxonomy: [],
+    selectedTaxonomyGroups: {},
     selectedSort: "oldest",
     currentPage: 1,
     totalPages: 1,
@@ -748,6 +749,7 @@ it("can require a search query before loading a Dynamic Page list", async () => 
     searchQuery: "",
     selectedFilter: "all",
     selectedTaxonomy: [],
+    selectedTaxonomyGroups: {},
     selectedSort: "newest",
     currentPage: 1,
     totalPages: 1,
@@ -866,4 +868,145 @@ it("preserves established defaults", async () => {
     searchPlaceholder: "Search documents...",
     emptyStateText: "No documents found matching your criteria.",
   });
+});
+
+it("maps explicit Taxonomy filter groups and combines active groups with AND semantics", async () => {
+  mocks.searchContent.mockResolvedValueOnce({
+    query: "",
+    locale: "en-us",
+    page: 1,
+    pageSize: 9,
+    total: 0,
+    totalPages: 0,
+    sort: "newest",
+    filters: {
+      types: ["blog"],
+      taxonomy: [],
+      taxonomyMatch: "any",
+    },
+    facets: {
+      types: [],
+      taxonomy: [],
+    },
+    results: [],
+  });
+
+  const mapped = await mapDocumentListBlock(
+    asBlock({
+      _key: "document-list",
+      _type: "documentListBlock",
+      sourceMode: "dynamic",
+      dynamicContentTypes: ["blog"],
+      enableFilters: true,
+      taxonomyFilterGroups: [
+        {
+          _key: "type",
+          title: "Type",
+          logic: "checkbox",
+          matchLogic: "any",
+          taxonomy: [
+            { _id: "taxonomy-article", title: "Article" },
+            { _id: "taxonomy-video", title: "Video" },
+          ],
+        },
+        {
+          _key: "treatment",
+          title: "Treatment",
+          logic: "checkbox",
+          matchLogic: "all",
+          taxonomy: [
+            { _id: "taxonomy-asthma", title: "Asthma" },
+            { _id: "taxonomy-diabetes", title: "Diabetes" },
+          ],
+        },
+      ],
+    }),
+    {
+      siteId: "site-proti",
+      locale: "en-us",
+      searchParams: {
+        "taxonomy.type": ["taxonomy-article"],
+        "taxonomy.treatment": ["taxonomy-asthma", "taxonomy-diabetes"],
+      },
+    },
+  );
+
+  expect(mapped.props.filterGroups).toEqual([
+    {
+      id: "taxonomy:type",
+      title: "Type",
+      logic: "checkbox",
+      options: [
+        { label: "Article", value: "taxonomy-article" },
+        { label: "Video", value: "taxonomy-video" },
+      ],
+    },
+    {
+      id: "taxonomy:treatment",
+      title: "Treatment",
+      logic: "checkbox",
+      options: [
+        { label: "Asthma", value: "taxonomy-asthma" },
+        { label: "Diabetes", value: "taxonomy-diabetes" },
+      ],
+    },
+  ]);
+
+  expect(mocks.searchContent).toHaveBeenCalledWith(
+    expect.objectContaining({
+      taxonomy: [],
+      taxonomyGroups: [
+        {
+          taxonomy: ["taxonomy-article"],
+          taxonomyMatch: "any",
+        },
+        {
+          taxonomy: ["taxonomy-asthma", "taxonomy-diabetes"],
+          taxonomyMatch: "all",
+        },
+      ],
+    }),
+  );
+
+  expect(mapped.serverState).toEqual(
+    expect.objectContaining({
+      selectedTaxonomy: [],
+      selectedTaxonomyGroups: {
+        "taxonomy:type": ["taxonomy-article"],
+        "taxonomy:treatment": ["taxonomy-asthma", "taxonomy-diabetes"],
+      },
+    }),
+  );
+});
+
+it("maps standard sort presets before safe custom sort options", async () => {
+  const mapped = await mapDocumentListBlock(
+    asBlock({
+      _key: "document-list",
+      _type: "documentListBlock",
+      sourceMode: "manual",
+      documents: [],
+      enableSorting: true,
+      standardSortOptions: ["relevance", "newest", "title-asc"],
+      customSortOptions: [
+        {
+          _key: "file-desc",
+          label: "File Type Z–A",
+          field: "file-type",
+          direction: "desc",
+        },
+      ],
+    }),
+    {
+      siteId: "site-proti",
+      locale: "en-us",
+    },
+  );
+
+  expect(mapped.props.sortOptions).toEqual([
+    { label: "Relevance", value: "relevance" },
+    { label: "Newest", value: "newest" },
+    { label: "Title A–Z", value: "title-asc" },
+    { label: "File Type Z–A", value: "custom:file-type:desc" },
+  ]);
 });

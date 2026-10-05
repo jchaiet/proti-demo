@@ -10,6 +10,7 @@ import type {
   CmsDocumentListBlock,
   CmsDocumentListItem,
   CmsDocumentListDynamicSort,
+  CmsDocumentListTaxonomyMatchLogic,
 } from "@/cms/types";
 import type { SearchResponse, SearchSort } from "@/cms/types/search";
 
@@ -48,7 +49,10 @@ export interface ServerDocumentListState {
 
   selectedFilter: string | string[];
 
+  /** Legacy singular Taxonomy selection. */
   selectedTaxonomy: string | string[];
+
+  selectedTaxonomyGroups?: Record<string, string | string[]>;
 
   selectedSort: string;
 
@@ -82,20 +86,16 @@ export interface DocumentListMapperContext {
   searchParams?: Record<string, string | string[] | undefined>;
 }
 
-const VALID_SEARCH_SORTS = new Set<SearchSort>([
-  "relevance",
-  "newest",
-  "oldest",
-  "title-asc",
-  "title-desc",
-]);
-
 const VALID_LISTING_SORTS = new Set<CmsDocumentListDynamicSort>([
   "newest",
   "oldest",
   "title-asc",
   "title-desc",
 ]);
+
+function isListingSort(value: SearchSort): value is CmsDocumentListDynamicSort {
+  return VALID_LISTING_SORTS.has(value as CmsDocumentListDynamicSort);
+}
 
 async function mapManualDocumentListItem(
   item: CmsDocumentListItem,
@@ -244,7 +244,9 @@ function mapFilterOptions(block: CmsDocumentListBlock): FilterOption[] {
 }
 
 function normalizeSortValue(value?: string): SearchSort | null {
-  switch (normalizeControlValue(value)) {
+  const normalized = normalizeControlValue(value);
+
+  switch (normalized) {
     case "relevance":
       return "relevance";
 
@@ -267,48 +269,131 @@ function normalizeSortValue(value?: string): SearchSort | null {
       return "title-desc";
 
     default:
+      if (
+        /^custom:(date|title|content-type|file-type):(asc|desc)$/.test(
+          normalized,
+        )
+      ) {
+        return normalized as SearchSort;
+      }
+
       return null;
   }
+}
+
+function makeCustomSortValue(
+  field?: string,
+  direction?: string,
+): SearchSort | null {
+  const normalizedField = normalizeControlValue(field);
+  const normalizedDirection = normalizeControlValue(direction);
+
+  return normalizeSortValue(`custom:${normalizedField}:${normalizedDirection}`);
+}
+
+function dedupeSortOptions(options: SortOption[]): SortOption[] {
+  const seen = new Set<string>();
+
+  return options.filter((option) => {
+    if (!option.value || seen.has(option.value)) {
+      return false;
+    }
+
+    seen.add(option.value);
+    return true;
+  });
 }
 
 function mapSortOptions(
   block: CmsDocumentListBlock,
   labels: DocumentListSortLabels,
 ): SortOption[] {
-  if (!block.enableSorting || !block.sortOptions?.length) {
+  if (!block.enableSorting) {
     return [];
   }
 
-  return block.sortOptions.flatMap((option) => {
-    const value = normalizeSortValue(option.value);
+  const usesModernSortConfiguration =
+    Array.isArray(block.standardSortOptions) ||
+    Array.isArray(block.customSortOptions);
 
-    if (!value) {
-      return [];
-    }
+  if (usesModernSortConfiguration) {
+    const standard = (block.standardSortOptions ?? []).flatMap((value) => {
+      const normalized = normalizeSortValue(value);
 
-    return [
-      {
-        label: labels[value],
-        value,
-      },
-    ];
-  });
+      if (!normalized || normalized.startsWith("custom:")) {
+        return [];
+      }
+
+      return [
+        {
+          label: labels[normalized as keyof DocumentListSortLabels],
+          value: normalized,
+        },
+      ];
+    });
+
+    const custom = (block.customSortOptions ?? []).flatMap((option) => {
+      const label = option.label?.trim() ?? "";
+      const value = makeCustomSortValue(option.field, option.direction);
+
+      if (!label || !value) {
+        return [];
+      }
+
+      return [
+        {
+          label,
+          value,
+        },
+      ];
+    });
+
+    return dedupeSortOptions([...standard, ...custom]);
+  }
+
+  if (!block.sortOptions?.length) {
+    return [];
+  }
+
+  return dedupeSortOptions(
+    block.sortOptions.flatMap((option) => {
+      const value = normalizeSortValue(option.value);
+
+      if (!value || value.startsWith("custom:")) {
+        return [];
+      }
+
+      return [
+        {
+          label: labels[value as keyof DocumentListSortLabels],
+          value,
+        },
+      ];
+    }),
+  );
 }
 
 function cleanId(id?: string): string {
   return id?.replace(/^drafts\./, "") ?? "";
 }
 
-function mapTaxonomyFilterOptions(block: CmsDocumentListBlock): FilterOption[] {
-  if (
-    !block.enableFilters ||
-    block.sourceMode !== "dynamic" ||
-    !block.filterTaxonomy?.length
-  ) {
+type MappedTaxonomyFilterGroup = {
+  id: string;
+  paramName: string;
+  title: string;
+  options: FilterOption[];
+  logic: "radio" | "checkbox";
+  matchLogic: CmsDocumentListTaxonomyMatchLogic;
+};
+
+function mapTaxonomyTerms(
+  terms: CmsDocumentListBlock["filterTaxonomy"],
+): FilterOption[] {
+  if (!terms?.length) {
     return [];
   }
 
-  return block.filterTaxonomy.flatMap((term) => {
+  return terms.flatMap((term) => {
     const value = cleanId(term._ref ?? term._id);
     const label = term.title?.trim() ?? "";
 
@@ -328,6 +413,61 @@ function mapTaxonomyFilterOptions(block: CmsDocumentListBlock): FilterOption[] {
       },
     ];
   });
+}
+
+function sanitizeFilterGroupKey(value: string): string {
+  return value.replace(/[^a-zA-Z0-9_-]/g, "");
+}
+
+function mapTaxonomyFilterGroups(
+  block: CmsDocumentListBlock,
+): MappedTaxonomyFilterGroup[] {
+  if (!block.enableFilters || block.sourceMode !== "dynamic") {
+    return [];
+  }
+
+  if (Array.isArray(block.taxonomyFilterGroups)) {
+    return block.taxonomyFilterGroups.flatMap((group, index) => {
+      const title = group.title?.trim() ?? "";
+      const options = mapTaxonomyTerms(group.taxonomy);
+      const key = sanitizeFilterGroupKey(group._key ?? String(index + 1));
+
+      if (!title || options.length === 0 || !key) {
+        return [];
+      }
+
+      const logic = group.logic === "radio" ? "radio" : "checkbox";
+
+      return [
+        {
+          id: `taxonomy:${key}`,
+          paramName: `taxonomy.${key}`,
+          title,
+          options,
+          logic,
+          matchLogic:
+            logic === "checkbox" && group.matchLogic === "all" ? "all" : "any",
+        },
+      ];
+    });
+  }
+
+  const legacyOptions = mapTaxonomyTerms(block.filterTaxonomy);
+
+  if (legacyOptions.length === 0) {
+    return [];
+  }
+
+  return [
+    {
+      id: "taxonomy",
+      paramName: "taxonomy",
+      title: block.taxonomyFilterTitle ?? "Topics",
+      options: legacyOptions,
+      logic: block.taxonomyFilterLogic ?? "checkbox",
+      matchLogic: block.taxonomyFilterMatchLogic ?? "any",
+    },
+  ];
 }
 
 function getDynamicTaxonomyIds(block: CmsDocumentListBlock): string[] {
@@ -418,7 +558,6 @@ function resolveRequestedSort({
   if (
     block.enableSorting &&
     requested &&
-    VALID_SEARCH_SORTS.has(requested) &&
     sortOptions.some((option) => option.value === requested)
   ) {
     return requested;
@@ -435,11 +574,10 @@ function resolveRequestedSort({
 
     const configuredDefault = sortOptions[0]?.value;
 
-    if (
-      configuredDefault &&
-      VALID_SEARCH_SORTS.has(configuredDefault as SearchSort)
-    ) {
-      return configuredDefault as SearchSort;
+    const normalizedDefault = normalizeSortValue(configuredDefault);
+
+    if (normalizedDefault) {
+      return normalizedDefault;
     }
   }
 
@@ -465,7 +603,7 @@ function resolveListingSort({
     block.enableSorting &&
     requested &&
     requested !== "relevance" &&
-    VALID_LISTING_SORTS.has(requested) &&
+    isListingSort(requested) &&
     sortOptions.some((option) => option.value === requested)
   ) {
     return requested;
@@ -593,7 +731,7 @@ async function resolveServerDocumentList({
   block,
   context,
   filterOptions,
-  taxonomyFilterOptions,
+  taxonomyFilterGroups,
   sortOptions,
   itemsPerPage,
   enablePagination,
@@ -601,7 +739,7 @@ async function resolveServerDocumentList({
   block: CmsDocumentListBlock;
   context: DocumentListMapperContext;
   filterOptions: FilterOption[];
-  taxonomyFilterOptions: FilterOption[];
+  taxonomyFilterGroups: MappedTaxonomyFilterGroup[];
   sortOptions: SortOption[];
   itemsPerPage: number;
   enablePagination: boolean;
@@ -632,28 +770,50 @@ async function resolveServerDocumentList({
       ? requestedFilterValues.slice(0, 1)
       : requestedFilterValues;
 
-  const taxonomyFilterLogic = block.taxonomyFilterLogic ?? "checkbox";
+  const selectedTaxonomyGroups: Record<string, string | string[]> = {};
+  const activeTaxonomyGroups: {
+    taxonomy: string[];
+    taxonomyMatch: CmsDocumentListTaxonomyMatchLogic;
+  }[] = [];
 
-  const allowedTaxonomyValues = new Set(
-    taxonomyFilterOptions.map((option) => normalizeControlValue(option.value)),
+  for (const group of taxonomyFilterGroups) {
+    const allowedValues = new Set(
+      group.options.map((option) => normalizeControlValue(option.value)),
+    );
+
+    const requestedValues = parseParamValues(params, group.paramName).filter(
+      (value) => allowedValues.has(value),
+    );
+
+    const values =
+      group.logic === "radio" ? requestedValues.slice(0, 1) : requestedValues;
+
+    selectedTaxonomyGroups[group.id] = getSelectedFilter(group.logic, values);
+
+    if (values.length > 0) {
+      activeTaxonomyGroups.push({
+        taxonomy: values,
+        taxonomyMatch: group.matchLogic,
+      });
+    }
+  }
+
+  const legacyTaxonomyGroup = taxonomyFilterGroups.find(
+    (group) => group.id === "taxonomy",
   );
 
-  const requestedTaxonomyValues =
-    taxonomyFilterOptions.length > 0
-      ? parseParamValues(params, "taxonomy").filter((value) =>
-          allowedTaxonomyValues.has(value),
-        )
-      : [];
+  const legacyTaxonomyValues = legacyTaxonomyGroup
+    ? (() => {
+        const selected = selectedTaxonomyGroups[legacyTaxonomyGroup.id];
+        return (Array.isArray(selected) ? selected : [selected])
+          .map(normalizeControlValue)
+          .filter((value) => value && value !== "all");
+      })()
+    : [];
 
-  const taxonomyFilterValues =
-    taxonomyFilterLogic === "radio"
-      ? requestedTaxonomyValues.slice(0, 1)
-      : requestedTaxonomyValues;
-
-  const selectedTaxonomy = getSelectedFilter(
-    taxonomyFilterLogic,
-    taxonomyFilterValues,
-  );
+  const selectedTaxonomy = legacyTaxonomyGroup
+    ? (selectedTaxonomyGroups[legacyTaxonomyGroup.id] ?? [])
+    : [];
 
   const requestedPage = enablePagination
     ? parsePositiveInt(params.get("page"), 1)
@@ -663,6 +823,29 @@ async function resolveServerDocumentList({
 
   const requiresSearchQuery =
     block.enableSearch !== false && block.requireSearchQuery === true;
+
+  const makeState = ({
+    searchQuery,
+    selectedSort,
+    currentPage = 1,
+    totalPages = 1,
+    totalResults = 0,
+  }: {
+    searchQuery: string;
+    selectedSort: string;
+    currentPage?: number;
+    totalPages?: number;
+    totalResults?: number;
+  }): ServerDocumentListState => ({
+    searchQuery,
+    selectedFilter: getSelectedFilter(filterLogic, filterValues),
+    selectedTaxonomy,
+    selectedTaxonomyGroups,
+    selectedSort,
+    currentPage,
+    totalPages,
+    totalResults,
+  });
 
   if (requiresSearchQuery && !query) {
     const selectedSort = resolveRequestedSort({
@@ -674,15 +857,10 @@ async function resolveServerDocumentList({
 
     return {
       documents: [],
-      state: {
+      state: makeState({
         searchQuery: "",
-        selectedFilter: getSelectedFilter(filterLogic, filterValues),
-        selectedTaxonomy,
         selectedSort,
-        currentPage: 1,
-        totalPages: 1,
-        totalResults: 0,
-      },
+      }),
     };
   }
 
@@ -693,37 +871,44 @@ async function resolveServerDocumentList({
 
     return {
       documents: [],
-      state: {
+      state: makeState({
         searchQuery: query,
-        selectedFilter: getSelectedFilter(filterLogic, filterValues),
-        selectedTaxonomy,
         selectedSort,
-        currentPage: 1,
-        totalPages: 1,
-        totalResults: 0,
-      },
+      }),
     };
   }
 
   const taxonomyIds = getDynamicTaxonomyIds(block);
   const dynamicLimit = Math.min(Math.max(block.dynamicLimit ?? 50, 1), 200);
   const includesPages = contentTypes.includes("page");
+  const requestedSort = normalizeSortValue(params.get("sort") ?? undefined);
+  const requiresSearchSort =
+    requestedSort === "relevance" ||
+    requestedSort?.startsWith("custom:") === true;
 
   /*
    * Any active visitor search uses the full Search resolver so matching is not
    * limited to the initial Dynamic result window. Page listings also use the
    * Search resolver even before a query so nested Page URLs can be assembled
    * from their parent hierarchy instead of assuming every Page is top-level.
-   * Existing non-Page Dynamic lists keep their lightweight resolver until a
-   * visitor actually searches.
+   * Taxonomy filter groups and custom/relevance visitor sorts also require the
+   * Search resolver because their behavior is richer than the lightweight
+   * listing query.
    */
-  if (query || includesPages || taxonomyFilterOptions.length > 0) {
+  if (
+    query ||
+    includesPages ||
+    taxonomyFilterGroups.length > 0 ||
+    requiresSearchSort
+  ) {
     const sort = resolveRequestedSort({
       block,
       query,
       params,
       sortOptions,
     });
+
+    const usesLegacyTaxonomy = Boolean(legacyTaxonomyGroup);
 
     const response = await searchContent({
       siteId: context.siteId,
@@ -737,8 +922,9 @@ async function resolveServerDocumentList({
 
       types: contentTypes,
 
-      taxonomy: taxonomyFilterValues,
-      taxonomyMatch: block.taxonomyFilterMatchLogic ?? "any",
+      taxonomy: usesLegacyTaxonomy ? legacyTaxonomyValues : [],
+      taxonomyMatch: legacyTaxonomyGroup?.matchLogic ?? "any",
+      taxonomyGroups: usesLegacyTaxonomy ? undefined : activeTaxonomyGroups,
 
       taxonomyScope: taxonomyIds,
       taxonomyScopeMatch: block.dynamicTaxonomyMatchLogic ?? "any",
@@ -759,15 +945,13 @@ async function resolveServerDocumentList({
     return {
       documents: response.results.map(mapSearchResult),
 
-      state: {
+      state: makeState({
         searchQuery: response.query,
-        selectedFilter: getSelectedFilter(filterLogic, filterValues),
-        selectedTaxonomy,
         selectedSort: response.sort,
         currentPage: response.page,
         totalPages: Math.max(1, response.totalPages),
         totalResults: response.total,
-      },
+      }),
     };
   }
 
@@ -799,15 +983,13 @@ async function resolveServerDocumentList({
 
   return {
     documents: paginated.documents,
-    state: {
+    state: makeState({
       searchQuery: "",
-      selectedFilter: getSelectedFilter(filterLogic, filterValues),
-      selectedTaxonomy,
       selectedSort: listingSort,
       currentPage: paginated.currentPage,
       totalPages: paginated.totalPages,
       totalResults: paginated.totalResults,
-    },
+    }),
   };
 }
 
@@ -821,10 +1003,10 @@ export async function mapDocumentListBlock(
 
   const filterOptions = mapFilterOptions(block);
 
-  const taxonomyFilterOptions = mapTaxonomyFilterOptions(block);
+  const taxonomyFilterGroups = mapTaxonomyFilterGroups(block);
 
   const filterGroups: FilterGroup[] =
-    sourceMode === "dynamic" && taxonomyFilterOptions.length > 0
+    sourceMode === "dynamic"
       ? [
           ...(filterOptions.length > 0
             ? [
@@ -836,12 +1018,15 @@ export async function mapDocumentListBlock(
                 } satisfies FilterGroup,
               ]
             : []),
-          {
-            id: "taxonomy",
-            title: block.taxonomyFilterTitle ?? "Topics",
-            options: taxonomyFilterOptions,
-            logic: block.taxonomyFilterLogic ?? "checkbox",
-          },
+          ...taxonomyFilterGroups.map(
+            (group) =>
+              ({
+                id: group.id,
+                title: group.title,
+                options: group.options,
+                logic: group.logic,
+              }) satisfies FilterGroup,
+          ),
         ]
       : [];
 
@@ -869,7 +1054,7 @@ export async function mapDocumentListBlock(
       block,
       context,
       filterOptions,
-      taxonomyFilterOptions,
+      taxonomyFilterGroups,
       sortOptions,
       itemsPerPage,
       enablePagination,

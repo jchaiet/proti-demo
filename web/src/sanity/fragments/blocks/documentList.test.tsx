@@ -12,6 +12,8 @@ describe("DOCUMENT_LIST_BLOCK_FRAGMENT", () => {
     expect(DOCUMENT_LIST_BLOCK_FRAGMENT).toContain("initialStateText");
     expect(DOCUMENT_LIST_BLOCK_FRAGMENT).toContain("enableFilters");
     expect(DOCUMENT_LIST_BLOCK_FRAGMENT).toContain("filterOptions[]");
+    expect(DOCUMENT_LIST_BLOCK_FRAGMENT).toContain("taxonomyFilterGroups[]");
+    expect(DOCUMENT_LIST_BLOCK_FRAGMENT).toContain("matchLogic");
     expect(DOCUMENT_LIST_BLOCK_FRAGMENT).toContain("taxonomyFilterTitle");
     expect(DOCUMENT_LIST_BLOCK_FRAGMENT).toContain("taxonomyFilterLogic");
     expect(DOCUMENT_LIST_BLOCK_FRAGMENT).toContain("taxonomyFilterMatchLogic");
@@ -25,6 +27,8 @@ describe("DOCUMENT_LIST_BLOCK_FRAGMENT", () => {
       '"filterTaxonomy": filterTaxonomy[]',
     );
     expect(DOCUMENT_LIST_BLOCK_FRAGMENT).toContain("enableSorting");
+    expect(DOCUMENT_LIST_BLOCK_FRAGMENT).toContain("standardSortOptions");
+    expect(DOCUMENT_LIST_BLOCK_FRAGMENT).toContain("customSortOptions[]");
     expect(DOCUMENT_LIST_BLOCK_FRAGMENT).toContain("sortOptions[]");
     expect(DOCUMENT_LIST_BLOCK_FRAGMENT).toContain("enablePagination");
     expect(DOCUMENT_LIST_BLOCK_FRAGMENT).toContain("itemsPerPage");

@@ -137,8 +137,7 @@ async function blogExists(
  *
  * Production requests consider published documents only; Draft Mode considers
  * the draft overlay as well. Missing translations are omitted so HeaderUtilities
- * can fall back to the
- * target Locale homepage and SEO does not emit an incorrect hreflang.
+ * can hide unavailable locales and SEO does not emit an incorrect hreflang.
  */
 export async function resolveDocumentTranslations({
   siteId,

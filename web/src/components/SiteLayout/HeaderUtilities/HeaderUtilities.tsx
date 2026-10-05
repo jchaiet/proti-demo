@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
-import { usePathname, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 
 import { getAppMessages } from "@/i18n/messages";
 
@@ -21,20 +21,11 @@ export interface HeaderUtilitiesProps {
   /**
    * Exact translated content URLs keyed by Site locale.
    *
-   * When this prop is present, missing target translations
-   * fall back to that locale's homepage instead of guessing
-   * that the current slug path exists in the target locale.
+   * Only locales with an exact translated equivalent are offered
+   * by the language selector. If no alternate translation exists,
+   * the entire language control is hidden.
    */
   localeHrefs?: Record<string, string>;
-
-  /**
-   * Published Homepage URLs keyed by Site locale.
-   *
-   * If an exact translated equivalent does not exist, the language
-   * switcher may use this as the fallback destination. If neither
-   * exists, that target locale is hidden.
-   */
-  localeHomeHrefs?: Record<string, string>;
 }
 
 function SearchIcon() {
@@ -112,58 +103,6 @@ function getLanguageCode(locale: string): string {
   return language.toUpperCase();
 }
 
-function stripCurrentLocalePrefix(
-  pathname: string,
-  locale: string,
-  defaultLocale: string,
-): string {
-  if (locale === defaultLocale) {
-    return pathname || "/";
-  }
-
-  const prefix = `/${locale}`;
-
-  if (pathname === prefix) {
-    return "/";
-  }
-
-  if (pathname.startsWith(`${prefix}/`)) {
-    const stripped = pathname.slice(prefix.length);
-
-    return stripped || "/";
-  }
-
-  return pathname || "/";
-}
-
-function buildLocalePath({
-  pathname,
-  currentLocale,
-  targetLocale,
-  defaultLocale,
-}: {
-  pathname: string;
-  currentLocale: string;
-  targetLocale: string;
-  defaultLocale: string;
-}): string {
-  const basePath = stripCurrentLocalePrefix(
-    pathname,
-    currentLocale,
-    defaultLocale,
-  );
-
-  if (targetLocale === defaultLocale) {
-    return basePath;
-  }
-
-  if (basePath === "/") {
-    return `/${targetLocale}`;
-  }
-
-  return `/${targetLocale}${basePath}`;
-}
-
 function appendQueryString(pathname: string, queryString: string): string {
   if (!queryString) {
     return pathname;
@@ -177,10 +116,7 @@ export function HeaderUtilities({
   defaultLocale,
   locales,
   localeHrefs,
-  localeHomeHrefs,
 }: HeaderUtilitiesProps) {
-  const pathname = usePathname();
-
   const searchParams = useSearchParams();
 
   const queryString = searchParams.toString();
@@ -200,57 +136,26 @@ export function HeaderUtilities({
   const hasExactLocaleHref = (targetLocale: string): boolean =>
     Boolean(localeHrefs?.[targetLocale]);
 
-  const hasLocaleHomepage = (targetLocale: string): boolean =>
-    Boolean(localeHomeHrefs?.[targetLocale]);
-
   /*
-   * Language-switch availability:
+   * The language control is a translation selector, not a site-locale
+   * switcher. Only exact translated equivalents are offered.
    *
-   * 1. Exact equivalent exists -> show it.
-   * 2. Exact equivalent is missing but a published target-locale
-   *    Homepage exists -> show it and fall back to that Homepage.
-   * 3. Neither exists -> hide the target locale.
-   *
-   * Always retain the current locale internally so the trigger can
-   * display the active language even when there are no alternatives.
+   * The current locale remains in the internal list so the active
+   * language can be represented when alternates exist, but it is
+   * removed from the dropdown itself.
    */
   const validLocales = configuredLocales.filter(
-    (item) =>
-      item.code === locale ||
-      hasExactLocaleHref(item.code) ||
-      hasLocaleHomepage(item.code),
+    (item) => item.code === locale || hasExactLocaleHref(item.code),
   );
 
   const getLocaleHref = (targetLocale: string): string | null => {
     const exactHref = localeHrefs?.[targetLocale];
 
-    if (exactHref) {
-      return appendQueryString(exactHref, queryString);
+    if (!exactHref) {
+      return null;
     }
 
-    const homepageHref = localeHomeHrefs?.[targetLocale];
-
-    if (homepageHref) {
-      return appendQueryString(homepageHref, queryString);
-    }
-
-    /*
-     * Backwards-compatible fallback for callers that do not provide
-     * homepage availability. SiteLayout now always provides it.
-     */
-    if (localeHomeHrefs === undefined && localeHrefs === undefined) {
-      return appendQueryString(
-        buildLocalePath({
-          pathname,
-          currentLocale: locale,
-          targetLocale,
-          defaultLocale,
-        }),
-        queryString,
-      );
-    }
-
-    return null;
+    return appendQueryString(exactHref, queryString);
   };
 
   const availableLocales = validLocales

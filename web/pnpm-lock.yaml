@@ -5003,7 +5003,7 @@ packages:
     engines: {node: '>= 18'}
 
   mino-ui@file:mino-ui-0.0.2.tgz:
-    resolution: {integrity: sha512-ifgRYiwR3Da2l53ltgNLmkbhgTh/SPJK0xPnGR31juMql46oawHf4jC1p6OyFuuVDO4IcEcNnUyKsiE6ViXntw==, tarball: file:mino-ui-0.0.2.tgz}
+    resolution: {integrity: sha512-v5vmh206A/UEqrsZUC1FO0Be/Z9xoU5VI+lxSLmvv6mcf0gqYawhzOk0Dq2peBBTRPLQ51ESCxtPeuJ66VfBiQ==, tarball: file:mino-ui-0.0.2.tgz}
     version: 0.0.2
     peerDependencies:
       react: '>=18.0.0'

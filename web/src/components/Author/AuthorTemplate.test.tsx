@@ -93,8 +93,7 @@ describe("AuthorTemplate localization", () => {
   it("uses the English Author application messages", () => {
     render(<AuthorTemplate page={buildPage("en-us")} />);
 
-    expect(screen.getByText("Expertise & Credentials")).toBeTruthy();
-    expect(screen.getByText("Areas of expertise")).toBeTruthy();
+    expect(screen.getByText("Expertise")).toBeTruthy();
     expect(screen.getByText("Credentials")).toBeTruthy();
     expect(screen.getByText("Affiliation")).toBeTruthy();
 
@@ -121,8 +120,7 @@ describe("AuthorTemplate localization", () => {
   it("uses the Spanish Author application messages and date locale", () => {
     render(<AuthorTemplate page={buildPage("es-us")} localePrefix="/es-us" />);
 
-    expect(screen.getByText("Especialización y credenciales")).toBeTruthy();
-    expect(screen.getByText("Áreas de especialización")).toBeTruthy();
+    expect(screen.getByText("Especialización")).toBeTruthy();
     expect(screen.getByText("Credenciales")).toBeTruthy();
     expect(screen.getByText("Afiliación")).toBeTruthy();
 

@@ -1,6 +1,9 @@
 import {describe, expect, it} from 'vitest'
 
-import {validateDocumentListTaxonomyReferences} from '../documentListTaxonomy'
+import {
+  validateDocumentListTaxonomyFilterGroups,
+  validateDocumentListTaxonomyReferences,
+} from '../documentListTaxonomy'
 import {createValidationContext} from './testUtils'
 
 describe('Document List taxonomy validation', () => {
@@ -126,4 +129,36 @@ describe('Document List taxonomy validation', () => {
       }),
     ).resolves.toBe('Taxonomy Term "Internal Topic" is excluded from visitor filters.')
   })
+})
+
+it('validates explicit Taxonomy filter-group structure', () => {
+  expect(
+    validateDocumentListTaxonomyFilterGroups([
+      {
+        _key: 'type',
+        title: 'Type',
+        taxonomy: [{_ref: 'taxonomy-article'}, {_ref: 'taxonomy-video'}],
+      },
+      {
+        _key: 'treatment',
+        title: 'Treatment',
+        taxonomy: [{_ref: 'taxonomy-asthma'}],
+      },
+    ]),
+  ).toBe(true)
+})
+
+it('rejects duplicate Taxonomy Terms across visitor filter groups', () => {
+  expect(
+    validateDocumentListTaxonomyFilterGroups([
+      {
+        title: 'Type',
+        taxonomy: [{_ref: 'taxonomy-shared'}],
+      },
+      {
+        title: 'Treatment',
+        taxonomy: [{_ref: 'taxonomy-shared'}],
+      },
+    ]),
+  ).toBe('Taxonomy Term taxonomy-shared is already used in Filter Group "Type".')
 })

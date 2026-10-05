@@ -76,6 +76,33 @@ export const DOCUMENT_LIST_BLOCK_FRAGMENT = `
       value
     },
 
+    taxonomyFilterGroups[] {
+      _key,
+      title,
+      logic,
+      matchLogic,
+
+      "taxonomy": taxonomy[] {
+        _key,
+        _type,
+        _ref,
+
+        "_id": @->_id,
+
+        "title": coalesce(
+          @->translations[
+            locale == $locale
+          ][0].title,
+          @->title
+        ),
+
+        "slug": @->slug.current,
+
+        "kind": coalesce(@->kind, "term"),
+        "includeInFilters": @->includeInFilters
+      }
+    },
+
     taxonomyFilterTitle,
     taxonomyFilterLogic,
     taxonomyFilterMatchLogic,
@@ -101,6 +128,15 @@ export const DOCUMENT_LIST_BLOCK_FRAGMENT = `
     },
 
     enableSorting,
+
+    standardSortOptions,
+
+    customSortOptions[] {
+      _key,
+      label,
+      field,
+      direction
+    },
 
     sortOptions[] {
       _key,

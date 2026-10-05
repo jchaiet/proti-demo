@@ -29,9 +29,8 @@ export interface SiteLayoutProps {
   /**
    * Exact translated CMS-document URLs keyed by Site locale.
    *
-   * Undefined means the caller does not have an exact translation map.
-   * Header utilities can then fall back to published locale homepages or,
-   * for legacy callers without availability data, preserve the route path.
+   * Only exact translated equivalents are exposed in the language selector.
+   * If no alternate translation exists, the language control is hidden.
    */
   localeHrefs?: Record<string, string>;
 
@@ -69,21 +68,6 @@ export async function SiteLayout({
 
   const locales = localeConfig?.locales ?? [];
 
-  /*
-   * A configured locale is not automatically a usable homepage.
-   *
-   * Only published Homepage documents appear here because the
-   * shared Sanity client uses the published perspective.
-   */
-  const localeHomeHrefs = Object.fromEntries(
-    Array.from(new Set(localeConfig?.homepageLocales ?? []))
-      .filter(Boolean)
-      .map((homepageLocale) => [
-        homepageLocale,
-        homepageLocale === defaultLocale ? "/" : `/${homepageLocale}`,
-      ]),
-  );
-
   return (
     <div data-mino-theme className={styles.siteLayout}>
       {header ? (
@@ -94,7 +78,6 @@ export async function SiteLayout({
           defaultLocale={defaultLocale}
           locales={locales}
           localeHrefs={localeHrefs}
-          localeHomeHrefs={localeHomeHrefs}
         />
       ) : null}
 

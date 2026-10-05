@@ -22,11 +22,6 @@ export interface SiteHeaderProps {
   locales: HeaderLocale[];
 
   localeHrefs?: Record<string, string>;
-
-  /**
-   * Published locale Homepage URLs keyed by Site locale.
-   */
-  localeHomeHrefs?: Record<string, string>;
 }
 
 export function SiteHeader({
@@ -36,7 +31,6 @@ export function SiteHeader({
   defaultLocale,
   locales,
   localeHrefs,
-  localeHomeHrefs,
 }: SiteHeaderProps) {
   const logo = header.logo ? (
     <SiteLogo logo={header.logo} href={homeHref} />
@@ -51,7 +45,6 @@ export function SiteHeader({
         defaultLocale={defaultLocale}
         locales={locales}
         localeHrefs={localeHrefs}
-        localeHomeHrefs={localeHomeHrefs}
       />
 
       {hasCmsUtilities && (

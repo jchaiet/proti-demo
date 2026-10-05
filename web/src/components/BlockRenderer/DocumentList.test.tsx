@@ -546,3 +546,64 @@ it("clears content and Taxonomy filters without clearing search or sort", async 
     );
   });
 });
+
+it("writes independent Taxonomy filter groups to group-specific URL parameters", async () => {
+  mocks.searchParams = "q=asthma";
+
+  render(
+    <DocumentList
+      props={{
+        documents: [],
+        filterGroups: [
+          {
+            id: "taxonomy:type",
+            title: "Type",
+            options: [{ label: "Article", value: "taxonomy-article" }],
+            logic: "checkbox",
+          },
+          {
+            id: "taxonomy:treatment",
+            title: "Treatment",
+            options: [{ label: "Asthma", value: "taxonomy-asthma" }],
+            logic: "checkbox",
+          },
+        ],
+      }}
+      sourceMode="dynamic"
+      enableSearch
+      enableSorting={false}
+      enablePagination
+      itemsPerPage={12}
+      serverState={{
+        searchQuery: "asthma",
+        selectedFilter: "all",
+        selectedTaxonomy: [],
+        selectedTaxonomyGroups: {
+          "taxonomy:type": [],
+          "taxonomy:treatment": [],
+        },
+        selectedSort: "newest",
+        currentPage: 1,
+        totalPages: 1,
+        totalResults: 0,
+      }}
+    />,
+  );
+
+  const typeGroup = getProps().filterGroups?.find(
+    (group) => group.id === "taxonomy:type",
+  );
+
+  act(() => {
+    typeGroup?.onChange?.(["taxonomy-article"]);
+  });
+
+  await waitFor(() => {
+    expect(mocks.replace).toHaveBeenCalledWith(
+      "/search?q=asthma&taxonomy.type=taxonomy-article",
+      {
+        scroll: false,
+      },
+    );
+  });
+});

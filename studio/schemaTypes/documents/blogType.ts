@@ -8,10 +8,11 @@ import {
 import {validateBlogTaxonomyRouteCollision} from '../validation/taxonomyRoutes'
 import {validateBlogHeadingQuality} from '../validation/headingQuality'
 import {createAccessibleImageFields} from '../objects/accessibleImageFields'
-import {siteReferenceFilter} from '../validation/referenceFilters'
+import {siteReferenceFilter, taxonomyBlogTagReferenceFilter} from '../validation/referenceFilters'
 import {validateSiteLocale} from '../validation/siteLocale'
 import {isBlogSlugUnique, validateBlogSlug} from '../validation/blogSlug'
 import {validateBlogEditorial} from '../validation/blogEditorial'
+import {validateTaxonomyUsageReferences} from '../validation/taxonomyUsage'
 
 export const blogType = defineType({
   name: 'blog',
@@ -35,6 +36,15 @@ export const blogType = defineType({
           referenceLabel: 'Taxonomy Term',
           documentLabel: 'Blog',
         }),
+      )
+      .custom((document, context) =>
+        validateTaxonomyUsageReferences(
+          document?.taxonomy as {_ref?: string}[] | undefined,
+          context,
+          {
+            requireBlogTaggable: true,
+          },
+        ),
       )
       .custom((document, context) =>
         validateSameSiteReference(document, context, {
@@ -266,7 +276,7 @@ export const blogType = defineType({
           options: {
             disableNew: true,
 
-            filter: ({document}) => siteReferenceFilter(document),
+            filter: ({document}) => taxonomyBlogTagReferenceFilter(document),
           },
         }),
       ],

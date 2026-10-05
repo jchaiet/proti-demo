@@ -123,6 +123,38 @@ const compareDates = (
   return direction === "asc" ? firstTime - secondTime : secondTime - firstTime;
 };
 
+const parseCustomSort = (
+  value: string,
+): {
+  field: "date" | "title" | "content-type" | "file-type";
+  direction: "asc" | "desc";
+} | null => {
+  const match = value.match(
+    /^custom:(date|title|content-type|file-type):(asc|desc)$/,
+  );
+
+  if (!match) {
+    return null;
+  }
+
+  return {
+    field: match[1] as "date" | "title" | "content-type" | "file-type",
+    direction: match[2] as "asc" | "desc",
+  };
+};
+
+const compareStrings = (
+  first?: string,
+  second?: string,
+  direction: "asc" | "desc" = "asc",
+): number => {
+  const comparison = (first ?? "").localeCompare(second ?? "", undefined, {
+    sensitivity: "base",
+  });
+
+  return direction === "asc" ? comparison : -comparison;
+};
+
 const sortDocuments = (
   documents: DocumentItem[],
 
@@ -131,6 +163,29 @@ const sortDocuments = (
   const sortValue = normalizeValue(selectedSort);
 
   const sorted = [...documents];
+  const customSort = parseCustomSort(sortValue);
+
+  if (customSort) {
+    return sorted.sort((a, b) => {
+      switch (customSort.field) {
+        case "date":
+          return compareDates(a.date, b.date, customSort.direction);
+
+        case "title":
+          return compareStrings(a.title, b.title, customSort.direction);
+
+        case "content-type":
+          return compareStrings(
+            a.contentType,
+            b.contentType,
+            customSort.direction,
+          );
+
+        case "file-type":
+          return compareStrings(a.fileType, b.fileType, customSort.direction);
+      }
+    });
+  }
 
   switch (sortValue) {
     case "newest":
@@ -171,6 +226,17 @@ const getInitialFilter = (
 const getInitialSort = (
   sortOptions: MappedDocumentListBlock["props"]["sortOptions"],
 ): string => sortOptions?.[0]?.value ?? "";
+
+const isTaxonomyGroupId = (groupId: string): boolean =>
+  groupId === "taxonomy" || groupId.startsWith("taxonomy:");
+
+const getTaxonomyParamName = (groupId: string): string => {
+  if (groupId === "taxonomy") {
+    return "taxonomy";
+  }
+
+  return `taxonomy.${groupId.slice("taxonomy:".length)}`;
+};
 
 function LocalDocumentList({
   props,
@@ -394,15 +460,16 @@ function ServerDocumentList({
     });
   };
 
-  const handleTaxonomyChange = (value: string | string[]) => {
+  const handleTaxonomyChange = (groupId: string, value: string | string[]) => {
     const values = Array.isArray(value) ? value : [value];
+    const paramName = getTaxonomyParamName(groupId);
 
     replaceParams((params) => {
-      params.delete("taxonomy");
+      params.delete(paramName);
 
       for (const taxonomy of values) {
         if (taxonomy && taxonomy !== "all") {
-          params.append("taxonomy", taxonomy);
+          params.append(paramName, taxonomy);
         }
       }
 
@@ -414,16 +481,27 @@ function ServerDocumentList({
     replaceParams((params) => {
       params.delete("filter");
       params.delete("taxonomy");
+
+      for (const key of Array.from(params.keys())) {
+        if (key.startsWith("taxonomy.")) {
+          params.delete(key);
+        }
+      }
+
       params.delete("page");
     });
   };
 
   const resolvedFilterGroups: FilterGroup[] = filterGroups.map((group) => {
-    if (group.id === "taxonomy") {
+    if (isTaxonomyGroupId(group.id)) {
+      const selected =
+        state.selectedTaxonomyGroups?.[group.id] ??
+        (group.id === "taxonomy" ? state.selectedTaxonomy : undefined);
+
       return {
         ...group,
-        selected: state.selectedTaxonomy,
-        onChange: handleTaxonomyChange,
+        selected: selected ?? (group.logic === "checkbox" ? [] : "all"),
+        onChange: (value) => handleTaxonomyChange(group.id, value),
       };
     }
 

@@ -13,10 +13,12 @@ type TaxonomyDocument = {
   title?: string
   kind?: 'term' | 'group'
   includeInFilters?: boolean
+  includeInBlogTags?: boolean
 }
 
 type TaxonomyUsageValidationOptions = {
   requireFilterable?: boolean
+  requireBlogTaggable?: boolean
 }
 
 export async function validateTaxonomyUsageReferences(
@@ -53,7 +55,8 @@ export async function validateTaxonomyUsageReferences(
         _id,
         title,
         kind,
-        includeInFilters
+        includeInFilters,
+        includeInBlogTags
       }
     `,
     {
@@ -94,6 +97,10 @@ export async function validateTaxonomyUsageReferences(
 
     if (options.requireFilterable && taxonomyDocument.includeInFilters === false) {
       return `Taxonomy Term ${label} is excluded from visitor filters.`
+    }
+
+    if (options.requireBlogTaggable && taxonomyDocument.includeInBlogTags === false) {
+      return `Taxonomy Term ${label} is excluded from Blog tagging.`
     }
   }
 

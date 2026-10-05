@@ -788,3 +788,125 @@ it("sorts newest/oldest using raw ISO timestamps and paginates safely", async ()
     "blog-new",
   ]);
 });
+
+it("requires every active Taxonomy filter group while honoring matching inside each group", async () => {
+  taxonomy = [
+    { _id: "taxonomy-article", title: "Article", slug: "article" },
+    { _id: "taxonomy-video", title: "Video", slug: "video" },
+    { _id: "taxonomy-asthma", title: "Asthma", slug: "asthma" },
+    { _id: "taxonomy-diabetes", title: "Diabetes", slug: "diabetes" },
+  ];
+
+  documents = [
+    {
+      _id: "blog-article-asthma",
+      _type: "blog",
+      title: "Article Asthma",
+      locale: "en-us",
+      slug: "article-asthma",
+      taxonomy: [
+        { _id: "taxonomy-article", title: "Article", slug: "article" },
+        { _id: "taxonomy-asthma", title: "Asthma", slug: "asthma" },
+      ],
+      sections: [],
+    },
+    {
+      _id: "blog-article-diabetes",
+      _type: "blog",
+      title: "Article Diabetes",
+      locale: "en-us",
+      slug: "article-diabetes",
+      taxonomy: [
+        { _id: "taxonomy-article", title: "Article", slug: "article" },
+        { _id: "taxonomy-diabetes", title: "Diabetes", slug: "diabetes" },
+      ],
+      sections: [],
+    },
+    {
+      _id: "blog-video-asthma",
+      _type: "blog",
+      title: "Video Asthma",
+      locale: "en-us",
+      slug: "video-asthma",
+      taxonomy: [
+        { _id: "taxonomy-video", title: "Video", slug: "video" },
+        { _id: "taxonomy-asthma", title: "Asthma", slug: "asthma" },
+      ],
+      sections: [],
+    },
+  ];
+
+  const response = await searchContent({
+    siteId: "site-proti",
+    locale: "en-us",
+    query: "",
+    includeAllOnEmptyQuery: true,
+    types: ["blog"],
+    taxonomyGroups: [
+      { taxonomy: ["taxonomy-article"], taxonomyMatch: "any" },
+      {
+        taxonomy: ["taxonomy-asthma", "taxonomy-diabetes"],
+        taxonomyMatch: "all",
+      },
+    ],
+  });
+
+  expect(response.results).toEqual([]);
+
+  const anyTreatment = await searchContent({
+    siteId: "site-proti",
+    locale: "en-us",
+    query: "",
+    includeAllOnEmptyQuery: true,
+    types: ["blog"],
+    taxonomyGroups: [
+      { taxonomy: ["taxonomy-article"], taxonomyMatch: "any" },
+      {
+        taxonomy: ["taxonomy-asthma", "taxonomy-diabetes"],
+        taxonomyMatch: "any",
+      },
+    ],
+  });
+
+  expect(anyTreatment.results.map((result) => result.id).sort()).toEqual([
+    "blog-article-asthma",
+    "blog-article-diabetes",
+  ]);
+});
+
+it("supports whitelisted custom Document List sorts", async () => {
+  documents = [
+    {
+      _id: "blog-a",
+      _type: "blog",
+      title: "Alpha",
+      locale: "en-us",
+      slug: "alpha",
+      publishedAt: "2026-08-01T12:00:00Z",
+      sections: [],
+    },
+    {
+      _id: "blog-z",
+      _type: "blog",
+      title: "Zulu",
+      locale: "en-us",
+      slug: "zulu",
+      publishedAt: "2026-09-01T12:00:00Z",
+      sections: [],
+    },
+  ];
+
+  const response = await searchContent({
+    siteId: "site-proti",
+    locale: "en-us",
+    query: "",
+    includeAllOnEmptyQuery: true,
+    types: ["blog"],
+    sort: "custom:title:desc",
+  });
+
+  expect(response.results.map((result) => result.id)).toEqual([
+    "blog-z",
+    "blog-a",
+  ]);
+});
