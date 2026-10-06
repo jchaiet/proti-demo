@@ -97,6 +97,8 @@ Proti includes:
 - Exact page-to-page language switching
 - Search and dynamic Document Lists
 - Grouped taxonomy filters and configurable sorting
+- Responsive CMS Grid blocks
+- Shared block-level styling for spacing, background, and content width
 - SEO metadata and structured data
 - Draft Mode and Sanity visual editing
 - Sanity webhook-driven production cache revalidation
@@ -163,6 +165,34 @@ Treatment
 ```
 
 Selections within a group use the configured Any/All behavior. Separate groups combine using AND semantics.
+
+When **Require Search or Filter** is enabled, a text query or an active visitor filter is enough to begin loading results. With neither present, the list remains in its configured initial state.
+
+## Responsive Grid Blocks
+
+Grid blocks treat the Studio **Desktop Columns** value as the desktop target.
+
+The default responsive behavior is:
+
+```text
+Mobile:  1 column
+Tablet:  up to 2 columns
+Desktop: configured Desktop Columns
+```
+
+For example, a 4-column Grid becomes 1 / 2 / 4 across mobile, tablet, and desktop. The core Mino Grid API still supports explicit responsive column objects for advanced consumers.
+
+## Shared Block Styles
+
+Reusable Page Builder blocks expose a shared **Styles** group with semantic design-system controls:
+
+- Vertical Padding
+- Background
+- Content Width
+
+Leaving a value at **Default** preserves the component's existing styling.
+
+Padding overrides replace the block's normal top/bottom padding rather than adding a second spacing layer. Backgrounds apply to the full-width block wrapper, while Content Width controls the inner content constraint.
 
 ## Testing and Release Validation
 

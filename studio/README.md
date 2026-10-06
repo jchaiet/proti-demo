@@ -184,6 +184,14 @@ Dynamic configuration includes:
 - Visitor sorting
 - Pagination
 
+### Require Search or Filter
+
+The **Require Search or Filter** setting keeps the list in its initial state until the visitor supplies at least one meaningful input.
+
+Either a text search or an active visitor filter is enough to load results. This includes taxonomy Filter Group selections.
+
+The stored field remains `requireSearchQuery` for backward compatibility even though the Studio label reflects the broader behavior.
+
 ### Visitor taxonomy Filter Groups
 
 Taxonomy visitor filters are organized as repeatable Filter Groups.
@@ -224,6 +232,34 @@ Standard sort choices include:
 Custom sorts can be added for supported fields/directions when a standard sort does not cover the use case.
 
 Custom authoring does not expose arbitrary GROQ.
+
+## Grid Block
+
+The Grid block exposes **Desktop Columns** rather than asking editors to configure every breakpoint.
+
+The Web/Mino layer automatically renders:
+
+```text
+Mobile:  1 column
+Tablet:  up to 2 columns
+Desktop: configured Desktop Columns
+```
+
+This keeps authoring simple while preserving predictable responsive behavior.
+
+## Shared Block Styles
+
+Reusable Page Builder blocks expose a shared **Styles** group using the `blockStyles` object.
+
+The initial shared controls are:
+
+- **Vertical Padding** — Default, None, Small, Medium, Large, Extra Large, 2× Extra Large, 3× Extra Large
+- **Background** — Default, Canvas, Surface, Brand Subtle
+- **Content Width** — Default, Narrow, Standard, Wide, Full Width
+
+`Default` means the block keeps its existing component styling.
+
+These are semantic design-system choices rather than arbitrary CSS values. Editors are not given custom pixel spacing, hex colors, or CSS class fields.
 
 ## Navigation
 

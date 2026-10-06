@@ -210,6 +210,20 @@ Dynamic lists support:
 - Pagination
 - Empty/initial state messages
 
+### Require Search or Filter
+
+When **Require Search or Filter** is enabled, the Document List stays in its initial state until the visitor supplies at least one meaningful input.
+
+Any of the following starts the result set:
+
+- a non-empty search query
+- an active standard visitor filter
+- an active taxonomy Filter Group selection
+
+A filter-only request uses the full eligible dynamic scope. Selecting an `All`/reset option does not count as an active filter.
+
+If a search/filter runs and produces zero matches, the normal empty-state message is shown rather than the initial-state prompt.
+
 ### Taxonomy filter groups
 
 Visitor taxonomy filters are explicit groups.
@@ -262,6 +276,71 @@ pnpm test:document-list
 ```
 
 for focused Document List coverage.
+
+## Responsive Grid Blocks
+
+CMS Grid blocks interpret the numeric `cols` value as the desktop column count.
+
+Mino GridBlock derives the default responsive columns as:
+
+```text
+sm: 1
+md: min(desktop columns, 2)
+lg: configured desktop columns
+```
+
+Examples:
+
+```text
+Desktop 1 → 1 / 1 / 1
+Desktop 2 → 1 / 2 / 2
+Desktop 3 → 1 / 2 / 3
+Desktop 4 → 1 / 2 / 4
+```
+
+The core Mino `Grid` component keeps its original scalar semantics. Explicit responsive column objects passed directly to Mino bypass the CMS default behavior.
+
+## Shared Block Styles
+
+CMS blocks can project a shared `styles` configuration that is applied at the `BlockRenderer` boundary.
+
+Supported controls are:
+
+### Vertical Padding
+
+- Default
+- None
+- Small
+- Medium
+- Large
+- Extra Large
+- 2× Extra Large
+- 3× Extra Large
+
+A non-default value replaces the block's existing vertical padding.
+
+### Background
+
+Current semantic options are:
+
+- Default
+- Canvas
+- Surface
+- Brand Subtle
+
+Background styling is applied to the full-width block wrapper.
+
+### Content Width
+
+- Default
+- Narrow
+- Standard
+- Wide
+- Full Width
+
+Content-width overrides reuse Mino's existing container/customization variables. Rich Text keeps its own reading-width behavior unless the shared Block Styles value explicitly overrides it.
+
+When all shared style values are `Default`, the renderer preserves the original component output without adding a styling wrapper.
 
 ## Tests
 
