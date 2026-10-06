@@ -6,6 +6,13 @@ export const accordionBlockType = defineType({
   title: 'Accordion',
   type: 'object',
 
+  groups: [
+    {
+      name: 'styles',
+      title: 'Styles',
+    },
+  ],
+
   fields: [
     defineField({
       name: 'heading',
@@ -196,6 +203,16 @@ export const accordionBlockType = defineType({
 
       description:
         'When enabled, visitors can expand more than one accordion item at the same time.',
+    }),
+
+    defineField({
+      name: 'styles',
+      title: 'Block Styles',
+      type: 'blockStyles',
+      group: 'styles',
+
+      description:
+        'Optional shared presentation overrides for spacing, background, and content width.',
     }),
   ],
 

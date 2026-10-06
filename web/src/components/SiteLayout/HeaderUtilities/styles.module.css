@@ -5,7 +5,7 @@
 }
 
 .utilityButton {
-  min-height: 40px;
+  min-height: 34px;
   padding: 0 var(--mino-spacing-sm, var(--spacing-sm, 16px));
   display: inline-flex;
   align-items: center;
@@ -84,10 +84,10 @@
 .languageMenu {
   position: absolute;
   z-index: 1000;
-  top: calc(100% + var(--mino-spacing-xs, var(--spacing-xs, 4px)));
+  top: calc(100% + var(--mino-spacing-xs, var(--spacing-md, 16px)));
   right: 0;
   min-width: 100%;
-  padding: var(--mino-spacing-xs, var(--spacing-xs, 4px));
+  padding: var(--mino-spacing-sm, var(--spacing-sm));
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -99,12 +99,12 @@
 }
 
 .languageMenuItem {
-  min-height: 40px;
-  padding: var(--mino-spacing-sm, var(--spacing-sm, 8px))
-    var(--mino-spacing-md, var(--spacing-md, 16px));
+  min-height: 34px;
+  gap: var(--mino-spacing-md, var(--spacing-md));
+  padding: var(--mino-spacing-sm, var(--spacing-sm));
   display: flex;
   align-items: center;
-  border-radius: var(--mino-radius-sm, var(--radius-sm, 4px));
+  border-radius: var(--mino-radius-md, var(--radius-md, 8px));
   color: var(--mino-color-text-primary, var(--text-primary, #0f172a));
   text-decoration: none;
   font: inherit;
@@ -114,6 +114,7 @@
   );
   line-height: 1;
   cursor: pointer;
+  transition: background 0.15s ease;
 }
 
 .languageMenuItem:hover,

@@ -7,6 +7,13 @@ export const richTextBlockType = defineType({
   title: 'Rich Text',
   type: 'object',
 
+  groups: [
+    {
+      name: 'styles',
+      title: 'Styles',
+    },
+  ],
+
   fields: [
     defineField({
       name: 'heading',
@@ -59,7 +66,8 @@ export const richTextBlockType = defineType({
       title: 'Content Width',
       type: 'string',
 
-      description: 'Controls the maximum reading width of the Rich Text content.',
+      description:
+        'Controls the Rich Text reading width when Styles → Content Width is left as Default.',
 
       initialValue: 'md',
 
@@ -87,6 +95,16 @@ export const richTextBlockType = defineType({
       },
 
       validation: (Rule) => Rule.required(),
+    }),
+
+    defineField({
+      name: 'styles',
+      title: 'Block Styles',
+      type: 'blockStyles',
+      group: 'styles',
+
+      description:
+        'Optional shared presentation overrides for spacing, background, and content width.',
     }),
   ],
 

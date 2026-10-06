@@ -20,6 +20,13 @@ export const documentListBlockType = defineType({
   title: 'Document List',
   type: 'object',
 
+  groups: [
+    {
+      name: 'styles',
+      title: 'Styles',
+    },
+  ],
+
   fields: [
     /* === Heading === */
 
@@ -427,15 +434,17 @@ export const documentListBlockType = defineType({
 
     defineField({
       name: 'requireSearchQuery',
-      title: 'Require Search Query',
+      title: 'Require Search or Filter',
       type: 'boolean',
 
       description:
-        'When enabled, no dynamic results are loaded until the visitor enters a search term. Useful for a dedicated Site Search page.',
+        'When enabled, no dynamic results are loaded until the visitor enters a search term or selects a filter. Useful for dedicated search and faceted-browsing experiences.',
 
       initialValue: false,
 
-      hidden: ({parent}) => parent?.sourceMode !== 'dynamic' || parent?.enableSearch === false,
+      hidden: ({parent}) =>
+        parent?.sourceMode !== 'dynamic' ||
+        (parent?.enableSearch === false && parent?.enableFilters !== true),
     }),
 
     defineField({
@@ -443,13 +452,13 @@ export const documentListBlockType = defineType({
       title: 'Initial State Text',
       type: 'string',
 
-      description: 'Displayed before the visitor enters a search term.',
+      description: 'Displayed before the visitor enters a search term or selects a filter.',
 
-      initialValue: 'Enter a search term to begin.',
+      initialValue: 'Enter a search term or select a filter to begin.',
 
       hidden: ({parent}) =>
         parent?.sourceMode !== 'dynamic' ||
-        parent?.enableSearch === false ||
+        (parent?.enableSearch === false && parent?.enableFilters !== true) ||
         parent?.requireSearchQuery !== true,
     }),
 
@@ -1019,6 +1028,16 @@ export const documentListBlockType = defineType({
       description: 'Displayed when no items match the current search or filters.',
 
       initialValue: 'No documents found matching your criteria.',
+    }),
+
+    defineField({
+      name: 'styles',
+      title: 'Block Styles',
+      type: 'blockStyles',
+      group: 'styles',
+
+      description:
+        'Optional shared presentation overrides for spacing, background, and content width.',
     }),
   ],
 

@@ -542,6 +542,35 @@ function getSelectedFilter(
   return filterValues[0] ?? "all";
 }
 
+function hasActiveSelection(value: string | string[] | undefined): boolean {
+  const values = Array.isArray(value) ? value : [value];
+
+  return values.some((item) => {
+    const normalized = normalizeControlValue(item);
+
+    return Boolean(normalized && normalized !== "all");
+  });
+}
+
+function hasActiveServerFilters(
+  state: ServerDocumentListState | undefined,
+): boolean {
+  if (!state) {
+    return false;
+  }
+
+  if (
+    hasActiveSelection(state.selectedFilter) ||
+    hasActiveSelection(state.selectedTaxonomy)
+  ) {
+    return true;
+  }
+
+  return Object.values(state.selectedTaxonomyGroups ?? {}).some((value) =>
+    hasActiveSelection(value),
+  );
+}
+
 function resolveRequestedSort({
   block,
   query,
@@ -822,7 +851,12 @@ async function resolveServerDocumentList({
   const contentTypes = block.dynamicContentTypes ?? [];
 
   const requiresSearchQuery =
-    block.enableSearch !== false && block.requireSearchQuery === true;
+    block.requireSearchQuery === true &&
+    (block.enableSearch !== false || block.enableFilters === true);
+
+  const hasActiveFilters =
+    filterValues.some((value) => value && value !== "all") ||
+    activeTaxonomyGroups.some((group) => group.taxonomy.length > 0);
 
   const makeState = ({
     searchQuery,
@@ -847,7 +881,7 @@ async function resolveServerDocumentList({
     totalResults,
   });
 
-  if (requiresSearchQuery && !query) {
+  if (requiresSearchQuery && !query && !hasActiveFilters) {
     const selectedSort = resolveRequestedSort({
       block,
       query,
@@ -897,6 +931,7 @@ async function resolveServerDocumentList({
    */
   if (
     query ||
+    hasActiveFilters ||
     includesPages ||
     taxonomyFilterGroups.length > 0 ||
     requiresSearchSort
@@ -939,7 +974,7 @@ async function resolveServerDocumentList({
        */
       respectSeoVisibility: false,
 
-      maxResults: query ? undefined : dynamicLimit,
+      maxResults: query || hasActiveFilters ? undefined : dynamicLimit,
     });
 
     return {
@@ -1095,8 +1130,10 @@ export async function mapDocumentListBlock(
       emptyStateText:
         sourceMode === "dynamic" &&
         block.requireSearchQuery === true &&
-        !serverState?.searchQuery
-          ? (block.initialStateText ?? "Enter a search term to begin.")
+        !serverState?.searchQuery &&
+        !hasActiveServerFilters(serverState)
+          ? (block.initialStateText ??
+            "Enter a search term or select a filter to begin.")
           : (block.emptyStateText ??
             "No documents found matching your criteria."),
     },

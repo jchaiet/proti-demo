@@ -1,9 +1,14 @@
+import { BLOCK_STYLES_FRAGMENT } from "../blockStyles";
 import { CTA_FRAGMENT } from "../cta";
 import { CTA_GROUP_FRAGMENT } from "../ctaGroup";
 import { SECTION_HEADING_FRAGMENT } from "../sectionHeading";
 
 export const ACCORDION_BLOCK_FRAGMENT = `
   _type == "accordionBlock" => {
+    styles {
+      ${BLOCK_STYLES_FRAGMENT}
+    },
+
     heading {
       ${SECTION_HEADING_FRAGMENT}
     },

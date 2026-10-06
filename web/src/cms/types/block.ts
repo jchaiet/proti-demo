@@ -1,3 +1,5 @@
+import type { CmsBlockStyles } from "./block-styles";
+
 import type {
   CmsAccordionBlock,
   CmsCarouselBlock,
@@ -11,7 +13,7 @@ import type {
   CmsPollBlock,
 } from "./blocks";
 
-export type CmsReusableBlock =
+type CmsReusableBlockData =
   | CmsHeroBlock
   | CmsCarouselBlock
   | CmsAccordionBlock
@@ -22,6 +24,10 @@ export type CmsReusableBlock =
   | CmsDocumentListBlock
   | CmsRichTextBlock
   | CmsPollBlock;
+
+export type CmsReusableBlock = CmsReusableBlockData & {
+  styles?: CmsBlockStyles;
+};
 
 export type CmsSingleton = {
   _id: string;

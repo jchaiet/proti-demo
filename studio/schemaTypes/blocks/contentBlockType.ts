@@ -7,6 +7,13 @@ export const contentBlockType = defineType({
   title: 'Content',
   type: 'object',
 
+  groups: [
+    {
+      name: 'styles',
+      title: 'Styles',
+    },
+  ],
+
   fields: [
     defineField({
       name: 'heading',
@@ -272,6 +279,16 @@ export const contentBlockType = defineType({
       title: 'Legacy CTA Stack on Mobile',
       type: 'boolean',
       hidden: true,
+    }),
+
+    defineField({
+      name: 'styles',
+      title: 'Block Styles',
+      type: 'blockStyles',
+      group: 'styles',
+
+      description:
+        'Optional shared presentation overrides for spacing, background, and content width.',
     }),
   ],
 

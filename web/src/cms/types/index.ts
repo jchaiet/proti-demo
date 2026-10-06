@@ -1,3 +1,10 @@
+export type {
+  CmsBlockBackground,
+  CmsBlockContentWidth,
+  CmsBlockStyles,
+  CmsBlockVerticalPadding,
+} from "./block-styles";
+
 export * from "./navigation";
 export * from "./redirect";
 export * from "./seo";

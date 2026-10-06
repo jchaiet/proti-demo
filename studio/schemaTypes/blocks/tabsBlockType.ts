@@ -11,6 +11,13 @@ export const tabsBlockType = defineType({
   title: 'Tabs',
   type: 'object',
 
+  groups: [
+    {
+      name: 'styles',
+      title: 'Styles',
+    },
+  ],
+
   fields: [
     defineField({
       name: 'heading',
@@ -221,6 +228,16 @@ export const tabsBlockType = defineType({
 
             return true
           }),
+    }),
+
+    defineField({
+      name: 'styles',
+      title: 'Block Styles',
+      type: 'blockStyles',
+      group: 'styles',
+
+      description:
+        'Optional shared presentation overrides for spacing, background, and content width.',
     }),
   ],
 

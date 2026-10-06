@@ -31,6 +31,7 @@ import {ctaGroupType} from './objects/ctaGroupType'
 import {linkType} from './objects/linkType'
 import {siteLocaleType} from './objects/siteLocaleType'
 import {sectionHeadingType} from './objects/sectionHeadingType'
+import {blockStylesType} from './objects/blockStylesType'
 import {inlineRichTextType} from './objects/inlineRichTextType'
 import {richTextType} from './objects/richTextType'
 import {iconPickerType} from './objects/iconPickerType'
@@ -85,6 +86,7 @@ export const schemaTypes = [
   linkType,
   ctaType,
   ctaGroupType,
+  blockStylesType,
   iconPickerType,
 
   gridImageItemType,

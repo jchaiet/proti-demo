@@ -8,6 +8,13 @@ export const formBlockType = defineType({
   title: 'Form',
   type: 'object',
 
+  groups: [
+    {
+      name: 'styles',
+      title: 'Styles',
+    },
+  ],
+
   fields: [
     defineField({
       name: 'heading',
@@ -395,6 +402,16 @@ export const formBlockType = defineType({
       },
 
       validation: (Rule) => Rule.required(),
+    }),
+
+    defineField({
+      name: 'styles',
+      title: 'Block Styles',
+      type: 'blockStyles',
+      group: 'styles',
+
+      description:
+        'Optional shared presentation overrides for spacing, background, and content width.',
     }),
   ],
 

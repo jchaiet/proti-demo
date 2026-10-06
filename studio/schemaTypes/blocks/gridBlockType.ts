@@ -7,6 +7,13 @@ export const gridBlockType = defineType({
   title: 'Grid',
   type: 'object',
 
+  groups: [
+    {
+      name: 'styles',
+      title: 'Styles',
+    },
+  ],
+
   fields: [
     defineField({
       name: 'heading',
@@ -94,10 +101,11 @@ export const gridBlockType = defineType({
 
     defineField({
       name: 'cols',
-      title: 'Columns',
+      title: 'Desktop Columns',
       type: 'number',
 
-      description: 'Number of columns used by the standard grid layout.',
+      description:
+        'Number of columns used on desktop. The grid automatically stacks to one column on mobile and uses up to two columns on tablet.',
 
       initialValue: 3,
 
@@ -158,6 +166,16 @@ export const gridBlockType = defineType({
       },
 
       fields: createAccessibleImageFields('Image'),
+    }),
+
+    defineField({
+      name: 'styles',
+      title: 'Block Styles',
+      type: 'blockStyles',
+      group: 'styles',
+
+      description:
+        'Optional shared presentation overrides for spacing, background, and content width.',
     }),
   ],
 

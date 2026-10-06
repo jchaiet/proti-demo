@@ -1,3 +1,4 @@
+import { BLOCK_STYLES_FRAGMENT } from "../blockStyles";
 import {
   ARTICLE_CARD_FRAGMENT,
   RESOURCE_CARD_FRAGMENT,
@@ -8,6 +9,10 @@ import { SECTION_HEADING_FRAGMENT } from "../sectionHeading";
 
 export const DOCUMENT_LIST_BLOCK_FRAGMENT = `
   _type == "documentListBlock" => {
+    styles {
+      ${BLOCK_STYLES_FRAGMENT}
+    },
+
     heading {
       ${SECTION_HEADING_FRAGMENT}
     },

@@ -1,3 +1,4 @@
+import { BLOCK_STYLES_FRAGMENT } from "../blockStyles";
 import { CTA_FRAGMENT } from "../cta";
 import { CTA_GROUP_FRAGMENT } from "../ctaGroup";
 import { IMAGE_FRAGMENT } from "../image";
@@ -5,6 +6,10 @@ import { SECTION_HEADING_FRAGMENT } from "../sectionHeading";
 
 export const TABS_BLOCK_FRAGMENT = `
   _type == "tabsBlock" => {
+    styles {
+      ${BLOCK_STYLES_FRAGMENT}
+    },
+
     heading {
       ${SECTION_HEADING_FRAGMENT}
     },

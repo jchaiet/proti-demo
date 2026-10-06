@@ -8,6 +8,13 @@ export const heroBlockType = defineType({
   title: 'Hero',
   type: 'object',
 
+  groups: [
+    {
+      name: 'styles',
+      title: 'Styles',
+    },
+  ],
+
   fields: [
     defineField({
       name: 'heading',
@@ -278,6 +285,16 @@ export const heroBlockType = defineType({
       title: 'Legacy CTA Stack on Mobile',
       type: 'boolean',
       hidden: true,
+    }),
+
+    defineField({
+      name: 'styles',
+      title: 'Block Styles',
+      type: 'blockStyles',
+      group: 'styles',
+
+      description:
+        'Optional shared presentation overrides for spacing, background, and content width.',
     }),
   ],
 

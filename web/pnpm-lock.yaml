@@ -2350,8 +2350,8 @@ packages:
   '@rtsao/scc@1.1.0':
     resolution: {integrity: sha512-zt6OdqaDoOnJ1ZYsCYGt9YmWzDXl4vQdKTyJev62gFhRGKdx7mcT54V9KIjg+d2wi9EXsPvAPKe7i7WjfVWB8g==}
 
-  '@sanity-labs/design-tokens@0.0.2-alpha.5':
-    resolution: {integrity: sha512-RwbH9JYJTfXm/h/pgH80CeF8B94EA7+oI4K84iNVtZFNhNAsFsjLP3OFiY3jQsmKwUZIIzJJPyuY6zYQEF7h2A==}
+  '@sanity-labs/design-tokens@0.0.2-alpha.6':
+    resolution: {integrity: sha512-4JMs6p0uUJjtU7hbHDZxCpx/4xEnbEpuBR/0vccE+BlOZYBZaH3MvV7+llV6+OYH5ANh3pvvMM+CEy5BPdf2KA==}
     engines: {node: '>=20.19 <22 || >=22.12'}
 
   '@sanity-labs/oclif-plugin-skills-flag@0.2.1':
@@ -2595,8 +2595,8 @@ packages:
       react-dom: ^19.2
       styled-components: ^6.1
 
-  '@sanity/ui@5.0.0-alpha.13':
-    resolution: {integrity: sha512-fNY0opYv7ERQSsSvV7WwuOM+EQ7yDwb9yjQfbeYqwscvOFObhR99h4goSlzY0a5vtSohKu8NLQXCoFCcjUWXwA==}
+  '@sanity/ui@5.0.0-alpha.14':
+    resolution: {integrity: sha512-h+IdfVMoDpnwYxk1Z+RFal7yRKgukWHY3QQtf2P9dKTIFCSzKr4CIGyKuBfFFTe58cUBRMfHllRU2b/hlhHF6A==}
     engines: {node: '>=20.19 <22 || >=22.12'}
     hasBin: true
     peerDependencies:
@@ -5003,7 +5003,7 @@ packages:
     engines: {node: '>= 18'}
 
   mino-ui@file:mino-ui-0.0.2.tgz:
-    resolution: {integrity: sha512-v5vmh206A/UEqrsZUC1FO0Be/Z9xoU5VI+lxSLmvv6mcf0gqYawhzOk0Dq2peBBTRPLQ51ESCxtPeuJ66VfBiQ==, tarball: file:mino-ui-0.0.2.tgz}
+    resolution: {integrity: sha512-6fBqVhJC9ib1+0nnxohwJnV83WkMz0TW5BxDElDINyKmTTkP07EPonORf3GGTTwZz5JM5ieenLacLTqBehkjOw==, tarball: file:mino-ui-0.0.2.tgz}
     version: 0.0.2
     peerDependencies:
       react: '>=18.0.0'
@@ -8752,7 +8752,7 @@ snapshots:
 
   '@rtsao/scc@1.1.0': {}
 
-  '@sanity-labs/design-tokens@0.0.2-alpha.5': {}
+  '@sanity-labs/design-tokens@0.0.2-alpha.6': {}
 
   '@sanity-labs/oclif-plugin-skills-flag@0.2.1(@oclif/core@4.14.0)':
     dependencies:
@@ -9181,7 +9181,7 @@ snapshots:
       '@inquirer/prompts': 8.6.0(@types/node@20.19.43)
       '@oclif/core': 4.14.0
       '@oclif/plugin-help': 6.2.58
-      '@sanity-labs/design-tokens': 0.0.2-alpha.5
+      '@sanity-labs/design-tokens': 0.0.2-alpha.6
       '@sanity-labs/oclif-plugin-skills-flag': 0.2.1(@oclif/core@4.14.0)
       '@sanity/blueprints': 0.23.6(vite@8.2.1(@types/node@20.19.43)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0))
       '@sanity/blueprints-parser': 0.5.0
@@ -9356,9 +9356,9 @@ snapshots:
       styled-components: 6.5.3(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       use-effect-event: 2.0.3(react@19.2.8)
 
-  '@sanity/ui@5.0.0-alpha.13(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
+  '@sanity/ui@5.0.0-alpha.14(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
     dependencies:
-      '@sanity-labs/design-tokens': 0.0.2-alpha.5
+      '@sanity-labs/design-tokens': 0.0.2-alpha.6
       '@sanity/icons': 5.2.1(react@19.2.8)
       clsx: 2.1.1
       comment-json: 5.0.0
@@ -12947,7 +12947,7 @@ snapshots:
       speakingurl: 14.0.1
       styled-components: 6.5.3(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       swr: 2.5.1(react@19.2.8)
-      ui5: '@sanity/ui@5.0.0-alpha.13(react-dom@19.2.8(react@19.2.8))(react@19.2.8)'
+      ui5: '@sanity/ui@5.0.0-alpha.14(react-dom@19.2.8(react@19.2.8))(react@19.2.8)'
       urlpattern-polyfill: 10.1.0
       use-device-pixel-ratio: 1.1.2(react@19.2.8)
       use-effect-event: 2.0.3(react@19.2.8)

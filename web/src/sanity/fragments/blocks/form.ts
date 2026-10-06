@@ -1,3 +1,4 @@
+import { BLOCK_STYLES_FRAGMENT } from "../blockStyles";
 import { IMAGE_FRAGMENT } from "../image";
 
 import { SECTION_HEADING_FRAGMENT } from "../sectionHeading";
@@ -67,6 +68,10 @@ const FORM_FIELD_FRAGMENT = `
 
 export const FORM_BLOCK_FRAGMENT = `
   _type == "formBlock" => {
+    styles {
+      ${BLOCK_STYLES_FRAGMENT}
+    },
+
     heading {
       ${SECTION_HEADING_FRAGMENT}
     },

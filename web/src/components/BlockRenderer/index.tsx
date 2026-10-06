@@ -22,6 +22,7 @@ import { Grid } from "./Grid";
 import { DocumentList } from "./DocumentList";
 import { RichText } from "./RichText";
 import { Poll } from "./Poll";
+import { BlockStyles } from "./BlockStyles";
 
 export interface BlockRendererContext {
   siteId: string;
@@ -49,61 +50,101 @@ export async function BlockRenderer({ blocks, context }: Props) {
             case "heroBlock": {
               const props = await mapHeroBlock(block);
 
-              return <Hero key={block._key} {...props} />;
+              return (
+                <BlockStyles key={block._key} config={block.styles}>
+                  <Hero {...props} />
+                </BlockStyles>
+              );
             }
 
             case "carouselBlock": {
               const props = await mapCarouselBlock(block);
 
-              return <Carousel key={block._key} {...props} />;
+              return (
+                <BlockStyles key={block._key} config={block.styles}>
+                  <Carousel {...props} />
+                </BlockStyles>
+              );
             }
 
             case "accordionBlock": {
               const props = await mapAccordionBlock(block);
 
-              return <Accordion key={block._key} {...props} />;
+              return (
+                <BlockStyles key={block._key} config={block.styles}>
+                  <Accordion {...props} />
+                </BlockStyles>
+              );
             }
 
             case "contentBlock": {
               const props = await mapContentBlock(block);
 
-              return <Content key={block._key} {...props} />;
+              return (
+                <BlockStyles key={block._key} config={block.styles}>
+                  <Content {...props} />
+                </BlockStyles>
+              );
             }
 
             case "tabsBlock": {
               const props = await mapTabsBlock(block);
 
-              return <Tabs key={block._key} {...props} />;
+              return (
+                <BlockStyles key={block._key} config={block.styles}>
+                  <Tabs {...props} />
+                </BlockStyles>
+              );
             }
 
             case "formBlock": {
               const props = await mapFormBlock(block);
 
-              return <Form key={block._key} {...props} />;
+              return (
+                <BlockStyles key={block._key} config={block.styles}>
+                  <Form {...props} />
+                </BlockStyles>
+              );
             }
 
             case "gridBlock": {
               const props = await mapGridBlock(block);
 
-              return <Grid key={block._key} {...props} />;
+              return (
+                <BlockStyles key={block._key} config={block.styles}>
+                  <Grid {...props} />
+                </BlockStyles>
+              );
             }
 
             case "documentListBlock": {
               const mapped = await mapDocumentListBlock(block, context);
 
-              return <DocumentList key={block._key} {...mapped} />;
+              return (
+                <BlockStyles key={block._key} config={block.styles}>
+                  <DocumentList {...mapped} />
+                </BlockStyles>
+              );
             }
 
             case "richTextBlock": {
               const props = mapRichTextBlock(block);
 
-              return <RichText key={block._key} {...props} />;
+              return (
+                <BlockStyles key={block._key} config={block.styles}>
+                  <RichText {...props} />
+                </BlockStyles>
+              );
             }
 
             case "pollBlock": {
               const props = mapPollBlock(block, context);
 
-              return <Poll key={block._key} {...props} />;
+              return (
+                <BlockStyles key={block._key} config={block.styles}>
+                  <Poll {...props} />
+                </BlockStyles>
+              );
             }
 
             case "singletonReferenceBlock": {

@@ -757,6 +757,140 @@ it("can require a search query before loading a Dynamic Page list", async () => 
   });
 });
 
+it("allows an active filter to load results without a search term when input is required", async () => {
+  mocks.searchContent.mockResolvedValue({
+    query: "",
+    locale: "en-us",
+    page: 1,
+    pageSize: 9,
+    total: 1,
+    totalPages: 1,
+    sort: "newest",
+    filters: {
+      types: ["blog"],
+      taxonomy: [],
+      taxonomyMatch: "any",
+    },
+    facets: {
+      types: [],
+      taxonomy: [],
+    },
+    results: [
+      {
+        id: "blog-1",
+        type: "blog",
+        title: "Nutrition Basics",
+        href: "/blog/nutrition-basics",
+      },
+    ],
+  });
+
+  const mapped = await mapDocumentListBlock(
+    asBlock({
+      _key: "document-list",
+      _type: "documentListBlock",
+      sourceMode: "dynamic",
+      dynamicContentTypes: ["blog"],
+      enableSearch: true,
+      requireSearchQuery: true,
+      initialStateText: "Search or filter to begin.",
+      enableFilters: true,
+      filterLogic: "radio",
+      filterOptions: [
+        {
+          label: "Blogs",
+          value: "blog",
+        },
+      ],
+    }),
+    {
+      siteId: "site-proti",
+      locale: "en-us",
+      searchParams: {
+        filter: "blog",
+      },
+    },
+  );
+
+  expect(mocks.searchContent).toHaveBeenCalledWith(
+    expect.objectContaining({
+      query: "",
+      includeAllOnEmptyQuery: true,
+      filters: ["blog"],
+      maxResults: undefined,
+    }),
+  );
+
+  expect(mapped.props.documents).toEqual([
+    expect.objectContaining({
+      id: "blog-1",
+      title: "Nutrition Basics",
+    }),
+  ]);
+
+  expect(mapped.serverState).toEqual(
+    expect.objectContaining({
+      searchQuery: "",
+      selectedFilter: "blog",
+      totalResults: 1,
+    }),
+  );
+});
+
+it("uses the normal empty state after an active filter returns no matches", async () => {
+  mocks.searchContent.mockResolvedValue({
+    query: "",
+    locale: "en-us",
+    page: 1,
+    pageSize: 9,
+    total: 0,
+    totalPages: 0,
+    sort: "newest",
+    filters: {
+      types: ["blog"],
+      taxonomy: [],
+      taxonomyMatch: "any",
+    },
+    facets: {
+      types: [],
+      taxonomy: [],
+    },
+    results: [],
+  });
+
+  const mapped = await mapDocumentListBlock(
+    asBlock({
+      _key: "document-list",
+      _type: "documentListBlock",
+      sourceMode: "dynamic",
+      dynamicContentTypes: ["blog"],
+      enableSearch: true,
+      requireSearchQuery: true,
+      initialStateText: "Search or filter to begin.",
+      emptyStateText: "Nothing matched.",
+      enableFilters: true,
+      filterLogic: "radio",
+      filterOptions: [
+        {
+          label: "Blogs",
+          value: "blog",
+        },
+      ],
+    }),
+    {
+      siteId: "site-proti",
+      locale: "en-us",
+      searchParams: {
+        filter: "blog",
+      },
+    },
+  );
+
+  expect(mocks.searchContent).toHaveBeenCalled();
+  expect(mapped.props.documents).toEqual([]);
+  expect(mapped.props.emptyStateText).toBe("Nothing matched.");
+});
+
 it("normalizes configured filter and sort values before a server search", async () => {
   mocks.searchContent.mockResolvedValue({
     query: "nutrition",
@@ -897,6 +1031,9 @@ it("maps explicit Taxonomy filter groups and combines active groups with AND sem
       _type: "documentListBlock",
       sourceMode: "dynamic",
       dynamicContentTypes: ["blog"],
+      enableSearch: true,
+      requireSearchQuery: true,
+      initialStateText: "Search or filter to begin.",
       enableFilters: true,
       taxonomyFilterGroups: [
         {

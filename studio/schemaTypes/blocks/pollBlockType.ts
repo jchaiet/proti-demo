@@ -14,6 +14,13 @@ export const pollBlockType = defineType({
   title: 'Poll',
   type: 'object',
 
+  groups: [
+    {
+      name: 'styles',
+      title: 'Styles',
+    },
+  ],
+
   fields: [
     defineField({
       name: 'heading',
@@ -293,6 +300,16 @@ export const pollBlockType = defineType({
       type: 'string',
 
       initialValue: 'Failed to record vote. Please try again.',
+    }),
+
+    defineField({
+      name: 'styles',
+      title: 'Block Styles',
+      type: 'blockStyles',
+      group: 'styles',
+
+      description:
+        'Optional shared presentation overrides for spacing, background, and content width.',
     }),
   ],
 
