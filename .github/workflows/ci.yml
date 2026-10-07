@@ -90,7 +90,7 @@ jobs:
 
       - name: Type-check Web
         working-directory: web
-        run: pnpm exec tsc --noEmit
+        run: pnpm typecheck
 
       - name: Lint Web
         working-directory: web
