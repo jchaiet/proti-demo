@@ -1,19 +1,17 @@
 {
   "version": 1,
-  "projectName": "Proti Demo",
-  "packageName": "proti-demo",
+  "projectName": "Example Site",
+  "packageName": "example-site",
   "sanity": {
-    "projectId": "3k4hstk3",
+    "projectId": "your-sanity-project-id",
     "dataset": "production",
-    "studioUrl": "https://proti-demo.sanity.studio",
+    "studioUrl": "http://localhost:3333",
     "previewUrl": "http://localhost:3000"
   },
   "site": {
-    "name": "Proti Demo",
-    "key": "proti-demo",
-    "domains": [
-      "localhost"
-    ],
+    "name": "Example Site",
+    "key": "example-site",
+    "domains": ["localhost"],
     "defaultLocale": "en-us",
     "locales": [
       {
