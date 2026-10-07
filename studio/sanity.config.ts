@@ -12,17 +12,25 @@ import {structure} from './structure'
 import {media} from 'sanity-plugin-media'
 import {ShowTranslationsAction} from './actions/ShowTranslationsAction'
 import {presentationResolve} from './presentation/resolve'
-import './styles/studio.css'
 
+const projectId = process.env.SANITY_STUDIO_PROJECT_ID
+const dataset = process.env.SANITY_STUDIO_DATASET || 'production'
+const studioTitle = process.env.SANITY_STUDIO_TITLE || 'Proti Studio'
 const previewUrl = process.env.SANITY_STUDIO_PREVIEW_URL || 'http://localhost:3000'
+
+if (!projectId) {
+  throw new Error(
+    'Missing SANITY_STUDIO_PROJECT_ID. Run "pnpm proti:init" from the repository root or configure the Studio environment variable.',
+  )
+}
+
 const previewOrigin = new URL(previewUrl).origin
 
 export default defineConfig({
   name: 'default',
-  title: 'Website Starter',
-
-  projectId: '3k4hstk3',
-  dataset: 'production',
+  title: studioTitle,
+  projectId,
+  dataset,
 
   plugins: [
     structureTool({structure}),
@@ -50,7 +58,6 @@ export default defineConfig({
         context.schemaType === 'page' ||
         context.schemaType === 'blog' ||
         context.schemaType === 'singleton' ||
-        context.schemaType === 'modal' ||
         context.schemaType === 'navigationHeader' ||
         context.schemaType === 'navigationFooter' ||
         context.schemaType === 'navigationSet'
@@ -71,7 +78,6 @@ export default defineConfig({
           template.schemaType !== 'page' &&
           template.schemaType !== 'blog' &&
           template.schemaType !== 'singleton' &&
-          template.schemaType !== 'modal' &&
           template.schemaType !== 'taxonomy' &&
           template.schemaType !== 'navigationHeader' &&
           template.schemaType !== 'navigationFooter' &&
@@ -79,33 +85,17 @@ export default defineConfig({
           template.schemaType !== 'redirect',
       ),
 
-      /*
-       * Pages
-       */
       {
         id: 'page-root',
         title: 'Page',
         schemaType: 'page',
-
         parameters: [
-          {
-            name: 'siteId',
-            type: 'string',
-          },
-          {
-            name: 'locale',
-            type: 'string',
-          },
+          {name: 'siteId', type: 'string'},
+          {name: 'locale', type: 'string'},
         ],
-
         value: ({siteId, locale}: {siteId: string; locale: string}) => ({
-          site: {
-            _type: 'reference',
-            _ref: siteId,
-          },
-
+          site: {_type: 'reference', _ref: siteId},
           locale,
-
           isHomepage: false,
         }),
       },
@@ -114,22 +104,11 @@ export default defineConfig({
         id: 'page-child',
         title: 'Child Page',
         schemaType: 'page',
-
         parameters: [
-          {
-            name: 'siteId',
-            type: 'string',
-          },
-          {
-            name: 'locale',
-            type: 'string',
-          },
-          {
-            name: 'parentId',
-            type: 'string',
-          },
+          {name: 'siteId', type: 'string'},
+          {name: 'locale', type: 'string'},
+          {name: 'parentId', type: 'string'},
         ],
-
         value: ({
           siteId,
           locale,
@@ -139,18 +118,9 @@ export default defineConfig({
           locale: string
           parentId: string
         }) => ({
-          site: {
-            _type: 'reference',
-            _ref: siteId,
-          },
-
+          site: {_type: 'reference', _ref: siteId},
           locale,
-
-          parent: {
-            _type: 'reference',
-            _ref: parentId,
-          },
-
+          parent: {_type: 'reference', _ref: parentId},
           isHomepage: false,
         }),
       },
@@ -159,108 +129,37 @@ export default defineConfig({
         id: 'blog-scoped',
         title: 'Blog',
         schemaType: 'blog',
-
         parameters: [
-          {
-            name: 'siteId',
-            type: 'string',
-          },
-          {
-            name: 'locale',
-            type: 'string',
-          },
+          {name: 'siteId', type: 'string'},
+          {name: 'locale', type: 'string'},
         ],
-
         value: ({siteId, locale}: {siteId: string; locale: string}) => ({
-          site: {
-            _type: 'reference',
-            _ref: siteId,
-          },
-
+          site: {_type: 'reference', _ref: siteId},
           locale,
         }),
       },
 
-      /*
-       * Singletons
-       */
       {
         id: 'singleton-scoped',
         title: 'Singleton',
         schemaType: 'singleton',
-
         parameters: [
-          {
-            name: 'siteId',
-            type: 'string',
-          },
-          {
-            name: 'locale',
-            type: 'string',
-          },
+          {name: 'siteId', type: 'string'},
+          {name: 'locale', type: 'string'},
         ],
-
         value: ({siteId, locale}: {siteId: string; locale: string}) => ({
-          site: {
-            _type: 'reference',
-            _ref: siteId,
-          },
-
+          site: {_type: 'reference', _ref: siteId},
           locale,
         }),
       },
 
-      /*
-       * Modals
-       */
-      {
-        id: 'modal-scoped',
-        title: 'Modal',
-        schemaType: 'modal',
-
-        parameters: [
-          {
-            name: 'siteId',
-            type: 'string',
-          },
-          {
-            name: 'locale',
-            type: 'string',
-          },
-        ],
-
-        value: ({siteId, locale}: {siteId: string; locale: string}) => ({
-          site: {
-            _type: 'reference',
-            _ref: siteId,
-          },
-
-          locale,
-
-          size: 'md',
-        }),
-      },
-
-      /*
-       * Taxonomy
-       */
       {
         id: 'taxonomy-root',
         title: 'Taxonomy Term',
         schemaType: 'taxonomy',
-
-        parameters: [
-          {
-            name: 'siteId',
-            type: 'string',
-          },
-        ],
-
+        parameters: [{name: 'siteId', type: 'string'}],
         value: ({siteId}: {siteId: string}) => ({
-          site: {
-            _type: 'reference',
-            _ref: siteId,
-          },
+          site: {_type: 'reference', _ref: siteId},
         }),
       },
 
@@ -268,58 +167,27 @@ export default defineConfig({
         id: 'taxonomy-child',
         title: 'Child Taxonomy Term',
         schemaType: 'taxonomy',
-
         parameters: [
-          {
-            name: 'siteId',
-            type: 'string',
-          },
-          {
-            name: 'parentId',
-            type: 'string',
-          },
+          {name: 'siteId', type: 'string'},
+          {name: 'parentId', type: 'string'},
         ],
-
         value: ({siteId, parentId}: {siteId: string; parentId: string}) => ({
-          site: {
-            _type: 'reference',
-            _ref: siteId,
-          },
-
-          parent: {
-            _type: 'reference',
-            _ref: parentId,
-          },
+          site: {_type: 'reference', _ref: siteId},
+          parent: {_type: 'reference', _ref: parentId},
         }),
       },
 
-      /*
-       * Header Navigation
-       */
       {
         id: 'navigation-header',
         title: 'Header Navigation',
         schemaType: 'navigationHeader',
-
         parameters: [
-          {
-            name: 'siteId',
-            type: 'string',
-          },
-          {
-            name: 'locale',
-            type: 'string',
-          },
+          {name: 'siteId', type: 'string'},
+          {name: 'locale', type: 'string'},
         ],
-
         value: ({siteId, locale}: {siteId: string; locale: string}) => ({
-          site: {
-            _type: 'reference',
-            _ref: siteId,
-          },
-
+          site: {_type: 'reference', _ref: siteId},
           locale,
-
           logoMode: 'site',
           align: 'center',
           variant: 'standard',
@@ -327,104 +195,52 @@ export default defineConfig({
         }),
       },
 
-      /*
-       * Footer Navigation
-       */
       {
         id: 'navigation-footer',
         title: 'Footer Navigation',
         schemaType: 'navigationFooter',
-
         parameters: [
-          {
-            name: 'siteId',
-            type: 'string',
-          },
-          {
-            name: 'locale',
-            type: 'string',
-          },
+          {name: 'siteId', type: 'string'},
+          {name: 'locale', type: 'string'},
         ],
-
         value: ({siteId, locale}: {siteId: string; locale: string}) => ({
-          site: {
-            _type: 'reference',
-            _ref: siteId,
-          },
-
+          site: {_type: 'reference', _ref: siteId},
           locale,
-
           logoMode: 'site',
         }),
       },
 
-      /*
-       * Navigation Set
-       */
       {
         id: 'navigation-set',
         title: 'Navigation Set',
         schemaType: 'navigationSet',
-
         parameters: [
-          {
-            name: 'siteId',
-            type: 'string',
-          },
-          {
-            name: 'locale',
-            type: 'string',
-          },
+          {name: 'siteId', type: 'string'},
+          {name: 'locale', type: 'string'},
         ],
-
         value: ({siteId, locale}: {siteId: string; locale: string}) => ({
-          site: {
-            _type: 'reference',
-            _ref: siteId,
-          },
-
+          site: {_type: 'reference', _ref: siteId},
           locale,
-
           headerMode: 'custom',
           footerMode: 'custom',
         }),
       },
 
-      /*
-       * Redirect
-       */
       {
         id: 'redirect',
         title: 'Redirect',
         schemaType: 'redirect',
-
         parameters: [
-          {
-            name: 'siteId',
-            type: 'string',
-          },
-          {
-            name: 'locale',
-            type: 'string',
-          },
+          {name: 'siteId', type: 'string'},
+          {name: 'locale', type: 'string'},
         ],
-
         value: ({siteId, locale}: {siteId: string; locale: string}) => ({
-          site: {
-            _type: 'reference',
-            _ref: siteId,
-          },
-
+          site: {_type: 'reference', _ref: siteId},
           locale,
-
           redirectType: 'permanent',
           preserveQuery: true,
           enabled: true,
-
-          destination: {
-            _type: 'redirectDestination',
-            type: 'internal',
-          },
+          destination: {_type: 'redirectDestination', type: 'internal'},
         }),
       },
 
@@ -432,19 +248,9 @@ export default defineConfig({
         id: 'author',
         title: 'Author',
         schemaType: 'author',
-
-        parameters: [
-          {
-            name: 'siteId',
-            type: 'string',
-          },
-        ],
-
+        parameters: [{name: 'siteId', type: 'string'}],
         value: ({siteId}: {siteId: string}) => ({
-          site: {
-            _type: 'reference',
-            _ref: siteId,
-          },
+          site: {_type: 'reference', _ref: siteId},
         }),
       },
     ],

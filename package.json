@@ -1,10 +1,12 @@
 {
-  "name": "website-starter",
+  "name": "proti-demo",
   "private": true,
   "scripts": {
     "dev:web": "pnpm --dir web dev",
     "dev:studio": "pnpm --dir studio dev",
     "build:web": "pnpm --dir web build",
-    "build:studio": "pnpm --dir studio build"
+    "build:studio": "pnpm --dir studio build",
+    "proti:init": "node scripts/proti-init.mjs",
+    "proti:seed": "node scripts/proti-seed.mjs"
   }
 }
