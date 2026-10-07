@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "projectName": "Proti Demo",
+  "packageName": "proti-demo",
+  "sanity": {
+    "projectId": "3k4hstk3",
+    "dataset": "production",
+    "studioUrl": "https://proti-demo.sanity.studio",
+    "previewUrl": "http://localhost:3000"
+  },
+  "site": {
+    "name": "Proti Demo",
+    "key": "proti-demo",
+    "domains": [
+      "localhost"
+    ],
+    "defaultLocale": "en-us",
+    "locales": [
+      {
+        "code": "en-us",
+        "label": "English (US)"
+      },
+      {
+        "code": "es-us",
+        "label": "Spanish (US)"
+      }
+    ]
+  }
+}

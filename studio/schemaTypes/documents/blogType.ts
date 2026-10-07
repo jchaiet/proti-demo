@@ -330,8 +330,8 @@ export const blogType = defineType({
          * Sanity's default slug uniqueness check is global to the
          * document type, which would incorrectly reject:
          *
-         * us-en /blog/my-article
-         * us-es /blog/my-article
+         * en-us /blog/my-article
+         * es-us /blog/my-article
          *
          * Blogs only need to be unique within the same Site + Locale.
          */
