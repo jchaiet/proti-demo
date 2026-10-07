@@ -1,86 +1,105 @@
-# Proti Release / Repo Hygiene Checklist
+# Proti Release Checklist
 
-Use this after a clean setup rehearsal and before tagging or releasing a Proti baseline.
+Use this checklist before creating a Proti release or baseline tag.
 
-## Repository Hygiene
+## Repository
 
-- [ ] `git status` is clean before release.
-- [ ] `web/.env.local` is ignored.
-- [ ] `web/e2e/.env.e2e` is ignored.
-- [ ] `web/.env.example` is committed.
-- [ ] `web/e2e/.env.e2e.example` is committed.
-- [ ] `test-results/` is ignored.
-- [ ] `playwright-report/` is ignored.
-- [ ] Playwright baseline screenshots under `e2e/__screenshots__/` are committed.
-- [ ] No temporary ZIPs, reports, debug output, generated test artifacts, or local-only files are tracked.
-- [ ] `pnpm-lock.yaml` files are current.
-- [ ] README instructions match the actual package scripts.
+- [ ] `git status` is clean.
+- [ ] `main` contains the intended release commit.
+- [ ] Root `pnpm-lock.yaml` is current.
+- [ ] `web/mino-ui-0.0.2.tgz` and its lockfile checksum are in sync.
+- [ ] No temporary/debug/report/ZIP files are tracked.
+- [ ] Environment example files contain placeholders only.
+- [ ] Documentation matches the current implementation.
 
-Recommended `.gitignore` env pattern:
-
-```gitignore
-.env*
-!.env.example
-!e2e/.env.e2e.example
-```
-
-## Studio Validation
-
-From `studio/`:
+## Studio
 
 ```bash
+cd studio
 pnpm test
 pnpm build
 ```
 
-Run lint as configured by the Studio repository/package.
+- [ ] Studio tests pass.
+- [ ] Studio build passes.
 
-## Web Validation
-
-From `web/`:
+## Web
 
 ```bash
+cd web
 pnpm test:run
+pnpm exec next typegen
 pnpm exec tsc --noEmit
 pnpm lint
 pnpm build
 ```
 
-## Production Playwright Validation
+- [ ] Unit/integration tests pass.
+- [ ] Next.js type generation succeeds.
+- [ ] TypeScript passes.
+- [ ] ESLint passes.
+- [ ] Production build passes.
 
-Run the production application:
+## Playwright
+
+Against the production Web build:
 
 ```bash
 pnpm build
 pnpm start
-```
-
-With `e2e/.env.e2e` configured for `http://localhost:3000` and `PLAYWRIGHT_SKIP_WEBSERVER=1`:
-
-```bash
 pnpm test:e2e:smoke
 pnpm test:e2e:visual
 ```
 
-Only run `pnpm test:e2e:update` when intentionally approving a visual change.
+- [ ] Chromium smoke passes.
+- [ ] Firefox smoke passes.
+- [ ] Chromium desktop visual passes.
+- [ ] Chromium mobile visual passes.
 
-## Functional Sanity Checks
+Only run `pnpm test:e2e:update` after reviewing and approving an intentional visual change.
 
-Verify representative content after deployment:
+## GitHub CI
 
-- [ ] Page publish/update
-- [ ] Blog publish/update
-- [ ] Author publish/update
-- [ ] Taxonomy changes
-- [ ] Navigation changes
-- [ ] Modal behavior
-- [ ] Translations/language selector
-- [ ] Document List search/filter/sorting
-- [ ] Sanity webhook revalidation without redeploy
+- [ ] `Studio` passes.
+- [ ] `Web` passes.
+- [ ] `Playwright smoke` passes.
+- [ ] `Playwright visual` passes.
+- [ ] All required PR checks are green.
+- [ ] The protected `main` ruleset is active.
 
-## Documentation
+## Vercel
 
-- [ ] Root README matches repository structure.
-- [ ] Web README matches current runtime/test behavior.
-- [ ] Studio README matches current authoring behavior.
-- [ ] Environment variable templates contain placeholders only—never real secrets.
+- [ ] Production deployment succeeds.
+- [ ] Production environment variables are present.
+- [ ] Homepage loads.
+- [ ] Representative secondary-locale route loads.
+- [ ] Representative Blog route loads.
+- [ ] Representative Author route loads.
+- [ ] Search behaves correctly.
+- [ ] Navigation works.
+- [ ] Modal behavior works.
+
+## Sanity / Content
+
+- [ ] Page publish/update works.
+- [ ] Blog publish/update works.
+- [ ] Author publish/update works.
+- [ ] Taxonomy changes propagate.
+- [ ] Navigation changes propagate.
+- [ ] Translation switching works.
+- [ ] Document List search/filter/sorting works.
+- [ ] Revalidation webhook updates deployed content without a redeploy.
+
+## Release
+
+When all required items are complete:
+
+```bash
+git checkout main
+git pull
+
+git tag -a v0.1.0 -m "Proti v0.1.0 - Initial stable baseline"
+git push origin v0.1.0
+```
+
+Then create the matching GitHub Release.

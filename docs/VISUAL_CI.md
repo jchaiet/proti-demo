@@ -1,51 +1,64 @@
-# Visual Regression CI Calibration
+# Visual Regression CI
 
-The normal CI pipeline already validates Studio, Web, and Playwright smoke tests.
+Proti uses Playwright visual regression testing as a required CI quality gate.
 
-Visual regression is added as a separate calibration job so Linux/GitHub-hosted rendering can be compared with the committed Chromium baselines before visual checks become merge-blocking.
+## Purpose
 
-## First Calibration Run
+Visual regression tests detect unintended UI changes by comparing current Chromium screenshots against approved baseline screenshots committed to the repository.
 
-1. Commit and push the updated `.github/workflows/ci.yml`.
-2. Let the standard Studio, Web, and Playwright smoke jobs complete.
-3. Open **Playwright visual calibration**.
-4. If it passes, repeat the run on at least one more commit with no intentional visual changes.
-5. If it reports differences, download the `playwright-visual-artifacts-*` artifact.
-6. Inspect:
-   - expected screenshots from the committed baseline
-   - actual GitHub-runner screenshots
-   - diff images
-   - the Playwright HTML report
+Visual CI runs after the functional Playwright smoke tests have passed.
 
-Do **not** run `test:e2e:update` just to make GitHub CI green. First determine whether the difference is a real UI change or an environment-specific rendering difference.
+## Required Visual Projects
 
-## When to Make Visual CI Blocking
+Visual regression runs only against:
 
-After repeated GitHub-hosted runs are stable:
+```text
+chromium-desktop
+chromium-mobile
+```
 
-1. Remove this from the `playwright-visual` job:
+Firefox remains part of cross-browser functional smoke coverage but does not maintain a separate visual baseline.
+
+## CI Behavior
+
+The visual job is now blocking.
+
+A visual regression failure causes CI to fail and prevents a protected pull request from being merged.
+
+The job should no longer include:
 
 ```yaml
 continue-on-error: true
 ```
 
-2. Rename the job from:
+## Required Branch Check
+
+`Playwright visual` is a required status check for the protected `main` branch.
+
+Current required checks:
 
 ```text
-Playwright visual calibration
-```
-
-to:
-
-```text
+Studio
+Web
+Playwright smoke
 Playwright visual
 ```
 
-At that point, visual regression failures should block the workflow.
+## Visual Test Command
 
-## Baseline Ownership
+CI runs the visual suite against a production build:
 
-The canonical baseline remains:
+```bash
+pnpm test:e2e:visual \
+  --project=chromium-desktop \
+  --project=chromium-mobile
+```
+
+## Approved Baselines
+
+The committed screenshots are the approved visual baselines.
+
+Canonical local validation:
 
 ```bash
 cd web
@@ -54,25 +67,50 @@ pnpm start
 pnpm test:e2e:visual
 ```
 
-For an intentional visual change:
+## Intentional Visual Changes
+
+Do not update screenshots merely because CI fails.
+
+First run:
 
 ```bash
 pnpm test:e2e:visual
-# inspect the failure/diff first
+```
 
+Inspect the expected, actual, and diff images.
+
+If the change is intentional:
+
+```bash
 pnpm test:e2e:update
-# review the new screenshots
-
 pnpm test:e2e:visual
 ```
 
-Commit the code change and the approved baseline screenshots together.
+Review the new screenshots and commit the approved baselines with the code change.
 
-## Browser Scope
+## CI Artifacts
 
-Visual regression intentionally runs only:
+When visual tests fail, inspect the uploaded Playwright artifacts:
 
-- `chromium-desktop`
-- `chromium-mobile`
+```text
+web/playwright-report/
+web/test-results/
+```
 
-Firefox remains part of smoke/cross-browser behavior coverage, but is not a visual-baseline browser.
+These may contain expected, actual, and diff screenshots plus failure context.
+
+## Relationship to Smoke Tests
+
+```text
+Playwright smoke
+→ Does the application function correctly in real browsers?
+
+Playwright visual
+→ Does the approved UI still look the same?
+```
+
+Both are required before merging into `main`.
+
+## Current Status
+
+The GitHub-hosted visual environment has been validated successfully. Visual regression is now part of Proti's required PR checks.

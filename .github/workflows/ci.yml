@@ -150,13 +150,13 @@ jobs:
         run: pnpm test:e2e:smoke
 
   playwright-visual:
-    name: Playwright visual calibration
+    name: Playwright visual
     runs-on: ubuntu-latest
     needs: playwright-smoke
 
     # Calibration phase: visual differences are surfaced, but do not block CI yet.
     # Remove this once GitHub-hosted runner screenshots have proven stable.
-    continue-on-error: true
+    # continue-on-error: true
 
     env:
       NEXT_SANITY_PROJECT_ID: ${{ secrets.NEXT_SANITY_PROJECT_ID }}
