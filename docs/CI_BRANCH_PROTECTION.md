@@ -54,7 +54,7 @@ Run ESLint
 Build the production application
 ```
 
-The type-check step must generate Next.js types first
+The type-check step must generate Next.js types first:
 
 ```bash
 pnpm exec next typegen && pnpm exec tsc --noEmit
