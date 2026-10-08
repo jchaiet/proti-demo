@@ -1,5 +1,5 @@
 {
-  "name": "proti-demo",
+  "name": "proti",
   "private": true,
   "scripts": {
     "dev:web": "pnpm --dir web dev",
@@ -7,6 +7,7 @@
     "build:web": "pnpm --dir web build",
     "build:studio": "pnpm --dir studio build",
     "proti:init": "node scripts/proti-init.mjs",
-    "proti:seed": "node scripts/proti-seed.mjs"
+    "proti:seed": "node scripts/proti-seed.mjs",
+    "test:proti": "node --test scripts/proti-init.test.mjs scripts/proti-seed.test.mjs"
   }
 }
