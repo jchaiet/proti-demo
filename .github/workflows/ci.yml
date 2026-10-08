@@ -45,6 +45,9 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
+      - name: Test Proti setup
+        run: pnpm test:proti
+
       - name: Install Studio dependencies
         working-directory: studio
         run: pnpm install --frozen-lockfile
@@ -65,7 +68,6 @@ jobs:
       NEXT_SANITY_PROJECT_ID: ${{ secrets.NEXT_SANITY_PROJECT_ID }}
       NEXT_SANITY_DATASET: ${{ vars.NEXT_SANITY_DATASET || 'production' }}
       NEXT_SANITY_STUDIO_URL: ${{ vars.NEXT_SANITY_STUDIO_URL || 'http://localhost:3333' }}
-
       SANITY_API_READ_TOKEN: ${{ secrets.SANITY_API_READ_TOKEN }}
       SANITY_API_WRITE_TOKEN: ${{ secrets.SANITY_API_WRITE_TOKEN }}
       SANITY_REVALIDATE_SECRET: ${{ secrets.SANITY_REVALIDATE_SECRET }}
@@ -116,11 +118,9 @@ jobs:
       NEXT_SANITY_PROJECT_ID: ${{ secrets.NEXT_SANITY_PROJECT_ID }}
       NEXT_SANITY_DATASET: ${{ vars.NEXT_SANITY_DATASET || 'production' }}
       NEXT_SANITY_STUDIO_URL: ${{ vars.NEXT_SANITY_STUDIO_URL || 'http://localhost:3333' }}
-
       SANITY_API_READ_TOKEN: ${{ secrets.SANITY_API_READ_TOKEN }}
       SANITY_API_WRITE_TOKEN: ${{ secrets.SANITY_API_WRITE_TOKEN }}
       SANITY_REVALIDATE_SECRET: ${{ secrets.SANITY_REVALIDATE_SECRET }}
-
       PLAYWRIGHT_BASE_URL: http://localhost:3000
       PLAYWRIGHT_WEB_SERVER_COMMAND: pnpm start
       E2E_HOME_PATH: /
@@ -167,11 +167,9 @@ jobs:
       NEXT_SANITY_PROJECT_ID: ${{ secrets.NEXT_SANITY_PROJECT_ID }}
       NEXT_SANITY_DATASET: ${{ vars.NEXT_SANITY_DATASET || 'production' }}
       NEXT_SANITY_STUDIO_URL: ${{ vars.NEXT_SANITY_STUDIO_URL || 'http://localhost:3333' }}
-
       SANITY_API_READ_TOKEN: ${{ secrets.SANITY_API_READ_TOKEN }}
       SANITY_API_WRITE_TOKEN: ${{ secrets.SANITY_API_WRITE_TOKEN }}
       SANITY_REVALIDATE_SECRET: ${{ secrets.SANITY_REVALIDATE_SECRET }}
-
       PLAYWRIGHT_BASE_URL: http://localhost:3000
       PLAYWRIGHT_WEB_SERVER_COMMAND: pnpm start
       E2E_HOME_PATH: /
