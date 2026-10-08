@@ -7,44 +7,50 @@ export async function createTempRepo() {
   const repo = await fs.mkdtemp(path.join(os.tmpdir(), "proti-setup-test-"));
 
   await Promise.all([
-    fs.mkdir(path.join(repo, "scripts"), { recursive: true }),
-    fs.mkdir(path.join(repo, "web"), { recursive: true }),
-    fs.mkdir(path.join(repo, "studio"), { recursive: true }),
+    fs.mkdir(path.join(repo, "scripts"), {
+      recursive: true,
+    }),
+    fs.mkdir(path.join(repo, "web"), {
+      recursive: true,
+    }),
+    fs.mkdir(path.join(repo, "studio"), {
+      recursive: true,
+    }),
   ]);
 
   await Promise.all([
     fs.writeFile(
       path.join(repo, "package.json"),
-      JSON.stringify(
+      `${JSON.stringify(
         {
           name: "proti",
           private: true,
         },
         null,
         2,
-      ) + "\n",
+      )}\n`,
     ),
     fs.writeFile(
       path.join(repo, "web", "package.json"),
-      JSON.stringify(
+      `${JSON.stringify(
         {
           name: "web",
           private: true,
         },
         null,
         2,
-      ) + "\n",
+      )}\n`,
     ),
     fs.writeFile(
       path.join(repo, "studio", "package.json"),
-      JSON.stringify(
+      `${JSON.stringify(
         {
           name: "studio",
           private: true,
         },
         null,
         2,
-      ) + "\n",
+      )}\n`,
     ),
   ]);
 
