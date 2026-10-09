@@ -1,6 +1,6 @@
 # Proti Project Initialization
 
-Proti v0.2 includes a repository-level setup workflow for creating a new implementation from the starter.
+Proti v0.2 includes a repository-level setup workflow for creating a new implementation from the starter without editing source files just to connect a new Sanity project.
 
 ## Commands
 
@@ -11,17 +11,39 @@ pnpm proti:seed --starter-content
 pnpm proti:check
 ```
 
-## Initialize
+## 1. Install dependencies
 
-After `pnpm install`, run:
+From the repository root:
+
+```bash
+pnpm install
+```
+
+Use the pnpm version configured by the repository/CI when generating or updating `pnpm-lock.yaml`.
+
+## 2. Initialize
+
+Run:
 
 ```bash
 pnpm proti:init
 ```
 
-The initializer prompts for the project name, package slug, Sanity project/dataset, Studio and preview URLs, initial Site name/key, domains, default locale, and supported locales.
+The initializer prompts for:
 
-Proti locale codes use language-region format, for example:
+- project name
+- package/project slug
+- Sanity project ID
+- Sanity dataset
+- Studio URL used by the Web app
+- Web URL used by Sanity Presentation
+- initial Site name
+- initial Site key
+- Site domains
+- default locale
+- supported locales
+
+Proti locale codes use lowercase language-region format:
 
 ```text
 en-us
@@ -29,7 +51,7 @@ es-us
 fr-ca
 ```
 
-It writes:
+The initializer writes:
 
 ```text
 proti.config.json
@@ -37,13 +59,13 @@ web/.env.local
 studio/.env.local
 ```
 
-and updates the package names in the root, Web, and Studio `package.json` files.
+It also updates the package names in the root, Web, and Studio `package.json` files.
 
-Existing Sanity token values in `web/.env.local` are preserved when the initializer is rerun.
+Rerunning `proti:init` reuses the existing project values as defaults and preserves the known Sanity token/secret values already present in `web/.env.local`.
 
-## Add local secrets
+## 3. Add local secrets
 
-The initializer does not ask you to paste secrets into an interactive prompt. Add the required values to `web/.env.local`:
+The initializer does not ask for secrets interactively. Add the required values to `web/.env.local`:
 
 ```text
 SANITY_API_READ_TOKEN=
@@ -51,9 +73,15 @@ SANITY_API_WRITE_TOKEN=
 SANITY_REVALIDATE_SECRET=
 ```
 
-`SANITY_API_READ_TOKEN` is required for Draft Mode / Visual Editing. `SANITY_API_WRITE_TOKEN` is required for seeding and must have permission to create documents.
+`SANITY_API_READ_TOKEN` is used by Draft Mode / Visual Editing.
 
-## Seed the initial Site
+`SANITY_API_WRITE_TOKEN` is required by `proti:seed` and must have permission to create documents in the configured Sanity project.
+
+## 4. Seed Sanity
+
+There are two supported flows.
+
+### Minimal setup
 
 Run:
 
@@ -61,23 +89,19 @@ Run:
 pnpm proti:seed
 ```
 
-The default seed remains intentionally minimal. It creates only:
-
-```text
-Site
-```
+This creates only the configured Site document.
 
 If the Site already exists, no changes are made.
 
-## Optional starter content
+### Optional starter content
 
-Starter content is opt-in. To create a minimal usable default-locale structure, run:
+Run:
 
 ```bash
 pnpm proti:seed --starter-content
 ```
 
-This ensures the Site exists and then creates, only when missing:
+This ensures the Site exists and then creates a minimal usable structure for the Site default locale:
 
 ```text
 <default locale>
@@ -87,18 +111,19 @@ This ensures the Site exists and then creates, only when missing:
 └── Default Navigation
 ```
 
-The starter content is intentionally empty/minimal. It does not create demo articles, authors, taxonomy, marketing copy, or translated duplicates.
+Starter content is deliberately minimal. It does not create demo articles, authors, taxonomy, marketing copy, or translated duplicates.
 
-The command is non-destructive:
+The operation is non-destructive:
 
 - existing documents are not replaced
 - an existing homepage for the Site + default locale is reused
 - matching `default-header`, `default-footer`, and `default` navigation documents are reused
-- new documents use deterministic IDs and `createIfNotExists`
+- newly seeded documents use deterministic IDs
+- `createIfNotExists` is used for new documents
 - rerunning the command is safe
 - only the Site default locale receives starter content
 
-You can also add starter content later. For example, this is valid:
+Starter content can also be added later:
 
 ```bash
 pnpm proti:seed
@@ -106,7 +131,7 @@ pnpm proti:seed
 pnpm proti:seed --starter-content
 ```
 
-## Verify setup
+## 5. Verify setup
 
 Run:
 
@@ -114,9 +139,66 @@ Run:
 pnpm proti:check
 ```
 
-The check is read-only and verifies local configuration, environment alignment, Sanity connectivity, and the Site document.
+The check is read-only. It verifies:
+
+- `proti.config.json`
+- Web environment alignment
+- Studio environment alignment
+- root/Web/Studio package names
+- required token/secret presence
+- Sanity connectivity
+- configured Site identity and locale configuration
 
 Because starter content is optional, missing starter documents do not make `proti:check` fail.
+
+## 6. Start Studio and Web
+
+Run in separate terminals:
+
+```bash
+pnpm dev:studio
+```
+
+```bash
+pnpm dev:web
+```
+
+Default local URLs:
+
+```text
+Studio  http://localhost:3333
+Web     http://localhost:3000
+```
+
+Use `localhost` for the local Site domain unless the Site is intentionally configured differently.
+
+## Generated configuration
+
+A typical `proti.config.json` looks like:
+
+```json
+{
+  "version": 1,
+  "projectName": "Acme Health",
+  "packageName": "acme-health",
+  "sanity": {
+    "projectId": "abc123",
+    "dataset": "production",
+    "studioUrl": "http://localhost:3333",
+    "previewUrl": "http://localhost:3000"
+  },
+  "site": {
+    "name": "Acme Health",
+    "key": "acme-health",
+    "domains": ["localhost"],
+    "defaultLocale": "en-us",
+    "locales": [
+      { "code": "en-us", "label": "English (US)" },
+      { "code": "es-us", "label": "Spanish (US)" }
+    ]
+  }
+}
+```
 
 ## Studio environment
 
@@ -129,19 +211,32 @@ SANITY_STUDIO_TITLE
 SANITY_STUDIO_PREVIEW_URL
 ```
 
-## GitHub Actions
+## CI
 
-The root initializer/seed/check regression suite can run through the existing required Studio CI job:
+The Proti setup regression suite runs with:
 
-```yaml
-- name: Test Proti setup
-  run: pnpm test:proti
+```bash
+pnpm test:proti
+```
+
+CI should keep frozen lockfile installation enabled:
+
+```bash
+pnpm install --frozen-lockfile
 ```
 
 ## Vercel
 
-The initializer configures local files only. Vercel environment variables remain separate and must be configured on the Vercel project.
+The initializer configures local files only. Vercel environment variables are separate and must be configured on the Vercel project.
 
 ## Not automated
 
-The initializer does not create a Sanity project, configure GitHub/Vercel secrets, deploy Studio/Web, or generate opinionated demo content.
+The initializer does not:
+
+- create a Sanity project
+- create Sanity API tokens
+- configure GitHub secrets/variables
+- configure Vercel environment variables
+- deploy Studio or Web
+- create translated content
+- create opinionated demo content
