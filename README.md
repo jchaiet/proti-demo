@@ -1,216 +1,236 @@
-# Proti — Website + CMS Starter
+# Proti
 
-Proti is a reusable website starter built with Next.js and Sanity. It combines a production web application, a structured CMS, localization/translation workflows, search, taxonomy, reusable page-builder blocks, visual editing, cache revalidation, and automated regression testing.
+Proti is a reusable website starter built with Next.js, Sanity, and Mino UI. It provides a production-oriented foundation for multi-site, multi-locale websites with structured content, navigation, search, translations, visual editing, revalidation, automated testing, and CI.
 
-The web application uses Mino UI as its component library.
-
-## Repository Structure
+## Repository structure
 
 ```text
 .
-├── web/       Next.js application
-├── studio/    Sanity Content Studio
-└── package.json
+├── web/        Next.js website
+├── studio/     Sanity Studio
+├── scripts/    Proti initialization, seed, and validation tooling
+├── docs/       Project and release documentation
+└── .github/    CI workflows
 ```
 
-The root package provides convenience scripts for starting and building each package.
+## Requirements
 
-## Prerequisites
-
-- Node.js compatible with the versions of Next.js and Sanity used by this repository
-- pnpm
-- A Sanity project and dataset
-- The local Mino UI package referenced by `web/package.json`
-
-The Web package currently references:
+Proti currently targets:
 
 ```text
-mino-ui-0.0.2.tgz
+Node 24.19.0
+pnpm 10.34.1
 ```
 
-Make sure that package is available at the expected location before installing Web dependencies.
+Use the same pnpm version locally and in CI when updating dependencies or the lockfile.
 
-## Install
+## Start a new implementation
 
-Install each application:
+Install dependencies from the repository root:
 
 ```bash
-pnpm --dir web install
-pnpm --dir studio install
+pnpm install
 ```
 
-## Configure the Web Application
-
-Copy the Web environment template:
+Initialize the project:
 
 ```bash
-cp web/.env.example web/.env.local
+pnpm proti:init
 ```
 
-Populate the Sanity project, dataset, API tokens, Studio URL, and revalidation secret as appropriate for the environment.
+The initializer creates project-specific configuration, writes local environment files, and updates the root, Web, and Studio package names.
 
-See [web/README.md](web/README.md) for variable details.
+Add the required local Sanity values to `web/.env.local`:
 
-The Studio does not currently require a `studio/.env.example`. Its Sanity project/dataset configuration remains in the Studio configuration. If that configuration is moved to environment variables later, add a Studio env template at the same time.
+```text
+SANITY_API_READ_TOKEN=
+SANITY_API_WRITE_TOKEN=
+SANITY_REVALIDATE_SECRET=
+```
 
-## Development
+The write token must be able to create documents in the configured Sanity project.
 
-Run the Web application:
+### Minimal seed
+
+Create only the Site document:
 
 ```bash
-pnpm dev:web
+pnpm proti:seed
 ```
 
-Run Sanity Studio in a second terminal:
+### Optional starter content
+
+To also create a minimal default-locale starting structure, run:
+
+```bash
+pnpm proti:seed --starter-content
+```
+
+This creates, only when missing:
+
+```text
+<default locale>
+├── Home
+├── Default Header
+├── Default Footer
+└── Default Navigation
+```
+
+Starter content is optional, idempotent, and non-destructive. Existing matching content is reused rather than overwritten.
+
+Verify the setup:
+
+```bash
+pnpm proti:check
+```
+
+Then start Studio and Web:
 
 ```bash
 pnpm dev:studio
+pnpm dev:web
 ```
 
-Default local URLs are typically:
+The default local URLs are:
 
 ```text
-Web:    http://localhost:3000
-Studio: http://localhost:3333
+Studio  http://localhost:3333
+Web     http://localhost:3000
 ```
 
-For Proti's host-based Site resolution, use `localhost:3000` rather than substituting `127.0.0.1:3000` unless the Sanity Site document is configured for that host.
+See [`docs/PROJECT_INITIALIZATION.md`](docs/PROJECT_INITIALIZATION.md) for the full initialization workflow.
 
-## Build
+## Root commands
+
+```bash
+pnpm dev:web
+pnpm dev:studio
+pnpm build:web
+pnpm build:studio
+
+pnpm proti:init
+pnpm proti:seed
+pnpm proti:seed --starter-content
+pnpm proti:check
+pnpm test:proti
+```
+
+## Validation
+
+### Proti setup tooling
 
 From the repository root:
 
 ```bash
-pnpm build:web
-pnpm build:studio
+pnpm test:proti
 ```
 
-## Core Capabilities
+### Studio
 
-Proti includes:
+From `studio/`:
 
-- Hierarchical Pages and reusable page-builder blocks
-- Blogs, Authors, citations, editorial metadata, and taxonomy
-- Header, Footer, and Navigation Set documents
-- Reusable Modals and Singletons
-- Multi-locale content and translation creation workflows
-- Exact page-to-page language switching
-- Search and dynamic Document Lists
-- Grouped taxonomy filters and configurable sorting
-- Responsive CMS Grid blocks
-- Shared block-level styling for spacing, background, and content width
-- SEO metadata and structured data
-- Draft Mode and Sanity visual editing
-- Sanity webhook-driven production cache revalidation
-- Unit/integration testing with Vitest
-- Browser and visual regression testing with Playwright
+```bash
+pnpm test
+pnpm build
+```
 
-## Locale and Translation Rules
+### Web
 
-The default locale uses an unprefixed URL. Additional locales use a locale prefix.
+From `web/`:
+
+```bash
+pnpm test:run
+pnpm exec next typegen
+pnpm exec tsc --noEmit
+pnpm lint
+pnpm build
+```
+
+### Playwright
+
+For production-mode end-to-end checks, build and start the Web app first:
+
+```bash
+cd web
+pnpm build
+pnpm start
+```
+
+Then run:
+
+```bash
+pnpm test:e2e:smoke
+pnpm test:e2e:visual
+```
+
+Only update visual baselines for an intentional visual change:
+
+```bash
+pnpm test:e2e:update
+pnpm test:e2e:visual
+```
+
+Review and commit the changed screenshots after confirming the differences are expected.
+
+## Locales
+
+Proti uses lowercase language-region locale codes:
+
+```text
+en-us
+es-us
+fr-ca
+```
+
+The default locale is unprefixed in public URLs. Additional locales use a locale prefix.
 
 Example:
 
 ```text
-English: /products/widget
-Spanish: /us-es/products/widget
+/products/widget
+/es-us/products/widget
 ```
 
-Equivalent translations should keep the same logical path whenever possible.
+## Mino UI dependency
 
-The language selector only exposes an exact translation of the current content:
+The Web app consumes Mino UI as a local tarball.
 
-- If an alternate translation exists, it is selectable.
-- If an alternate translation does not exist, that locale is not offered.
-- If there are no additional translations, the language selector is hidden.
-- The selector does not fall back to a locale homepage.
+When Mino changes, do not replace a previously committed tarball with different bytes under the same version. Bump the Mino package version and tarball filename instead.
 
-See the Web and Studio READMEs for implementation and authoring details.
-
-## Taxonomy Rules
-
-Taxonomy distinguishes between organizational groups and assignable terms:
-
-- **Group / Folder**: hierarchy/organization only.
-- **Taxonomy Term**: assignable taxonomy concept.
-- **Available for Blog Tagging** controls whether a Term can be selected on Blog documents.
-- **Include in Visitor Filters** controls whether a Term can be exposed in visitor-facing Document List filters.
-
-Those settings are independent. A Term can be available for Blog tagging without being exposed as a visitor filter, or vice versa.
-
-## Document Lists
-
-Document Lists support manual or dynamic content.
-
-Dynamic lists can use:
-
-- Content-type scope
-- Taxonomy restrictions
-- Search
-- Visitor filter groups
-- Pagination
-- Standard sort options
-- Whitelisted custom sort options
-
-Visitor taxonomy filters are organized into explicit groups such as:
+Example:
 
 ```text
-Type
-- Article
-- Video
-
-Treatment
-- Asthma
-- Diabetes
+mino-ui-0.0.2.tgz -> mino-ui-0.0.3.tgz
 ```
 
-Selections within a group use the configured Any/All behavior. Separate groups combine using AND semantics.
+Update `web/package.json`, regenerate the root lockfile with the same pnpm version used by CI, and verify a frozen install before committing:
 
-When **Require Search or Filter** is enabled, a text query or an active visitor filter is enough to begin loading results. With neither present, the list remains in its configured initial state.
-
-## Responsive Grid Blocks
-
-Grid blocks treat the Studio **Desktop Columns** value as the desktop target.
-
-The default responsive behavior is:
-
-```text
-Mobile:  1 column
-Tablet:  up to 2 columns
-Desktop: configured Desktop Columns
+```bash
+pnpm install --no-frozen-lockfile
+pnpm install --frozen-lockfile
 ```
 
-For example, a 4-column Grid becomes 1 / 2 / 4 across mobile, tablet, and desktop. The core Mino Grid API still supports explicit responsive column objects for advanced consumers.
+Commit the new tarball, `web/package.json`, `pnpm-lock.yaml`, and removal of the previous tarball together.
 
-## Shared Block Styles
+## CI
 
-Reusable Page Builder blocks expose a shared **Styles** group with semantic design-system controls:
+Pull requests and pushes to `main` validate:
 
-- Vertical Padding
-- Background
-- Content Width
+- Proti initialization/seed/check tooling
+- Studio tests and build
+- Web tests, type checking, lint, and build
+- Playwright smoke tests
+- Playwright visual regression tests
 
-Leaving a value at **Default** preserves the component's existing styling.
+Keep `pnpm install --frozen-lockfile` enabled in CI. Lockfile or tarball mismatches should be corrected in the repository rather than bypassed in CI.
 
-Padding overrides replace the block's normal top/bottom padding rather than adding a second spacing layer. Backgrounds apply to the full-width block wrapper, while Content Width controls the inner content constraint.
+## Release documentation
 
-## Testing and Release Validation
+Before tagging a release, use:
 
-Package-specific test commands are documented in the package READMEs.
+- [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md)
+- [`CHANGELOG.md`](CHANGELOG.md)
 
-Before a release, the expected validation is:
+## Current baseline
 
-1. Studio tests/build pass.
-2. Web unit/integration tests pass.
-3. Web TypeScript check passes.
-4. Web production build and lint pass.
-5. Playwright smoke tests pass against the production build.
-6. Playwright visual tests pass against the production build.
-7. Sanity publish/update behavior and webhook revalidation are verified in a deployed environment.
-
-Visual regression baselines should be generated and compared against the production Next.js build (`pnpm build` + `pnpm start`), not mixed between development and production rendering.
-
-## Package Documentation
-
-- [Web application documentation](web/README.md)
-- [Sanity Studio documentation](studio/README.md)
+The current release target is **Proti v0.2.0**.

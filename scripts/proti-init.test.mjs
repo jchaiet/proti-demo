@@ -39,6 +39,10 @@ test("fresh clone uses generic defaults and language-region locales", async () =
       "A fresh clone must not prefill a real Sanity project ID.",
     );
 
+    assert.match(result.stdout, /pnpm proti:seed --starter-content/);
+
+    assert.match(result.stdout, /pnpm proti:check/);
+
     const config = JSON.parse(
       await fs.readFile(path.join(repo, "proti.config.json"), "utf8"),
     );

@@ -347,8 +347,12 @@ try {
   console.log("\nNext:");
   console.log("  1. Add any required Sanity tokens to web/.env.local.");
   console.log("  2. Run: pnpm proti:seed");
-  console.log("  3. Run: pnpm dev:studio");
-  console.log("  4. Run: pnpm dev:web\n");
+  console.log(
+    "     Optional starter content: pnpm proti:seed --starter-content",
+  );
+  console.log("  3. Run: pnpm proti:check");
+  console.log("  4. Run: pnpm dev:studio");
+  console.log("  5. Run: pnpm dev:web\n");
 } finally {
   rl?.close();
 }
