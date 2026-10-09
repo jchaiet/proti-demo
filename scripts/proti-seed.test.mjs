@@ -16,7 +16,7 @@ const SEED_SCRIPT = new URL("./proti-seed.mjs", import.meta.url);
 async function writeSeedConfig(repo) {
   await fs.writeFile(
     path.join(repo, "proti.config.json"),
-    JSON.stringify(
+    `${JSON.stringify(
       {
         version: 1,
         projectName: "Acme",
@@ -44,7 +44,7 @@ async function writeSeedConfig(repo) {
       },
       null,
       2,
-    ) + "\n",
+    )}\n`,
   );
 }
 
@@ -66,7 +66,6 @@ async function startMockSanity(handler) {
     };
 
     requests.push(record);
-
     await handler(record, response, requests);
   });
 
@@ -96,33 +95,37 @@ function json(response, status, value) {
   response.writeHead(status, {
     "Content-Type": "application/json",
   });
-
   response.end(JSON.stringify(value));
 }
 
-test("seed creates the configured Site exactly once", async () => {
+async function prepare(repo) {
+  await copyScript(SEED_SCRIPT, repo, "proti-seed.mjs");
+  await writeSeedConfig(repo);
+}
+
+function runSeed(repo, baseUrl, args = [], token = "editor-token") {
+  return runNode({
+    cwd: repo,
+    script: "scripts/proti-seed.mjs",
+    args,
+    env: {
+      SANITY_API_WRITE_TOKEN: token,
+      PROTI_SANITY_API_BASE_URL: baseUrl,
+    },
+  });
+}
+
+test("plain seed creates only the configured Site", async () => {
   const repo = await createTempRepo();
 
   const sanity = await startMockSanity(async (request, response) => {
     if (request.url.includes("/data/query/")) {
-      json(response, 200, {
-        result: null,
-      });
-
+      json(response, 200, { result: null });
       return;
     }
 
     if (request.url.includes("/data/mutate/")) {
-      json(response, 200, {
-        transactionId: "transaction-1",
-        results: [
-          {
-            id: "site-acme",
-            operation: "create",
-          },
-        ],
-      });
-
+      json(response, 200, { transactionId: "site-create" });
       return;
     }
 
@@ -130,48 +133,137 @@ test("seed creates the configured Site exactly once", async () => {
   });
 
   try {
-    await copyScript(SEED_SCRIPT, repo, "proti-seed.mjs");
+    await prepare(repo);
 
-    await writeSeedConfig(repo);
-
-    const result = await runNode({
-      cwd: repo,
-      script: "scripts/proti-seed.mjs",
-      env: {
-        SANITY_API_WRITE_TOKEN: "editor-token",
-        PROTI_SANITY_API_BASE_URL: sanity.baseUrl,
-      },
-    });
+    const result = await runSeed(repo, sanity.baseUrl);
 
     assert.equal(result.code, 0, result.stderr);
-
     assert.match(result.stdout, /Created initial Sanity Site: site-acme/);
-
+    assert.doesNotMatch(result.stdout, /Starter content/);
     assert.equal(sanity.requests.length, 2);
 
-    const mutation = sanity.requests[1].body.mutations[0].createIfNotExists;
+    const mutations = sanity.requests[1].body.mutations;
+    assert.equal(mutations.length, 1);
+    assert.equal(mutations[0].createIfNotExists._type, "site");
+  } finally {
+    await sanity.close();
+    await removeTempRepo(repo);
+  }
+});
 
-    assert.deepEqual(mutation, {
-      _id: "site-acme",
-      _type: "site",
-      name: "Acme",
-      key: "acme",
-      domains: ["localhost", "example.com"],
-      defaultLocale: "en-us",
-      locales: [
-        {
-          _key: "locale-en-us",
-          _type: "siteLocale",
-          code: "en-us",
-          label: "English (US)",
-        },
-        {
-          _key: "locale-es-us",
-          _type: "siteLocale",
-          code: "es-us",
-          label: "Spanish (US)",
-        },
-      ],
+test("plain seed remains a no-op when the Site exists", async () => {
+  const repo = await createTempRepo();
+
+  const sanity = await startMockSanity(async (_request, response) => {
+    json(response, 200, { result: "site-acme" });
+  });
+
+  try {
+    await prepare(repo);
+
+    const result = await runSeed(repo, sanity.baseUrl);
+
+    assert.equal(result.code, 0, result.stderr);
+    assert.match(result.stdout, /already exists\. No changes were made\./);
+    assert.equal(sanity.requests.length, 1);
+  } finally {
+    await sanity.close();
+    await removeTempRepo(repo);
+  }
+});
+
+test("--starter-content creates Site plus minimal default-locale content", async () => {
+  const repo = await createTempRepo();
+  let queryCount = 0;
+
+  const sanity = await startMockSanity(async (request, response) => {
+    if (request.url.includes("/data/query/")) {
+      queryCount += 1;
+
+      if (queryCount === 1) {
+        json(response, 200, { result: null });
+      } else {
+        json(response, 200, {
+          result: {
+            homepageId: null,
+            headerId: null,
+            footerId: null,
+            navigationSetId: null,
+          },
+        });
+      }
+
+      return;
+    }
+
+    if (request.url.includes("/data/mutate/")) {
+      json(response, 200, {
+        transactionId: `mutation-${sanity.requests.length}`,
+      });
+      return;
+    }
+
+    json(response, 404, {});
+  });
+
+  try {
+    await prepare(repo);
+
+    const result = await runSeed(repo, sanity.baseUrl, ["--starter-content"]);
+
+    assert.equal(result.code, 0, result.stderr);
+    assert.match(result.stdout, /Starter content \(en-us\)/);
+    assert.match(result.stdout, /Created: Home/);
+    assert.match(result.stdout, /Created: Header/);
+    assert.match(result.stdout, /Created: Footer/);
+    assert.match(result.stdout, /Created: Navigation Set/);
+
+    assert.equal(sanity.requests.length, 4);
+
+    const siteMutation = sanity.requests[1].body.mutations;
+    assert.equal(siteMutation.length, 1);
+    assert.equal(siteMutation[0].createIfNotExists._type, "site");
+
+    const starterMutations = sanity.requests[3].body.mutations;
+    assert.equal(starterMutations.length, 4);
+
+    const documents = starterMutations.map(
+      ({ createIfNotExists }) => createIfNotExists,
+    );
+
+    const homepage = documents.find(({ _type }) => _type === "page");
+    const header = documents.find(({ _type }) => _type === "navigationHeader");
+    const footer = documents.find(({ _type }) => _type === "navigationFooter");
+    const navigationSet = documents.find(
+      ({ _type }) => _type === "navigationSet",
+    );
+
+    assert.deepEqual(homepage, {
+      _id: "page-acme-en-us-home",
+      _type: "page",
+      title: "Home",
+      site: { _type: "reference", _ref: "site-acme" },
+      locale: "en-us",
+      isHomepage: true,
+      sections: [],
+    });
+
+    assert.equal(header.key, "default-header");
+    assert.equal(header.locale, "en-us");
+    assert.equal(header.logoMode, "site");
+
+    assert.equal(footer.key, "default-footer");
+    assert.equal(footer.locale, "en-us");
+
+    assert.equal(navigationSet.key, "default");
+    assert.equal(navigationSet.isDefault, true);
+    assert.deepEqual(navigationSet.header, {
+      _type: "reference",
+      _ref: "navigation-header-acme-en-us-default",
+    });
+    assert.deepEqual(navigationSet.footer, {
+      _type: "reference",
+      _ref: "navigation-footer-acme-en-us-default",
     });
   } finally {
     await sanity.close();
@@ -179,38 +271,147 @@ test("seed creates the configured Site exactly once", async () => {
   }
 });
 
-test("seed is a no-op when the Site already exists", async () => {
+test("--starter-content can be added after the Site was already seeded", async () => {
   const repo = await createTempRepo();
+  let queryCount = 0;
 
   const sanity = await startMockSanity(async (request, response) => {
-    json(response, 200, {
-      result: "site-acme",
-    });
+    if (request.url.includes("/data/query/")) {
+      queryCount += 1;
+
+      if (queryCount === 1) {
+        json(response, 200, { result: "site-acme" });
+      } else {
+        json(response, 200, {
+          result: {
+            homepageId: null,
+            headerId: null,
+            footerId: null,
+            navigationSetId: null,
+          },
+        });
+      }
+
+      return;
+    }
+
+    json(response, 200, { transactionId: "starter-create" });
   });
 
   try {
-    await copyScript(SEED_SCRIPT, repo, "proti-seed.mjs");
+    await prepare(repo);
 
-    await writeSeedConfig(repo);
-
-    const result = await runNode({
-      cwd: repo,
-      script: "scripts/proti-seed.mjs",
-      env: {
-        SANITY_API_WRITE_TOKEN: "editor-token",
-        PROTI_SANITY_API_BASE_URL: sanity.baseUrl,
-      },
-    });
+    const result = await runSeed(repo, sanity.baseUrl, ["--starter-content"]);
 
     assert.equal(result.code, 0, result.stderr);
+    assert.match(result.stdout, /Site "site-acme" already exists\./);
+    assert.match(result.stdout, /Created: Home/);
+    assert.equal(sanity.requests.length, 3);
+    assert.equal(sanity.requests[2].body.mutations.length, 4);
+  } finally {
+    await sanity.close();
+    await removeTempRepo(repo);
+  }
+});
 
-    assert.match(result.stdout, /already exists\. No changes were made\./);
+test("starter content reuses matching existing documents and never overwrites them", async () => {
+  const repo = await createTempRepo();
+  let queryCount = 0;
+
+  const sanity = await startMockSanity(async (request, response) => {
+    if (request.url.includes("/data/query/")) {
+      queryCount += 1;
+
+      if (queryCount === 1) {
+        json(response, 200, { result: "site-acme" });
+      } else {
+        json(response, 200, {
+          result: {
+            homepageId: "custom-home-id",
+            headerId: "custom-header-id",
+            footerId: null,
+            navigationSetId: null,
+          },
+        });
+      }
+
+      return;
+    }
+
+    json(response, 200, { transactionId: "partial-create" });
+  });
+
+  try {
+    await prepare(repo);
+
+    const result = await runSeed(repo, sanity.baseUrl, ["--starter-content"]);
+
+    assert.equal(result.code, 0, result.stderr);
+    assert.match(result.stdout, /Existing: Home \(custom-home-id\)/);
+    assert.match(result.stdout, /Existing: Header \(custom-header-id\)/);
+
+    const starterMutations = sanity.requests[2].body.mutations;
+    assert.equal(starterMutations.length, 2);
+
+    const documents = starterMutations.map(
+      ({ createIfNotExists }) => createIfNotExists,
+    );
 
     assert.equal(
-      sanity.requests.length,
-      1,
-      "The mutation endpoint must not be called for an existing Site.",
+      documents.some(({ _type }) => _type === "page"),
+      false,
     );
+    assert.equal(
+      documents.some(({ _type }) => _type === "navigationHeader"),
+      false,
+    );
+
+    const navigationSet = documents.find(
+      ({ _type }) => _type === "navigationSet",
+    );
+
+    assert.deepEqual(navigationSet.header, {
+      _type: "reference",
+      _ref: "custom-header-id",
+    });
+  } finally {
+    await sanity.close();
+    await removeTempRepo(repo);
+  }
+});
+
+test("starter content is a full no-op when all starter documents exist", async () => {
+  const repo = await createTempRepo();
+  let queryCount = 0;
+
+  const sanity = await startMockSanity(async (request, response) => {
+    queryCount += 1;
+
+    if (queryCount === 1) {
+      json(response, 200, { result: "site-acme" });
+    } else {
+      json(response, 200, {
+        result: {
+          homepageId: "home-existing",
+          headerId: "header-existing",
+          footerId: "footer-existing",
+          navigationSetId: "navigation-existing",
+        },
+      });
+    }
+  });
+
+  try {
+    await prepare(repo);
+
+    const result = await runSeed(repo, sanity.baseUrl, ["--starter-content"]);
+
+    assert.equal(result.code, 0, result.stderr);
+    assert.match(
+      result.stdout,
+      /Starter content already exists\. No changes were made\./,
+    );
+    assert.equal(sanity.requests.length, 2);
   } finally {
     await sanity.close();
     await removeTempRepo(repo);
@@ -222,10 +423,7 @@ test("seed explains insufficient Sanity create permission", async () => {
 
   const sanity = await startMockSanity(async (request, response) => {
     if (request.url.includes("/data/query/")) {
-      json(response, 200, {
-        result: null,
-      });
-
+      json(response, 200, { result: null });
       return;
     }
 
@@ -237,23 +435,12 @@ test("seed explains insufficient Sanity create permission", async () => {
   });
 
   try {
-    await copyScript(SEED_SCRIPT, repo, "proti-seed.mjs");
+    await prepare(repo);
 
-    await writeSeedConfig(repo);
-
-    const result = await runNode({
-      cwd: repo,
-      script: "scripts/proti-seed.mjs",
-      env: {
-        SANITY_API_WRITE_TOKEN: "read-only-token",
-        PROTI_SANITY_API_BASE_URL: sanity.baseUrl,
-      },
-    });
+    const result = await runSeed(repo, sanity.baseUrl, [], "read-only-token");
 
     assert.notEqual(result.code, 0);
-
     assert.match(result.stderr, /does not have permission to create documents/);
-
     assert.match(result.stderr, /Editor-capable token/);
   } finally {
     await sanity.close();
@@ -261,25 +448,23 @@ test("seed explains insufficient Sanity create permission", async () => {
   }
 });
 
-test("seed fails clearly when no write token is configured", async () => {
+test("seed rejects unknown flags", async () => {
   const repo = await createTempRepo();
 
   try {
-    await copyScript(SEED_SCRIPT, repo, "proti-seed.mjs");
-
-    await writeSeedConfig(repo);
+    await prepare(repo);
 
     const result = await runNode({
       cwd: repo,
       script: "scripts/proti-seed.mjs",
+      args: ["--starter"],
       env: {
-        SANITY_API_WRITE_TOKEN: "",
+        SANITY_API_WRITE_TOKEN: "editor-token",
       },
     });
 
     assert.notEqual(result.code, 0);
-
-    assert.match(result.stderr, /SANITY_API_WRITE_TOKEN is required/);
+    assert.match(result.stderr, /Unknown proti:seed option: --starter/);
   } finally {
     await removeTempRepo(repo);
   }

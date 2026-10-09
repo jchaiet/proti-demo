@@ -41,6 +41,21 @@ function localeKey(code) {
   return `locale-${code.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}`;
 }
 
+function documentIdPart(value) {
+  return String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function reference(id) {
+  return {
+    _type: "reference",
+    _ref: id,
+  };
+}
+
 async function readRequiredJson(filePath) {
   try {
     return JSON.parse(await fs.readFile(filePath, "utf8"));
@@ -94,8 +109,285 @@ async function responseError(response) {
   );
 }
 
-const config = await readRequiredJson(path.join(ROOT, "proti.config.json"));
+function parseArguments(argv) {
+  const args = new Set(argv);
 
+  if (args.has("--help") || args.has("-h")) {
+    console.log(
+      `\nProti seed\n\nUsage:\n  pnpm proti:seed\n  pnpm proti:seed --starter-content\n\nOptions:\n  --starter-content  Also create a minimal Home, Header, Footer, and Navigation Set for the default locale.\n`,
+    );
+    process.exit(0);
+  }
+
+  const supported = new Set(["--starter-content"]);
+  const unknown = argv.filter((arg) => !supported.has(arg));
+
+  if (unknown.length > 0) {
+    throw new Error(
+      `Unknown proti:seed option${unknown.length === 1 ? "" : "s"}: ${unknown.join(", ")}`,
+    );
+  }
+
+  return {
+    starterContent: args.has("--starter-content"),
+  };
+}
+
+async function sanityQuery({ apiBaseUrl, dataset, token, query, params = {} }) {
+  const response = await fetch(
+    `${apiBaseUrl}/v${API_VERSION}/data/query/${dataset}`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        query,
+        params,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    throw await responseError(response);
+  }
+
+  const payload = await response.json();
+
+  return payload.result;
+}
+
+async function sanityMutate({ apiBaseUrl, dataset, token, mutations }) {
+  if (mutations.length === 0) {
+    return;
+  }
+
+  const response = await fetch(
+    `${apiBaseUrl}/v${API_VERSION}/data/mutate/${dataset}?returnIds=true`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ mutations }),
+    },
+  );
+
+  if (!response.ok) {
+    throw await responseError(response);
+  }
+}
+
+function buildSiteDocument(site, documentId) {
+  return {
+    _id: documentId,
+    _type: "site",
+    name: site.name,
+    key: site.key,
+    domains: site.domains,
+    defaultLocale: site.defaultLocale,
+    locales: site.locales.map(({ code, label }) => ({
+      _key: localeKey(code),
+      _type: "siteLocale",
+      code,
+      label,
+    })),
+  };
+}
+
+function starterIds(siteKey, locale) {
+  const scope = `${documentIdPart(siteKey)}-${documentIdPart(locale)}`;
+
+  return {
+    homepage: `page-${scope}-home`,
+    header: `navigation-header-${scope}-default`,
+    footer: `navigation-footer-${scope}-default`,
+    navigationSet: `navigation-set-${scope}-default`,
+  };
+}
+
+function buildStarterDocuments({ siteId, site, existing }) {
+  const locale = site.defaultLocale;
+  const ids = starterIds(site.key, locale);
+  const siteReference = reference(siteId);
+  const headerId = existing.headerId || ids.header;
+  const footerId = existing.footerId || ids.footer;
+
+  const entries = [
+    {
+      key: "homepage",
+      label: "Home",
+      id: existing.homepageId || ids.homepage,
+      existingId: existing.homepageId,
+      document: {
+        _id: ids.homepage,
+        _type: "page",
+        title: "Home",
+        site: siteReference,
+        locale,
+        isHomepage: true,
+        sections: [],
+      },
+    },
+    {
+      key: "header",
+      label: "Header",
+      id: headerId,
+      existingId: existing.headerId,
+      document: {
+        _id: ids.header,
+        _type: "navigationHeader",
+        title: "Default Header",
+        key: "default-header",
+        site: siteReference,
+        locale,
+        logoMode: "site",
+        align: "center",
+        variant: "standard",
+        isSticky: true,
+        items: [],
+        utilityActions: [],
+      },
+    },
+    {
+      key: "footer",
+      label: "Footer",
+      id: footerId,
+      existingId: existing.footerId,
+      document: {
+        _id: ids.footer,
+        _type: "navigationFooter",
+        title: "Default Footer",
+        key: "default-footer",
+        site: siteReference,
+        locale,
+        logoMode: "site",
+        columns: [],
+        socialLinks: [],
+        legalLinks: [],
+      },
+    },
+    {
+      key: "navigationSet",
+      label: "Navigation Set",
+      id: existing.navigationSetId || ids.navigationSet,
+      existingId: existing.navigationSetId,
+      document: {
+        _id: ids.navigationSet,
+        _type: "navigationSet",
+        title: "Default Navigation",
+        key: "default",
+        site: siteReference,
+        locale,
+        isDefault: true,
+        headerMode: "custom",
+        header: reference(headerId),
+        footerMode: "custom",
+        footer: reference(footerId),
+      },
+    },
+  ];
+
+  return entries;
+}
+
+async function seedStarterContent({
+  apiBaseUrl,
+  dataset,
+  token,
+  siteId,
+  site,
+}) {
+  const locale = site.defaultLocale;
+
+  if (!locale) {
+    throw new Error(
+      'proti.config.json is missing site.defaultLocale. Run "pnpm proti:init" again.',
+    );
+  }
+
+  if (!site.locales?.some(({ code }) => code === locale)) {
+    throw new Error(
+      `Default locale "${locale}" must be included in site.locales before starter content can be seeded.`,
+    );
+  }
+
+  const existing = await sanityQuery({
+    apiBaseUrl,
+    dataset,
+    token,
+    query: `{
+      "homepageId": *[
+        _type == "page" &&
+        site._ref == $siteId &&
+        locale == $locale &&
+        isHomepage == true
+      ][0]._id,
+      "headerId": *[
+        _type == "navigationHeader" &&
+        site._ref == $siteId &&
+        locale == $locale &&
+        key == "default-header"
+      ][0]._id,
+      "footerId": *[
+        _type == "navigationFooter" &&
+        site._ref == $siteId &&
+        locale == $locale &&
+        key == "default-footer"
+      ][0]._id,
+      "navigationSetId": *[
+        _type == "navigationSet" &&
+        site._ref == $siteId &&
+        locale == $locale &&
+        key == "default"
+      ][0]._id
+    }`,
+    params: {
+      siteId,
+      locale,
+    },
+  });
+
+  const entries = buildStarterDocuments({
+    siteId,
+    site,
+    existing: existing ?? {},
+  });
+
+  const missing = entries.filter(({ existingId }) => !existingId);
+
+  if (missing.length > 0) {
+    await sanityMutate({
+      apiBaseUrl,
+      dataset,
+      token,
+      mutations: missing.map(({ document }) => ({
+        createIfNotExists: document,
+      })),
+    });
+  }
+
+  console.log(`\nStarter content (${locale})`);
+
+  for (const entry of entries) {
+    console.log(
+      `${entry.existingId ? "Existing" : "Created"}: ${entry.label} (${entry.id})`,
+    );
+  }
+
+  if (missing.length === 0) {
+    console.log("Starter content already exists. No changes were made.");
+  } else {
+    console.log(
+      "Starter content seed complete. Existing documents were not overwritten.",
+    );
+  }
+}
+
+const options = parseArguments(process.argv.slice(2));
+const config = await readRequiredJson(path.join(ROOT, "proti.config.json"));
 const localEnv = await readLocalWebEnv();
 
 /*
@@ -119,80 +411,64 @@ const projectId = config.sanity?.projectId;
 const dataset = config.sanity?.dataset;
 const site = config.site;
 
-if (!projectId || !dataset || !site?.key) {
+if (
+  !projectId ||
+  !dataset ||
+  !site?.key ||
+  !site?.name ||
+  !Array.isArray(site.domains) ||
+  !Array.isArray(site.locales)
+) {
   throw new Error(
     'proti.config.json is incomplete. Run "pnpm proti:init" again.',
   );
 }
 
 const apiBaseUrl = getApiBaseUrl(projectId);
-const documentId = `site-${site.key}`;
+const siteId = `site-${site.key}`;
 
-const queryUrl = `${apiBaseUrl}/v${API_VERSION}/data/query/${dataset}`;
-
-const queryResponse = await fetch(queryUrl, {
-  method: "POST",
-  headers: {
-    Authorization: `Bearer ${token}`,
-    "Content-Type": "application/json",
+const existingSiteId = await sanityQuery({
+  apiBaseUrl,
+  dataset,
+  token,
+  query: `*[_type == "site" && _id == $id][0]._id`,
+  params: {
+    id: siteId,
   },
-  body: JSON.stringify({
-    query: `*[_type == "site" && _id == $id][0]._id`,
-    params: {
-      id: documentId,
-    },
-  }),
 });
 
-if (!queryResponse.ok) {
-  throw await responseError(queryResponse);
-}
+if (existingSiteId) {
+  if (!options.starterContent) {
+    console.log(`Site "${siteId}" already exists. No changes were made.`);
 
-const queryPayload = await queryResponse.json();
+    process.exit(0);
+  }
 
-if (queryPayload.result) {
-  console.log(`Site "${documentId}" already exists. No changes were made.`);
-
-  process.exit(0);
-}
-
-const document = {
-  _id: documentId,
-  _type: "site",
-  name: site.name,
-  key: site.key,
-  domains: site.domains,
-  defaultLocale: site.defaultLocale,
-  locales: site.locales.map(({ code, label }) => ({
-    _key: localeKey(code),
-    _type: "siteLocale",
-    code,
-    label,
-  })),
-};
-
-const mutationUrl = `${apiBaseUrl}/v${API_VERSION}/data/mutate/${dataset}?returnIds=true`;
-
-const mutationResponse = await fetch(mutationUrl, {
-  method: "POST",
-  headers: {
-    Authorization: `Bearer ${token}`,
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify({
+  console.log(`Site "${siteId}" already exists.`);
+} else {
+  await sanityMutate({
+    apiBaseUrl,
+    dataset,
+    token,
     mutations: [
       {
-        createIfNotExists: document,
+        createIfNotExists: buildSiteDocument(site, siteId),
       },
     ],
-  }),
-});
+  });
 
-if (!mutationResponse.ok) {
-  throw await responseError(mutationResponse);
+  console.log(`Created initial Sanity Site: ${siteId}`);
+  console.log(`Domains: ${site.domains.join(", ")}`);
+  console.log(`Default locale: ${site.defaultLocale}`);
+  console.log(`Locales: ${site.locales.map(({ code }) => code).join(", ")}`);
 }
 
-console.log(`Created initial Sanity Site: ${documentId}`);
-console.log(`Domains: ${site.domains.join(", ")}`);
-console.log(`Default locale: ${site.defaultLocale}`);
-console.log(`Locales: ${site.locales.map(({ code }) => code).join(", ")}`);
+if (options.starterContent) {
+  await seedStarterContent({
+    apiBaseUrl,
+    dataset,
+    token,
+    siteId,
+    site,
+  });
+}

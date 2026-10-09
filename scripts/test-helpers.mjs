@@ -7,50 +7,23 @@ export async function createTempRepo() {
   const repo = await fs.mkdtemp(path.join(os.tmpdir(), "proti-setup-test-"));
 
   await Promise.all([
-    fs.mkdir(path.join(repo, "scripts"), {
-      recursive: true,
-    }),
-    fs.mkdir(path.join(repo, "web"), {
-      recursive: true,
-    }),
-    fs.mkdir(path.join(repo, "studio"), {
-      recursive: true,
-    }),
+    fs.mkdir(path.join(repo, "scripts"), { recursive: true }),
+    fs.mkdir(path.join(repo, "web"), { recursive: true }),
+    fs.mkdir(path.join(repo, "studio"), { recursive: true }),
   ]);
 
   await Promise.all([
     fs.writeFile(
       path.join(repo, "package.json"),
-      `${JSON.stringify(
-        {
-          name: "proti",
-          private: true,
-        },
-        null,
-        2,
-      )}\n`,
+      `${JSON.stringify({ name: "proti", private: true }, null, 2)}\n`,
     ),
     fs.writeFile(
       path.join(repo, "web", "package.json"),
-      `${JSON.stringify(
-        {
-          name: "web",
-          private: true,
-        },
-        null,
-        2,
-      )}\n`,
+      `${JSON.stringify({ name: "web", private: true }, null, 2)}\n`,
     ),
     fs.writeFile(
       path.join(repo, "studio", "package.json"),
-      `${JSON.stringify(
-        {
-          name: "studio",
-          private: true,
-        },
-        null,
-        2,
-      )}\n`,
+      `${JSON.stringify({ name: "studio", private: true }, null, 2)}\n`,
     ),
   ]);
 
@@ -68,9 +41,9 @@ export async function removeTempRepo(repo) {
   });
 }
 
-export function runNode({ cwd, script, input = "", env = {} }) {
+export function runNode({ cwd, script, args = [], input = "", env = {} }) {
   return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [script], {
+    const child = spawn(process.execPath, [script, ...args], {
       cwd,
       env: {
         ...process.env,
