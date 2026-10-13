@@ -3,7 +3,7 @@ import {DefaultLocaleInput} from '../../components/inputs/DefaultLocaleInput'
 import {SiteKeyInput} from '../../components/inputs/SiteKeyInput'
 import {validateSiteNavigationDefaults} from '../validation/navigationReferences'
 import {siteOwnedReferenceFilter} from '../validation/referenceFilters'
-import {validateSiteDomains} from '../validation/webUrls'
+import {validateCanonicalDomain, validateSiteDomains} from '../validation/webUrls'
 
 type SiteLocale = {
   code?: string
@@ -91,6 +91,24 @@ export const siteType = defineType({
     }),
 
     defineField({
+      name: 'canonicalDomain',
+      title: 'Canonical Domain',
+      type: 'string',
+      group: 'routing',
+      description:
+        'Primary hostname used for canonical URLs, hreflang, sitemap URLs, robots.txt, and structured data. Must match one of the configured Domains.',
+      validation: (rule) =>
+        rule
+          .required()
+          .custom((value, context) =>
+            validateCanonicalDomain(
+              value,
+              (context.document?.domains as string[] | undefined) ?? [],
+            ),
+          ),
+    }),
+
+    defineField({
       name: 'locales',
       title: 'Supported Locales',
       type: 'array',
@@ -153,7 +171,7 @@ export const siteType = defineType({
       type: 'array',
       group: 'navigation',
       description:
-        'Select a Navigation Set for each Locale that should have inherited navigation. Pages using Inherit Site Default use the set matching their Locale.',
+        'Select a Navigation Set for each Locale that should have inherited navigation. Pages using Inherit Site + Locale Default use the set matching their Locale.',
       of: [
         defineArrayMember({
           type: 'reference',

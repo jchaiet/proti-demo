@@ -1,5 +1,7 @@
 import {defineField, defineType} from 'sanity'
 
+import {validateLocaleCode} from '../validation/localeCode'
+
 export const siteLocaleType = defineType({
   name: 'siteLocale',
   title: 'Locale',
@@ -9,11 +11,8 @@ export const siteLocaleType = defineType({
       name: 'code',
       title: 'Locale Code',
       type: 'string',
-      description: 'Regional language code (e.g. en-us, es-us, ca-fr)',
-      validation: (rule) =>
-        rule.required().regex(/^[a-z]{2}-[a-z]{2}$/, {
-          name: 'regional locale',
-        }),
+      description: 'Regional language code (e.g. en-us, es-us, fil-ph)',
+      validation: (rule) => rule.required().custom((code) => validateLocaleCode(code)),
     }),
 
     defineField({

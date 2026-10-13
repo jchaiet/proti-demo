@@ -313,3 +313,41 @@ export function validateSingletonHeadingQuality(component: unknown): true | stri
     .map((heading) => describeHeading(heading))
     .join(', ')}. Keep the Page or Blog primary H1 outside the Singleton.`
 }
+
+export function validateAuthorBioHeadingQuality(value: unknown): true | string {
+  const headings = portableTextHeadings(value, 'Author Bio heading')
+
+  if (headings.length === 0) {
+    return true
+  }
+
+  const warnings: string[] = []
+  const h1Headings = headings.filter((heading) => heading.level === 1)
+
+  if (h1Headings.length > 0) {
+    warnings.push(
+      `Author name already renders as the page H1. Author Bio contains ${h1Headings.length} additional H1 heading${
+        h1Headings.length === 1 ? '' : 's'
+      }; use H2-H6 in the Bio instead.`,
+    )
+  }
+
+  const hierarchy = findHierarchySkip([
+    {
+      level: 1,
+      text: 'Author name',
+      source: 'Author profile',
+    },
+    ...headings,
+  ])
+
+  if (hierarchy) {
+    warnings.push(
+      `Author Bio heading hierarchy skips from ${describeHeading(
+        hierarchy.previous,
+      )} to ${describeHeading(hierarchy.current)}. Start Bio sections at H2 and avoid skipping heading levels when possible.`,
+    )
+  }
+
+  return warnings.length > 0 ? warnings.join(' ') : true
+}

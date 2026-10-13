@@ -22,7 +22,20 @@ test("fresh clone uses generic defaults and language-region locales", async () =
     const result = await runNode({
       cwd: repo,
       script: "scripts/proti-init.mjs",
-      input: scriptedInput(["", "", "test123", "", "", "", "", "", "", "", ""]),
+      input: scriptedInput([
+        "",
+        "",
+        "test123",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+      ]),
     });
 
     assert.equal(result.code, 0, result.stderr);
@@ -52,6 +65,8 @@ test("fresh clone uses generic defaults and language-region locales", async () =
     assert.equal(config.packageName, "proti-site");
 
     assert.equal(config.sanity.projectId, "test123");
+
+    assert.equal(config.site.canonicalDomain, "localhost");
 
     assert.equal(config.site.defaultLocale, "en-us");
 
@@ -88,7 +103,8 @@ test("initializer normalizes project names, domains, and locale input", async ()
         "https://www.example.com",
         "",
         "",
-        "HTTPS://EXAMPLE.COM/, localhost:3000, example.com",
+        "HTTPS://EXAMPLE.COM/, localhost, example.com",
+        "",
         "EN-US",
         "EN-US:English, ES-US:Español",
       ]),
@@ -104,7 +120,9 @@ test("initializer normalizes project names, domains, and locale input", async ()
 
     assert.equal(config.site.key, "acme-health");
 
-    assert.deepEqual(config.site.domains, ["example.com", "localhost:3000"]);
+    assert.deepEqual(config.site.domains, ["example.com", "localhost"]);
+
+    assert.equal(config.site.canonicalDomain, "example.com");
 
     assert.equal(config.site.defaultLocale, "en-us");
 
@@ -112,6 +130,107 @@ test("initializer normalizes project names, domains, and locale input", async ()
       config.site.locales.map(({ code }) => code),
       ["en-us", "es-us"],
     );
+  } finally {
+    await removeTempRepo(repo);
+  }
+});
+
+test("initializer rejects a canonical domain outside Site domains", async () => {
+  const repo = await createTempRepo();
+
+  try {
+    await copyScript(INIT_SCRIPT, repo, "proti-init.mjs");
+
+    const result = await runNode({
+      cwd: repo,
+      script: "scripts/proti-init.mjs",
+      input: scriptedInput([
+        "Acme",
+        "acme",
+        "abc123",
+        "production",
+        "",
+        "",
+        "Acme",
+        "acme",
+        "example.com, www.example.com",
+        "canonical.example.com",
+      ]),
+    });
+
+    assert.notEqual(result.code, 0);
+    assert.match(result.stderr, /must be included in Site domains/);
+  } finally {
+    await removeTempRepo(repo);
+  }
+});
+
+test("initializer accepts three-letter language codes", async () => {
+  const repo = await createTempRepo();
+
+  try {
+    await copyScript(INIT_SCRIPT, repo, "proti-init.mjs");
+
+    const result = await runNode({
+      cwd: repo,
+      script: "scripts/proti-init.mjs",
+      input: scriptedInput([
+        "Filipino Site",
+        "filipino-site",
+        "abc123",
+        "production",
+        "",
+        "",
+        "",
+        "",
+        "localhost",
+        "",
+        "fil-ph",
+        "fil-ph:Filipino (Philippines), en-us:English (US)",
+      ]),
+    });
+
+    assert.equal(result.code, 0, result.stderr);
+
+    const config = JSON.parse(
+      await fs.readFile(path.join(repo, "proti.config.json"), "utf8"),
+    );
+
+    assert.equal(config.site.defaultLocale, "fil-ph");
+    assert.deepEqual(
+      config.site.locales.map(({ code }) => code),
+      ["fil-ph", "en-us"],
+    );
+  } finally {
+    await removeTempRepo(repo);
+  }
+});
+
+test("initializer rejects Site domains with ports", async () => {
+  const repo = await createTempRepo();
+
+  try {
+    await copyScript(INIT_SCRIPT, repo, "proti-init.mjs");
+
+    const result = await runNode({
+      cwd: repo,
+      script: "scripts/proti-init.mjs",
+      input: scriptedInput([
+        "",
+        "",
+        "abc123",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "localhost:3000",
+      ]),
+    });
+
+    assert.notEqual(result.code, 0);
+
+    assert.match(result.stderr, /must not include a port/);
   } finally {
     await removeTempRepo(repo);
   }
@@ -136,6 +255,7 @@ test("rerunning the initializer reuses local values and preserves secrets", asyn
         "Acme",
         "acme",
         "localhost",
+        "",
         "en-us",
         "en-us:English, es-us:Spanish",
       ]),
@@ -160,7 +280,7 @@ test("rerunning the initializer reuses local values and preserves secrets", asyn
     const second = await runNode({
       cwd: repo,
       script: "scripts/proti-init.mjs",
-      input: scriptedInput(new Array(11).fill("")),
+      input: scriptedInput(new Array(12).fill("")),
     });
 
     assert.equal(second.code, 0, second.stderr);
@@ -194,6 +314,7 @@ test("initializer rejects malformed locale shapes", async () => {
         "",
         "",
         "abc123",
+        "",
         "",
         "",
         "",

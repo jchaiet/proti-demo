@@ -6,6 +6,7 @@ export const SEARCH_SITE_SETTINGS_QUERY = `
     _id,
     name,
     domains,
+    canonicalDomain,
     defaultLocale,
 
     "defaultIndexing":

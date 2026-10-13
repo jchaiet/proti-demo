@@ -1,6 +1,6 @@
 # Proti Project Initialization
 
-Proti v0.2 includes a repository-level setup workflow for creating a new implementation from the starter without editing source files just to connect a new Sanity project.
+Proti includes a repository-level setup workflow for creating a new implementation from the starter without editing source files just to connect a new Sanity project.
 
 ## Commands
 
@@ -40,8 +40,11 @@ The initializer prompts for:
 - initial Site name
 - initial Site key
 - Site domains
+- canonical domain
 - default locale
 - supported locales
+
+Site domains are hostname-only (for example `example.com` or `localhost`). The canonical domain must be one of those configured Site domains and is the hostname Proti uses for canonical URLs, hreflang, sitemap URLs, robots.txt, and structured data.
 
 Proti locale codes use lowercase language-region format:
 
@@ -49,6 +52,7 @@ Proti locale codes use lowercase language-region format:
 en-us
 es-us
 fr-ca
+fil-ph
 ```
 
 The initializer writes:
@@ -91,7 +95,7 @@ pnpm proti:seed
 
 This creates only the configured Site document.
 
-If the Site already exists, no changes are made.
+If the Site already exists, content is not overwritten. If the Site predates the canonical-domain field and that field is missing, `proti:seed` safely backfills it from `proti.config.json`. An already-authored canonical domain is never replaced.
 
 ### Optional starter content
 
@@ -147,7 +151,7 @@ The check is read-only. It verifies:
 - root/Web/Studio package names
 - required token/secret presence
 - Sanity connectivity
-- configured Site identity and locale configuration
+- configured Site identity, canonical domain, and locale configuration
 
 Because starter content is optional, missing starter documents do not make `proti:check` fail.
 
@@ -191,6 +195,7 @@ A typical `proti.config.json` looks like:
     "name": "Acme Health",
     "key": "acme-health",
     "domains": ["localhost"],
+    "canonicalDomain": "localhost",
     "defaultLocale": "en-us",
     "locales": [
       { "code": "en-us", "label": "English (US)" },

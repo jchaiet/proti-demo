@@ -56,6 +56,14 @@ function reference(id) {
   };
 }
 
+function arrayReference(id, key) {
+  return {
+    _key: key,
+    _type: "reference",
+    _ref: id,
+  };
+}
+
 async function readRequiredJson(filePath) {
   try {
     return JSON.parse(await fs.readFile(filePath, "utf8"));
@@ -187,6 +195,7 @@ function buildSiteDocument(site, documentId) {
     name: site.name,
     key: site.key,
     domains: site.domains,
+    canonicalDomain: site.canonicalDomain,
     defaultLocale: site.defaultLocale,
     locales: site.locales.map(({ code, label }) => ({
       _key: localeKey(code),
@@ -281,7 +290,6 @@ function buildStarterDocuments({ siteId, site, existing }) {
         key: "default",
         site: siteReference,
         locale,
-        isDefault: true,
         headerMode: "custom",
         header: reference(headerId),
         footerMode: "custom",
@@ -291,6 +299,92 @@ function buildStarterDocuments({ siteId, site, existing }) {
   ];
 
   return entries;
+}
+
+async function getSiteNavigationDefaults({
+  apiBaseUrl,
+  dataset,
+  token,
+  siteId,
+  locale,
+}) {
+  const value = await sanityQuery({
+    apiBaseUrl,
+    dataset,
+    token,
+    query: `*[
+      _type == "site" &&
+      _id == $siteId
+    ][0]{
+      "references": coalesce(
+        defaultNavigationSets[]{
+          _key,
+          _type,
+          _ref
+        },
+        []
+      ),
+      "resolved": coalesce(
+        defaultNavigationSets[]->{
+          _id,
+          locale
+        },
+        []
+      )
+    }`,
+    params: {
+      siteId,
+    },
+  });
+
+  const references = Array.isArray(value?.references)
+    ? value.references.filter(({ _ref }) => Boolean(_ref))
+    : [];
+
+  const resolved = Array.isArray(value?.resolved) ? value.resolved : [];
+
+  const defaultForLocale = resolved.find(
+    (navigationSet) => navigationSet?.locale === locale,
+  );
+
+  return {
+    references,
+    defaultForLocaleId: defaultForLocale?._id || null,
+  };
+}
+
+async function assignSiteDefaultNavigation({
+  apiBaseUrl,
+  dataset,
+  token,
+  siteId,
+  locale,
+  navigationSetId,
+  references,
+}) {
+  const nextReferences = [
+    ...references,
+    arrayReference(
+      navigationSetId,
+      `default-navigation-${documentIdPart(locale)}`,
+    ),
+  ];
+
+  await sanityMutate({
+    apiBaseUrl,
+    dataset,
+    token,
+    mutations: [
+      {
+        patch: {
+          id: siteId,
+          set: {
+            defaultNavigationSets: nextReferences,
+          },
+        },
+      },
+    ],
+  });
 }
 
 async function seedStarterContent({
@@ -350,10 +444,24 @@ async function seedStarterContent({
     },
   });
 
+  const siteNavigationDefaults = await getSiteNavigationDefaults({
+    apiBaseUrl,
+    dataset,
+    token,
+    siteId,
+    locale,
+  });
+
+  const effectiveExisting = {
+    ...(existing ?? {}),
+    navigationSetId:
+      existing?.navigationSetId || siteNavigationDefaults.defaultForLocaleId,
+  };
+
   const entries = buildStarterDocuments({
     siteId,
     site,
-    existing: existing ?? {},
+    existing: effectiveExisting,
   });
 
   const missing = entries.filter(({ existingId }) => !existingId);
@@ -369,6 +477,23 @@ async function seedStarterContent({
     });
   }
 
+  const navigationSet = entries.find(({ key }) => key === "navigationSet");
+  const hasSiteDefaultNavigation = Boolean(
+    siteNavigationDefaults.defaultForLocaleId,
+  );
+
+  if (!hasSiteDefaultNavigation && navigationSet?.id) {
+    await assignSiteDefaultNavigation({
+      apiBaseUrl,
+      dataset,
+      token,
+      siteId,
+      locale,
+      navigationSetId: navigationSet.id,
+      references: siteNavigationDefaults.references,
+    });
+  }
+
   console.log(`\nStarter content (${locale})`);
 
   for (const entry of entries) {
@@ -377,7 +502,13 @@ async function seedStarterContent({
     );
   }
 
-  if (missing.length === 0) {
+  if (navigationSet?.id) {
+    console.log(
+      `${hasSiteDefaultNavigation ? "Existing" : "Assigned"}: Site default navigation (${navigationSet.id})`,
+    );
+  }
+
+  if (missing.length === 0 && hasSiteDefaultNavigation) {
     console.log("Starter content already exists. No changes were made.");
   } else {
     console.log(
@@ -417,6 +548,8 @@ if (
   !site?.key ||
   !site?.name ||
   !Array.isArray(site.domains) ||
+  !site.canonicalDomain ||
+  !site.domains.includes(site.canonicalDomain) ||
   !Array.isArray(site.locales)
 ) {
   throw new Error(
@@ -427,19 +560,49 @@ if (
 const apiBaseUrl = getApiBaseUrl(projectId);
 const siteId = `site-${site.key}`;
 
-const existingSiteId = await sanityQuery({
+const existingSite = await sanityQuery({
   apiBaseUrl,
   dataset,
   token,
-  query: `*[_type == "site" && _id == $id][0]._id`,
+  query: `*[_type == "site" && _id == $id][0]{
+    _id,
+    canonicalDomain
+  }`,
   params: {
     id: siteId,
   },
 });
 
-if (existingSiteId) {
+let canonicalDomainBackfilled = false;
+
+if (existingSite?._id && !existingSite.canonicalDomain) {
+  await sanityMutate({
+    apiBaseUrl,
+    dataset,
+    token,
+    mutations: [
+      {
+        patch: {
+          id: siteId,
+          setIfMissing: {
+            canonicalDomain: site.canonicalDomain,
+          },
+        },
+      },
+    ],
+  });
+
+  canonicalDomainBackfilled = true;
+  console.log(
+    `Added missing canonical domain to Site "${siteId}": ${site.canonicalDomain}`,
+  );
+}
+
+if (existingSite?._id) {
   if (!options.starterContent) {
-    console.log(`Site "${siteId}" already exists. No changes were made.`);
+    if (!canonicalDomainBackfilled) {
+      console.log(`Site "${siteId}" already exists. No changes were made.`);
+    }
 
     process.exit(0);
   }
@@ -459,6 +622,7 @@ if (existingSiteId) {
 
   console.log(`Created initial Sanity Site: ${siteId}`);
   console.log(`Domains: ${site.domains.join(", ")}`);
+  console.log(`Canonical domain: ${site.canonicalDomain}`);
   console.log(`Default locale: ${site.defaultLocale}`);
   console.log(`Locales: ${site.locales.map(({ code }) => code).join(", ")}`);
 }

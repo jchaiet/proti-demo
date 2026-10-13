@@ -26,6 +26,8 @@ import type { DocumentItem } from "mino-ui/blocks/DocumentListBlock";
 
 import { RichTextBlock } from "mino-ui/blocks/RichTextBlock";
 
+import { RichText } from "@/components/BlockRenderer/RichText";
+
 import type {
   CmsAuthor,
   CmsAuthorArticle,
@@ -301,7 +303,9 @@ export function AuthorTemplate({ page, localePrefix }: AuthorTemplateProps) {
     mapArticle(article, author, page.locale, localePrefix),
   );
 
-  const hasBio = Boolean(author.bioRichText || author.bio);
+  const hasBio = Boolean(
+    author.bioPortableText?.length || author.bioRichText || author.bio,
+  );
 
   const hasExpertiseDetails = Boolean(
     author.expertise?.length ||
@@ -333,22 +337,16 @@ export function AuthorTemplate({ page, localePrefix }: AuthorTemplateProps) {
             {hasExpertiseDetails ? (
               <aside
                 className={styles.expertise}
-                aria-labelledby="author-expertise-heading"
+                aria-label={messages.expertiseAndCredentials}
               >
-                {/* <Heading
-                  id="author-expertise-heading"
-                  level={2}
-                  size="lg"
-                  className={styles.expertiseHeading}
-                >
-                  {messages.expertiseAndCredentials}
-                </Heading> */}
-
                 {author.expertise?.length ? (
-                  <section className={styles.expertiseSection}>
-                    <Heading level={3} size="sm">
+                  <section
+                    className={styles.expertiseSection}
+                    aria-label={messages.areasOfExpertise}
+                  >
+                    <p className={styles.expertiseLabel}>
                       {messages.areasOfExpertise}
-                    </Heading>
+                    </p>
 
                     <ul className={styles.expertiseList}>
                       {author.expertise.map((item) => (
@@ -359,10 +357,13 @@ export function AuthorTemplate({ page, localePrefix }: AuthorTemplateProps) {
                 ) : null}
 
                 {author.credentials?.length ? (
-                  <section className={styles.expertiseSection}>
-                    <Heading level={3} size="sm">
+                  <section
+                    className={styles.expertiseSection}
+                    aria-label={messages.credentials}
+                  >
+                    <p className={styles.expertiseLabel}>
                       {messages.credentials}
-                    </Heading>
+                    </p>
 
                     <ul className={styles.credentialList}>
                       {author.credentials.map((credential, index) => (
@@ -401,10 +402,13 @@ export function AuthorTemplate({ page, localePrefix }: AuthorTemplateProps) {
                 ) : null}
 
                 {author.affiliation?.name ? (
-                  <section className={styles.expertiseSection}>
-                    <Heading level={3} size="sm">
+                  <section
+                    className={styles.expertiseSection}
+                    aria-label={messages.affiliation}
+                  >
+                    <p className={styles.expertiseLabel}>
                       {messages.affiliation}
-                    </Heading>
+                    </p>
 
                     <p className={styles.affiliation}>
                       {author.affiliation.url ? (
@@ -454,7 +458,14 @@ export function AuthorTemplate({ page, localePrefix }: AuthorTemplateProps) {
             ) : null}
           </header>
 
-          {hasBio ? (
+          {author.bioPortableText?.length ? (
+            <RichText
+              className={styles.bio}
+              content={author.bioPortableText}
+              alignment="left"
+              maxWidth="full"
+            />
+          ) : hasBio ? (
             <RichTextBlock
               className={styles.bio}
               content={author.bioRichText ?? author.bio ?? ""}

@@ -35,6 +35,7 @@ type SearchSite = {
   name?: string;
 
   domains?: string[];
+  canonicalDomain?: string;
 
   defaultLocale: string;
 
@@ -88,6 +89,11 @@ type SitemapAuthor = {
   _updatedAt?: string;
 
   slug?: string;
+
+  translations?: Array<{
+    locale?: string;
+    name?: string;
+  }>;
 };
 
 type SitemapEntry = MetadataRoute.Sitemap[number];
@@ -298,7 +304,7 @@ export async function buildSiteSitemap(
     return [];
   }
 
-  const origin = getSiteOrigin(site.domains);
+  const origin = getSiteOrigin(site.domains, site.canonicalDomain);
 
   if (!origin) {
     return [];
@@ -488,7 +494,19 @@ export async function buildSiteSitemap(
       continue;
     }
 
+    const availableAuthorLocales = new Set([
+      site.defaultLocale,
+      ...(author.translations ?? [])
+        .filter((translation) => Boolean(translation.name?.trim()))
+        .map((translation) => translation.locale)
+        .filter((locale): locale is string => Boolean(locale)),
+    ]);
+
     for (const locale of supportedLocaleCodes) {
+      if (!availableAuthorLocales.has(locale)) {
+        continue;
+      }
+
       if (getLocaleDefaultIndexing(site, locale) === "noindex") {
         continue;
       }
@@ -541,7 +559,7 @@ export async function buildRobotsConfig(
     };
   }
 
-  const origin = getSiteOrigin(site.domains);
+  const origin = getSiteOrigin(site.domains, site.canonicalDomain);
 
   if (!origin) {
     return {

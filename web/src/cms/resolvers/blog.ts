@@ -40,6 +40,9 @@ type BlogAuthorRecord = Omit<
 
   bioLegacy?: string;
 
+  defaultLocale?: string;
+  translatedLocales?: string[];
+
   image?: CmsImage;
 };
 
@@ -78,7 +81,14 @@ function mapAuthor(
     return undefined;
   }
 
-  const { bioPortableText, bioLegacy, image, ...author } = record;
+  const {
+    bioPortableText,
+    bioLegacy,
+    defaultLocale,
+    translatedLocales,
+    image,
+    ...author
+  } = record;
 
   return {
     ...author,
@@ -92,6 +102,15 @@ function mapAuthor(
     socialImageUrl: resolveSanityImagePreset(image, "social"),
 
     imageAlt: image?.alt ?? "",
+
+    availableLocales: Array.from(
+      new Set(
+        [
+          defaultLocale,
+          ...(Array.isArray(translatedLocales) ? translatedLocales : []),
+        ].filter((value): value is string => Boolean(value)),
+      ),
+    ),
   };
 }
 

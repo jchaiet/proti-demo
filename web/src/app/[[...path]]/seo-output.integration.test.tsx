@@ -132,7 +132,8 @@ const site = {
   _id: "site-proti",
   name: "Proti",
   key: "proti",
-  domains: ["example.com"],
+  domains: ["www.example.com", "example.com"],
+  canonicalDomain: "example.com",
   defaultLocale: "en-us",
   locales: [
     {
@@ -184,6 +185,8 @@ const spanishTranslations = {
 const author = {
   _id: "author-jane",
   _type: "author" as const,
+  _createdAt: "2026-01-15T12:00:00Z",
+  _updatedAt: "2026-09-30T16:00:00Z",
   siteId: "site-proti",
   slug: "jane-smith",
   name: "Jane Smith",
@@ -200,6 +203,7 @@ const author = {
   ],
   imageUrl: "https://cdn.example.com/jane.jpg",
   imageAlt: "Jane Smith",
+  availableLocales: ["en-us", "es-us"],
   sameAs: ["https://www.linkedin.com/in/jane-smith"],
 };
 
@@ -211,6 +215,7 @@ const reviewer = {
   name: "Alex Reviewer",
   jobTitle: "Medical Reviewer",
   bio: "Clinical reviewer.",
+  availableLocales: ["en-us", "es-us"],
 };
 
 const blog = {
@@ -258,7 +263,8 @@ function createSiteSeoRecord(locale: string) {
   return {
     _id: "site-proti",
     name: "Proti",
-    domains: ["example.com"],
+    domains: ["www.example.com", "example.com"],
+    canonicalDomain: "example.com",
     defaultLocale: "en-us",
     defaults: {
       locale,
@@ -311,7 +317,7 @@ beforeEach(() => {
   vi.clearAllMocks();
 
   mocks.headersGet.mockImplementation((name: string) =>
-    name === "host" ? "example.com" : null,
+    name === "host" ? "www.example.com" : null,
   );
 
   mocks.draftMode.mockResolvedValue({ isEnabled: false });
@@ -462,6 +468,52 @@ describe("rendered SEO metadata output", () => {
     });
   });
 
+  it("noindexes a non-default Author route when that Author has no localized profile", async () => {
+    mocks.getAuthorSlug.mockReturnValue("jane-smith");
+
+    mocks.getAuthorBySlug.mockResolvedValue({
+      ...author,
+      availableLocales: ["en-us"],
+    });
+
+    mocks.buildAuthorLocaleLinks.mockReturnValue({
+      localeHrefs: {
+        "en-us": "/authors/jane-smith",
+      },
+      languageAlternates: {
+        "en-US": "https://example.com/authors/jane-smith",
+        "x-default": "https://example.com/authors/jane-smith",
+      },
+    });
+
+    const metadata = await generateMetadata(
+      pageProps(["es-us", "authors", "jane-smith"]),
+    );
+
+    expect(mocks.buildAuthorLocaleLinks).toHaveBeenCalledWith({
+      slug: "jane-smith",
+      defaultLocale: "en-us",
+      locales: site.locales,
+      domains: site.domains,
+      canonicalDomain: "example.com",
+      availableLocales: ["en-us"],
+    });
+
+    expect(metadata).toMatchObject({
+      alternates: {
+        canonical: "https://example.com/es-us/authors/jane-smith",
+        languages: {
+          "en-US": "https://example.com/authors/jane-smith",
+          "x-default": "https://example.com/authors/jane-smith",
+        },
+      },
+      robots: {
+        index: false,
+        follow: true,
+      },
+    });
+  });
+
   it("emits article metadata with editorial dates, Author URL, and taxonomy tags for Blog routes", async () => {
     mocks.getBlogSlug.mockReturnValue("nutrition-basics");
     mocks.getBlogBySlug.mockResolvedValue(blog);
@@ -499,6 +551,41 @@ describe("rendered SEO metadata output", () => {
         card: "summary_large_image",
         images: ["https://cdn.example.com/nutrition.jpg"],
       },
+    });
+  });
+
+  it("falls back to the default-locale Author profile URL in translated Blog metadata when the Author is not translated", async () => {
+    mocks.getBlogSlug.mockReturnValue("nutrition-basics");
+    mocks.getBlogBySlug.mockResolvedValue({
+      ...blog,
+      locale: "es-us",
+      title: "Conceptos básicos de nutrición",
+      author: {
+        ...author,
+        availableLocales: ["en-us"],
+      },
+    });
+
+    mocks.resolveDocumentTranslations.mockResolvedValue({
+      localeHrefs: {
+        "en-us": "/blog/nutrition-basics",
+        "es-us": "/es-us/blog/nutrition-basics",
+      },
+      languageAlternates: {
+        "en-US": "https://example.com/blog/nutrition-basics",
+        "es-US": "https://example.com/es-us/blog/nutrition-basics",
+        "x-default": "https://example.com/blog/nutrition-basics",
+      },
+    });
+
+    const metadata = await generateMetadata(
+      pageProps(["es-us", "blog", "nutrition-basics"]),
+    );
+
+    expect(metadata.openGraph).toMatchObject({
+      type: "article",
+      url: "https://example.com/es-us/blog/nutrition-basics",
+      authors: ["https://example.com/authors/jane-smith"],
     });
   });
 
@@ -545,7 +632,8 @@ describe("rendered SEO metadata output", () => {
       documentId: "page-search",
       documentType: "page",
       defaultLocale: "en-us",
-      domains: ["example.com"],
+      domains: ["www.example.com", "example.com"],
+      canonicalDomain: "example.com",
     });
   });
 });
@@ -600,7 +688,14 @@ describe("rendered JSON-LD output", () => {
       authorPage: {
         locale: "en-us",
         author,
-        articles: [],
+        articles: [
+          {
+            _id: "blog-author-nutrition",
+            title: "Nutrition Basics",
+            slug: "nutrition-basics",
+            publishedAt: "2026-09-01T12:00:00Z",
+          },
+        ],
       },
     });
 
@@ -615,9 +710,23 @@ describe("rendered JSON-LD output", () => {
       "@id": "https://example.com/authors/jane-smith#webpage",
       url: "https://example.com/authors/jane-smith",
       name: "Jane Smith",
+      dateCreated: "2026-01-15T12:00:00.000Z",
+      dateModified: "2026-09-30T16:00:00.000Z",
       mainEntity: {
         "@id": "https://example.com/#person-jane-smith",
       },
+      hasPart: [
+        {
+          "@type": "BlogPosting",
+          "@id": "https://example.com/blog/nutrition-basics#blogposting",
+          url: "https://example.com/blog/nutrition-basics",
+          headline: "Nutrition Basics",
+          datePublished: "2026-09-01T12:00:00.000Z",
+          author: {
+            "@id": "https://example.com/#person-jane-smith",
+          },
+        },
+      ],
     });
 
     expect(person).toMatchObject({
@@ -661,7 +770,10 @@ describe("rendered JSON-LD output", () => {
         "@id": "https://example.com/blog/nutrition-basics#blogposting",
       },
       reviewedBy: {
+        "@type": "Person",
         "@id": "https://example.com/#person-alex-reviewer",
+        name: "Alex Reviewer",
+        url: "https://example.com/authors/alex-reviewer",
       },
       lastReviewed: "2026-09-22",
       primaryImageOfPage: {
@@ -674,8 +786,15 @@ describe("rendered JSON-LD output", () => {
       headline: "Nutrition Basics",
       datePublished: "2026-09-01T12:00:00Z",
       dateModified: "2026-09-21T15:30:00Z",
+      mainEntityOfPage: {
+        "@type": "WebPage",
+        "@id": "https://example.com/blog/nutrition-basics#webpage",
+      },
       author: {
+        "@type": "Person",
         "@id": "https://example.com/#person-jane-smith",
+        name: "Jane Smith",
+        url: "https://example.com/authors/jane-smith",
       },
       keywords: ["Nutrition", "Metabolic Health"],
       citation: [
@@ -685,6 +804,74 @@ describe("rendered JSON-LD output", () => {
           url: "https://example.org/guidelines",
         },
       ],
+    });
+  });
+
+  it("uses the default Author and Reviewer ProfilePage URLs in translated Blog JSON-LD when those people are not translated", async () => {
+    mocks.resolveRoute.mockResolvedValue({
+      type: "blog",
+      blog: {
+        ...blog,
+        locale: "es-us",
+        title: "Conceptos básicos de nutrición",
+        author: {
+          ...author,
+          availableLocales: ["en-us"],
+        },
+        reviewer: {
+          ...reviewer,
+          availableLocales: ["en-us"],
+        },
+      },
+    });
+
+    mocks.resolveDocumentTranslations.mockResolvedValue({
+      localeHrefs: {
+        "en-us": "/blog/nutrition-basics",
+        "es-us": "/es-us/blog/nutrition-basics",
+      },
+      languageAlternates: {
+        "en-US": "https://example.com/blog/nutrition-basics",
+        "es-US": "https://example.com/es-us/blog/nutrition-basics",
+        "x-default": "https://example.com/blog/nutrition-basics",
+      },
+    });
+
+    const element = await Page(
+      pageProps(["es-us", "blog", "nutrition-basics"]),
+    );
+    const html = renderToStaticMarkup(element);
+    const graph = getJsonLdGraph(html);
+
+    const people = graph.filter((item) => item["@type"] === "Person");
+    const posting = getGraphNode(graph, "BlogPosting");
+    const webPage = getGraphNode(graph, "WebPage");
+
+    expect(people).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          "@id": "https://example.com/#person-jane-smith",
+          url: "https://example.com/authors/jane-smith",
+        }),
+        expect.objectContaining({
+          "@id": "https://example.com/#person-alex-reviewer",
+          url: "https://example.com/authors/alex-reviewer",
+        }),
+      ]),
+    );
+
+    expect(posting).toMatchObject({
+      author: {
+        "@id": "https://example.com/#person-jane-smith",
+        url: "https://example.com/authors/jane-smith",
+      },
+    });
+
+    expect(webPage).toMatchObject({
+      reviewedBy: {
+        "@id": "https://example.com/#person-alex-reviewer",
+        url: "https://example.com/authors/alex-reviewer",
+      },
     });
   });
 

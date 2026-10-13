@@ -76,7 +76,8 @@ it("resolves Site origin and organization logo through the logo image preset", a
 
   mocks.fetch.mockResolvedValue({
     name: "Proti",
-    domains: ["example.com"],
+    domains: ["www.example.com", "example.com"],
+    canonicalDomain: "example.com",
     locales: [{ code: "en-us" }, { code: "es-us" }],
     organization: {
       name: "Proti Inc.",
@@ -194,7 +195,7 @@ it("uses the generated Author page as Person.url and moves an external profile i
     knowsAbout: ["Nutrition", "Metabolic health"],
     hasCredential: [
       {
-        "@type": "Credential",
+        "@type": "EducationalOccupationalCredential",
         name: "Registered Dietitian Nutritionist",
         credentialCategory: "Registration",
         identifier: "RDN-123",
@@ -238,6 +239,15 @@ it("builds a ProfilePage that points at the Author Person entity", () => {
     locale: "en-us",
     mainEntityId: "https://example.com/#person-jane-smith",
     breadcrumbId: "https://example.com/authors/jane-smith#breadcrumb",
+    dateCreated: "2026-01-15T12:00:00Z",
+    dateModified: "2026-09-30T16:00:00Z",
+    hasPart: [
+      {
+        headline: "Nutrition Basics",
+        url: "https://example.com/blog/nutrition-basics",
+        publishedAt: "2026-09-01T12:00:00Z",
+      },
+    ],
   });
 
   expect(schema).toMatchObject({
@@ -247,6 +257,8 @@ it("builds a ProfilePage that points at the Author Person entity", () => {
     name: "Jane Smith",
     description: "Nutrition expert.",
     inLanguage: "en-US",
+    dateCreated: "2026-01-15T12:00:00.000Z",
+    dateModified: "2026-09-30T16:00:00.000Z",
     mainEntity: {
       "@id": "https://example.com/#person-jane-smith",
     },
@@ -259,6 +271,18 @@ it("builds a ProfilePage that points at the Author Person entity", () => {
     breadcrumb: {
       "@id": "https://example.com/authors/jane-smith#breadcrumb",
     },
+    hasPart: [
+      {
+        "@type": "BlogPosting",
+        "@id": "https://example.com/blog/nutrition-basics#blogposting",
+        url: "https://example.com/blog/nutrition-basics",
+        headline: "Nutrition Basics",
+        datePublished: "2026-09-01T12:00:00.000Z",
+        author: {
+          "@id": "https://example.com/#person-jane-smith",
+        },
+      },
+    ],
   });
 });
 
@@ -316,6 +340,7 @@ it("normalizes locale in WebPage structured data", () => {
         name: "Reviewer",
         slug: "reviewer",
       },
+      reviewedByUrl: "https://example.com/authors/reviewer",
       lastReviewed: "2026-09-20T12:00:00Z",
     }),
   ).toMatchObject({
@@ -329,7 +354,10 @@ it("normalizes locale in WebPage structured data", () => {
       "@id": "https://example.com/#organization",
     },
     reviewedBy: {
+      "@type": "Person",
       "@id": "https://example.com/#person-reviewer",
+      name: "Reviewer",
+      url: "https://example.com/authors/reviewer",
     },
     lastReviewed: "2026-09-20",
   });
@@ -359,6 +387,7 @@ it("builds BlogPosting with Person reference, localized keywords, and modified-d
     imageUrl: "https://cdn.example.com/nutrition.jpg",
     publishedAt: "2026-09-01T12:00:00Z",
     author,
+    authorUrl: "https://example.com/authors/jane-smith",
     citations: [
       {
         title: "Nutrition Guidelines",
@@ -382,7 +411,7 @@ it("builds BlogPosting with Person reference, localized keywords, and modified-d
       url: "https://cdn.example.com/nutrition.jpg",
       contentUrl: "https://cdn.example.com/nutrition.jpg",
     },
-    keywords: ["Nutrition", "Health", "Nutrition"],
+    keywords: ["Nutrition", "Health"],
     articleSection: ["Nutrition", "Health"],
     about: [
       {
@@ -394,8 +423,15 @@ it("builds BlogPosting with Person reference, localized keywords, and modified-d
         name: "Health",
       },
     ],
+    mainEntityOfPage: {
+      "@type": "WebPage",
+      "@id": "https://example.com/blog/nutrition#webpage",
+    },
     author: {
+      "@type": "Person",
       "@id": "https://example.com/#person-jane-smith",
+      name: "Jane Smith",
+      url: "https://example.com/authors/jane-smith",
     },
     citation: [
       {

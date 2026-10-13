@@ -37,6 +37,7 @@ export interface CmsSiteSeo {
   name: string;
 
   domains?: string[];
+  canonicalDomain?: string;
 
   defaultLocale: string;
 

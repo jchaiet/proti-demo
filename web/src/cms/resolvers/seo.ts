@@ -254,7 +254,7 @@ export async function buildSeoMetadata(
     defaults,
   };
 
-  const origin = getSiteOrigin(site.domains);
+  const origin = getSiteOrigin(site.domains, site.canonicalDomain);
 
   const { canonical, isSelfCanonical } = resolveCanonicalPublicUrl({
     origin,

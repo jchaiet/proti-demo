@@ -1,6 +1,7 @@
 import {describe, expect, it} from 'vitest'
 
 import {
+  validateCanonicalDomain,
   validateCanonicalUrl,
   validateSiteDomains,
   validateUniqueWebUrls,
@@ -33,6 +34,20 @@ describe('web URL and SEO URL validation', () => {
 
   it('accepts unique hostname-only Site domains', () => {
     expect(validateSiteDomains(['example.com', 'www.example.com'])).toBe(true)
+  })
+
+  it('requires the canonical domain to be one of the configured Site domains', () => {
+    expect(validateCanonicalDomain('example.com', ['www.example.com', 'example.com'])).toBe(true)
+
+    expect(validateCanonicalDomain('EXAMPLE.COM', ['example.com'])).toBe(true)
+
+    expect(
+      validateCanonicalDomain('canonical.example.com', ['example.com', 'www.example.com']),
+    ).toBe('Canonical Domain must be one of the configured Site Domains.')
+
+    expect(validateCanonicalDomain(undefined, ['example.com'])).toBe(
+      'Canonical Domain is required.',
+    )
   })
 
   it('rejects protocols, paths, ports, and case-insensitive duplicate Site domains', () => {

@@ -1,5 +1,7 @@
+import type { ReactNode } from "react";
+
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 
 import type { CmsTaxonomyTerm } from "@/cms/types";
 
@@ -11,7 +13,13 @@ vi.mock("mino-ui/blocks/HeroBlock", () => ({
   HeroBlock: (props: Record<string, unknown>) => {
     mocks.heroProps = props;
 
-    return <div data-testid="hero" />;
+    return (
+      <div data-testid="hero">
+        <h1>{props.title as ReactNode}</h1>
+        {props.eyebrow as ReactNode}
+        <div>{props.byline as ReactNode}</div>
+      </div>
+    );
   },
 }));
 
@@ -136,5 +144,35 @@ describe("BlogHero taxonomy Search links", () => {
     expect(props.categories[0]).toMatchObject({
       href: "/search?q=heart%20health",
     });
+  });
+  it("renders the visible publication date as semantic time markup", () => {
+    render(
+      <BlogHero
+        title="Nutrition article"
+        publishedDate="September 1, 2026"
+        publishedDateTime="2026-09-01T12:00:00Z"
+      />,
+    );
+
+    const published = screen.getByText("September 1, 2026");
+
+    expect(published.tagName).toBe("TIME");
+    expect(published.getAttribute("datetime")).toBe("2026-09-01T12:00:00Z");
+  });
+
+  it("uses the supplied localized byline label", () => {
+    render(
+      <BlogHero
+        title="Nutrición"
+        authorName="Jane Smith"
+        authorHref="/es-us/authors/jane-smith"
+        bylineLabel="Por"
+      />,
+    );
+
+    expect(screen.getByText(/Por/)).toBeTruthy();
+    expect(
+      screen.getByRole("link", { name: "Jane Smith" }).getAttribute("href"),
+    ).toBe("/es-us/authors/jane-smith");
   });
 });

@@ -38,6 +38,8 @@ export interface BuildAuthorLocaleLinksOptions {
   }>;
 
   domains?: string[];
+  canonicalDomain?: string;
+  availableLocales?: string[];
 }
 
 type AuthorQueryRecord = Omit<
@@ -46,6 +48,9 @@ type AuthorQueryRecord = Omit<
 > & {
   bioPortableText?: PortableTextValue;
   bioLegacy?: string;
+
+  defaultLocale?: string;
+  translatedLocales?: string[];
 
   image?: CmsImage;
 };
@@ -65,8 +70,12 @@ const AUTHOR_BY_SLUG_QUERY = `
   ][0]{
     _id,
     _type,
+    _createdAt,
+    _updatedAt,
 
     "siteId": site._ref,
+    "defaultLocale": site->defaultLocale,
+    "translatedLocales": translations[defined(name) && name != ""].locale,
 
     "slug": slug.current,
 
@@ -211,7 +220,14 @@ export async function getAuthorBySlug({
     return null;
   }
 
-  const { bioPortableText, bioLegacy, image, ...author } = record;
+  const {
+    bioPortableText,
+    bioLegacy,
+    defaultLocale,
+    translatedLocales,
+    image,
+    ...author
+  } = record;
 
   const richText = portableTextToMarkdown(bioPortableText);
 
@@ -231,6 +247,15 @@ export async function getAuthorBySlug({
     socialImageUrl: resolveSanityImagePreset(image, "social"),
 
     imageAlt: image?.alt ?? "",
+
+    availableLocales: Array.from(
+      new Set(
+        [
+          defaultLocale,
+          ...(Array.isArray(translatedLocales) ? translatedLocales : []),
+        ].filter((value): value is string => Boolean(value)),
+      ),
+    ),
   };
 }
 
@@ -283,11 +308,15 @@ export function buildAuthorLocaleLinks({
   defaultLocale,
   locales = [],
   domains = [],
+  canonicalDomain,
+  availableLocales,
 }: BuildAuthorLocaleLinksOptions): AuthorLocaleLinks {
   return buildLocaleLinks({
     routePath: `/authors/${slug}`,
     defaultLocale,
     locales,
     domains,
+    canonicalDomain,
+    availableLocales,
   });
 }

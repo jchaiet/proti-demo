@@ -8,6 +8,7 @@ export const SITE_SEO_QUERY = `
     _id,
     name,
     domains,
+    canonicalDomain,
     defaultLocale,
 
     "defaults": seoDefaults[

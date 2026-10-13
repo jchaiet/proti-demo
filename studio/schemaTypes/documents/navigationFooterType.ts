@@ -1,7 +1,9 @@
 import {defineArrayMember, defineField, defineType} from 'sanity'
 
 import {PageLocaleInput} from '../../components/inputs/PageLocaleInput'
+import {NavigationKeyInput} from '../../components/inputs/NavigationKeyInput'
 import {validateSiteLocale} from '../validation/siteLocale'
+import {validateNavigationKey} from '../validation/navigationKey'
 import {validateDocumentInternalPageLinks} from '../validation/internalPageLink'
 import {createAccessibleImageFields} from '../objects/accessibleImageFields'
 
@@ -19,23 +21,55 @@ export const navigationFooterType = defineType({
 
   groups: [
     {
-      name: 'content',
-      title: 'Footer',
+      name: 'assignment',
+      title: 'Identity & Locale',
       default: true,
     },
     {
-      name: 'assignment',
-      title: 'Site & Locale',
+      name: 'content',
+      title: 'Footer Content',
     },
   ],
 
   fields: [
     defineField({
+      name: 'site',
+      title: 'Site',
+      type: 'reference',
+      group: 'assignment',
+      description:
+        'Website this Footer Navigation belongs to. Translated versions stay on the same Site.',
+      to: [
+        {
+          type: 'site',
+        },
+      ],
+      validation: (rule) => rule.required(),
+    }),
+
+    defineField({
+      name: 'locale',
+      title: 'Locale',
+      type: 'string',
+      group: 'assignment',
+      description:
+        'Locale-specific version of this Footer Navigation. Translations reuse the same Key with a different Locale.',
+
+      components: {
+        input: PageLocaleInput,
+      },
+
+      validation: (rule) =>
+        rule.required().custom((locale, context) => validateSiteLocale(locale, context)),
+    }),
+
+    defineField({
       name: 'title',
       title: 'Footer Name',
       type: 'string',
-      group: 'content',
-      description: 'Internal name such as Default Footer or Campaign Footer.',
+      group: 'assignment',
+      description:
+        'Editor-facing name for this Footer Navigation. It is used in Studio and is not rendered on the website.',
       validation: (rule) => rule.required().max(120),
     }),
 
@@ -43,12 +77,14 @@ export const navigationFooterType = defineType({
       name: 'key',
       title: 'Key',
       type: 'string',
-      group: 'content',
-      description: 'Stable internal key such as default-footer or campaign-footer.',
+      group: 'assignment',
+      description:
+        'Stable internal identity shared by translated Footer Navigation documents. Generate it once from the Footer Name, then keep the same Key for every Locale.',
+      components: {
+        input: NavigationKeyInput,
+      },
       validation: (rule) =>
-        rule.required().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, {
-          name: 'lowercase kebab-case',
-        }),
+        rule.required().custom((key, context) => validateNavigationKey(key, context)),
     }),
 
     defineField({
@@ -74,6 +110,7 @@ export const navigationFooterType = defineType({
           },
         ],
       },
+      description: 'Choose the Site logo, a locale-specific custom logo, or no logo.',
       validation: (rule) => rule.required(),
     }),
 
@@ -111,6 +148,7 @@ export const navigationFooterType = defineType({
       title: 'Navigation Columns',
       type: 'array',
       group: 'content',
+      description: 'Locale-specific navigation columns rendered in this Footer.',
       of: [
         defineArrayMember({
           type: 'footerColumn',
@@ -152,33 +190,6 @@ export const navigationFooterType = defineType({
       group: 'content',
       description: 'Example: © 2026 Company Name. All rights reserved.',
       validation: (rule) => rule.max(240),
-    }),
-
-    defineField({
-      name: 'site',
-      title: 'Site',
-      type: 'reference',
-      group: 'assignment',
-      to: [
-        {
-          type: 'site',
-        },
-      ],
-      validation: (rule) => rule.required(),
-    }),
-
-    defineField({
-      name: 'locale',
-      title: 'Locale',
-      type: 'string',
-      group: 'assignment',
-
-      components: {
-        input: PageLocaleInput,
-      },
-
-      validation: (rule) =>
-        rule.required().custom((locale, context) => validateSiteLocale(locale, context)),
     }),
   ],
 

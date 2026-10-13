@@ -44,7 +44,11 @@ export const BLOG_BY_SLUG_QUERY = `
     "author": author->{
       _id,
       _type,
+      _createdAt,
+      _updatedAt,
       "siteId": site._ref,
+      "defaultLocale": site->defaultLocale,
+      "translatedLocales": translations[defined(name) && name != ""].locale,
 
       "name": coalesce(
         translations[
@@ -119,7 +123,11 @@ export const BLOG_BY_SLUG_QUERY = `
     "reviewer": reviewer->{
       _id,
       _type,
+      _createdAt,
+      _updatedAt,
       "siteId": site._ref,
+      "defaultLocale": site->defaultLocale,
+      "translatedLocales": translations[defined(name) && name != ""].locale,
 
       "name": coalesce(
         translations[

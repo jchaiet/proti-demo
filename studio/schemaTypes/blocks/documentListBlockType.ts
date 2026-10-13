@@ -22,6 +22,23 @@ export const documentListBlockType = defineType({
 
   groups: [
     {
+      name: 'content',
+      title: 'Content',
+      default: true,
+    },
+    {
+      name: 'dataSource',
+      title: 'Data Source',
+    },
+    {
+      name: 'searchFilters',
+      title: 'Search & Filters',
+    },
+    {
+      name: 'sortingPagination',
+      title: 'Sorting & Pagination',
+    },
+    {
       name: 'styles',
       title: 'Styles',
     },
@@ -32,6 +49,7 @@ export const documentListBlockType = defineType({
 
     defineField({
       name: 'heading',
+      group: 'content',
       title: 'Heading',
       type: 'sectionHeading',
     }),
@@ -40,10 +58,12 @@ export const documentListBlockType = defineType({
 
     defineField({
       name: 'sourceMode',
+      group: 'dataSource',
       title: 'Content Source',
       type: 'string',
 
-      description: 'Choose whether items are selected manually or loaded dynamically.',
+      description:
+        'Choose where list items come from: manually authored cards or dynamically loaded content.',
 
       initialValue: 'manual',
 
@@ -69,6 +89,7 @@ export const documentListBlockType = defineType({
 
     defineField({
       name: 'documents',
+      group: 'dataSource',
       title: 'Documents',
       type: 'array',
 
@@ -110,6 +131,7 @@ export const documentListBlockType = defineType({
 
     defineField({
       name: 'dynamicContentTypes',
+      group: 'dataSource',
       title: 'Content Types',
       type: 'array',
 
@@ -167,6 +189,7 @@ export const documentListBlockType = defineType({
 
     defineField({
       name: 'dynamicTaxonomy',
+      group: 'dataSource',
       title: 'Taxonomy',
       type: 'array',
 
@@ -214,6 +237,7 @@ export const documentListBlockType = defineType({
 
     defineField({
       name: 'dynamicTaxonomyMatchLogic',
+      group: 'dataSource',
       title: 'Taxonomy Match',
       type: 'string',
 
@@ -266,6 +290,7 @@ export const documentListBlockType = defineType({
 
     defineField({
       name: 'dynamicSort',
+      group: 'sortingPagination',
       title: 'Initial Sort',
       type: 'string',
 
@@ -316,6 +341,7 @@ export const documentListBlockType = defineType({
 
     defineField({
       name: 'dynamicLimit',
+      group: 'sortingPagination',
       title: 'Maximum Results',
       type: 'number',
 
@@ -350,6 +376,7 @@ export const documentListBlockType = defineType({
 
     defineField({
       name: 'alignment',
+      group: 'content',
       title: 'Heading Alignment',
       type: 'string',
 
@@ -379,6 +406,7 @@ export const documentListBlockType = defineType({
 
     defineField({
       name: 'gridCols',
+      group: 'content',
       title: 'Grid Columns',
       type: 'number',
 
@@ -414,16 +442,18 @@ export const documentListBlockType = defineType({
 
     defineField({
       name: 'enableSearch',
+      group: 'searchFilters',
       title: 'Enable Search',
       type: 'boolean',
 
-      description: 'Allow visitors to search the full eligible content scope selected above.',
+      description: 'Allow visitors to search within the content available to this Document List.',
 
       initialValue: true,
     }),
 
     defineField({
       name: 'searchPlaceholder',
+      group: 'searchFilters',
       title: 'Search Placeholder',
       type: 'string',
 
@@ -434,6 +464,7 @@ export const documentListBlockType = defineType({
 
     defineField({
       name: 'requireSearchQuery',
+      group: 'searchFilters',
       title: 'Require Search or Filter',
       type: 'boolean',
 
@@ -449,6 +480,7 @@ export const documentListBlockType = defineType({
 
     defineField({
       name: 'initialStateText',
+      group: 'searchFilters',
       title: 'Initial State Text',
       type: 'string',
 
@@ -466,16 +498,18 @@ export const documentListBlockType = defineType({
 
     defineField({
       name: 'enableFilters',
+      group: 'searchFilters',
       title: 'Enable Filters',
       type: 'boolean',
 
-      description: 'Show filtering controls to visitors.',
+      description: 'Show visitor-facing filtering controls for this Document List.',
 
       initialValue: false,
     }),
 
     defineField({
       name: 'filterTitle',
+      group: 'searchFilters',
       title: 'Filter Title',
       type: 'string',
 
@@ -486,6 +520,7 @@ export const documentListBlockType = defineType({
 
     defineField({
       name: 'filterLogic',
+      group: 'searchFilters',
       title: 'Filter Selection',
       type: 'string',
 
@@ -529,6 +564,7 @@ export const documentListBlockType = defineType({
 
     defineField({
       name: 'filterOptions',
+      group: 'searchFilters',
       title: 'Filter Options',
       type: 'array',
 
@@ -582,6 +618,7 @@ export const documentListBlockType = defineType({
 
     defineField({
       name: 'taxonomyFilterGroups',
+      group: 'searchFilters',
       title: 'Taxonomy Filter Groups',
       type: 'array',
 
@@ -751,6 +788,7 @@ export const documentListBlockType = defineType({
      */
     defineField({
       name: 'taxonomyFilterTitle',
+      group: 'searchFilters',
       title: 'Legacy Taxonomy Filter Title',
       type: 'string',
       hidden: true,
@@ -758,6 +796,7 @@ export const documentListBlockType = defineType({
 
     defineField({
       name: 'taxonomyFilterLogic',
+      group: 'searchFilters',
       title: 'Legacy Taxonomy Filter Selection',
       type: 'string',
       hidden: true,
@@ -765,6 +804,7 @@ export const documentListBlockType = defineType({
 
     defineField({
       name: 'taxonomyFilterMatchLogic',
+      group: 'searchFilters',
       title: 'Legacy Taxonomy Match',
       type: 'string',
       hidden: true,
@@ -772,6 +812,7 @@ export const documentListBlockType = defineType({
 
     defineField({
       name: 'filterTaxonomy',
+      group: 'searchFilters',
       title: 'Legacy Taxonomy Filters',
       type: 'array',
       hidden: true,
@@ -788,16 +829,18 @@ export const documentListBlockType = defineType({
 
     defineField({
       name: 'enableSorting',
+      group: 'sortingPagination',
       title: 'Enable Sorting',
       type: 'boolean',
 
-      description: 'Allow visitors to change the displayed content order.',
+      description: 'Allow visitors to change the order of the displayed results.',
 
       initialValue: false,
     }),
 
     defineField({
       name: 'standardSortOptions',
+      group: 'sortingPagination',
       title: 'Standard Sort Options',
       type: 'array',
 
@@ -844,6 +887,7 @@ export const documentListBlockType = defineType({
 
     defineField({
       name: 'customSortOptions',
+      group: 'sortingPagination',
       title: 'Custom Sort Options',
       type: 'array',
 
@@ -945,6 +989,7 @@ export const documentListBlockType = defineType({
     /* Legacy sort items remain readable for existing content. */
     defineField({
       name: 'sortOptions',
+      group: 'sortingPagination',
       title: 'Legacy Sort Options',
       type: 'array',
       hidden: true,
@@ -975,6 +1020,7 @@ export const documentListBlockType = defineType({
 
     defineField({
       name: 'enablePagination',
+      group: 'sortingPagination',
       title: 'Enable Pagination',
       type: 'boolean',
 
@@ -983,6 +1029,7 @@ export const documentListBlockType = defineType({
 
     defineField({
       name: 'itemsPerPage',
+      group: 'sortingPagination',
       title: 'Items Per Page',
       type: 'number',
 
@@ -1022,6 +1069,7 @@ export const documentListBlockType = defineType({
 
     defineField({
       name: 'emptyStateText',
+      group: 'content',
       title: 'Empty State Text',
       type: 'string',
 

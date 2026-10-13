@@ -1,4 +1,4 @@
-import { siteLocaleToLanguageTag } from "@/lib/routing/locale";
+import { siteLocaleToHreflang } from "@/lib/routing/hreflang";
 
 export interface BuildLocaleLinksOptions {
   routePath: string;
@@ -7,6 +7,7 @@ export interface BuildLocaleLinksOptions {
     code?: string;
   }>;
   domains?: string[];
+  canonicalDomain?: string;
   availableLocales?: string[];
 }
 
@@ -67,8 +68,20 @@ function normalizeDomain(value?: string): string | undefined {
   return cleaned || undefined;
 }
 
-export function getSiteOrigin(domains?: string[]): string | null {
-  const domain = (domains ?? []).map(normalizeDomain).find(Boolean);
+/**
+ * Resolve the single public origin used for canonical URLs, hreflang,
+ * structured data, sitemap URLs, and robots.txt.
+ *
+ * `canonicalDomain` is authoritative when configured. Falling back to the
+ * first Site domain keeps existing Sites working while they are migrated.
+ */
+export function getSiteOrigin(
+  domains?: string[],
+  canonicalDomain?: string,
+): string | null {
+  const domain =
+    normalizeDomain(canonicalDomain) ??
+    (domains ?? []).map(normalizeDomain).find(Boolean);
 
   if (!domain) {
     return null;
@@ -184,6 +197,7 @@ export function buildLocaleLinks({
   defaultLocale,
   locales = [],
   domains = [],
+  canonicalDomain,
   availableLocales,
 }: BuildLocaleLinksOptions): LocaleLinks {
   const configuredLocales = Array.from(
@@ -198,7 +212,7 @@ export function buildLocaleLinks({
     ? new Set(availableLocales)
     : undefined;
 
-  const origin = getSiteOrigin(domains);
+  const origin = getSiteOrigin(domains, canonicalDomain);
   const localeHrefs: Record<string, string> = {};
   const languageAlternates: Record<string, string> = {};
 
@@ -214,8 +228,14 @@ export function buildLocaleLinks({
     });
 
     localeHrefs[locale] = href;
-    languageAlternates[siteLocaleToLanguageTag(locale)] =
-      toAbsoluteOrRelativeHref(href, origin);
+
+    const hreflang = siteLocaleToHreflang(locale);
+
+    if (!hreflang) {
+      continue;
+    }
+
+    languageAlternates[hreflang] = toAbsoluteOrRelativeHref(href, origin);
   }
 
   const defaultHref = localeHrefs[defaultLocale];

@@ -23,9 +23,9 @@ export const blockStylesType = defineType({
           {title: 'Small', value: 'sm'},
           {title: 'Medium', value: 'md'},
           {title: 'Large', value: 'lg'},
-          {title: 'Extra Large', value: 'xl'},
-          {title: '2× Extra Large', value: '2xl'},
-          {title: '3× Extra Large', value: '3xl'},
+          {title: 'XL', value: 'xl'},
+          {title: '2XL', value: '2xl'},
+          {title: '3XL', value: '3xl'},
         ],
 
         layout: 'radio',

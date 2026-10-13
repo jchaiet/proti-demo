@@ -6,7 +6,6 @@ import type {
   SearchResponse,
   SearchResult,
   SearchSort,
-  SearchTaxonomyFilterGroup,
   SearchTaxonomyItem,
   SearchTaxonomyMatch,
 } from "@/cms/types/search";
@@ -81,6 +80,7 @@ interface SearchSiteSettings {
   name?: string;
 
   domains?: string[];
+  canonicalDomain?: string;
 
   defaultLocale: string;
 
@@ -163,7 +163,7 @@ function normalizeDomain(value?: string): string | null {
 }
 
 function getSiteOrigin(site: SearchSiteSettings): string | null {
-  const domain = normalizeDomain(site.domains?.[0]);
+  const domain = normalizeDomain(site.canonicalDomain ?? site.domains?.[0]);
 
   if (!domain) {
     return null;
@@ -571,79 +571,11 @@ function compareDates(first?: string, second?: string): number {
   return secondTime - firstTime;
 }
 
-function parseCustomSort(sort: SearchSort): {
-  field: "date" | "title" | "content-type" | "file-type";
-  direction: "asc" | "desc";
-} | null {
-  if (!sort.startsWith("custom:")) {
-    return null;
-  }
-
-  const [, field, direction] = sort.split(":");
-
-  if (
-    !["date", "title", "content-type", "file-type"].includes(field) ||
-    !["asc", "desc"].includes(direction)
-  ) {
-    return null;
-  }
-
-  return {
-    field: field as "date" | "title" | "content-type" | "file-type",
-    direction: direction as "asc" | "desc",
-  };
-}
-
-function compareStrings(
-  first?: string,
-  second?: string,
-  direction: "asc" | "desc" = "asc",
-): number {
-  const comparison = (first ?? "").localeCompare(second ?? "", undefined, {
-    sensitivity: "base",
-  });
-
-  return direction === "asc" ? comparison : -comparison;
-}
-
 function sortResults(
   items: IndexedDocument[],
   sort: SearchSort,
 ): IndexedDocument[] {
   const sorted = [...items];
-  const customSort = parseCustomSort(sort);
-
-  if (customSort) {
-    return sorted.sort((a, b) => {
-      switch (customSort.field) {
-        case "date":
-          return customSort.direction === "asc"
-            ? -compareDates(a.sortDate, b.sortDate)
-            : compareDates(a.sortDate, b.sortDate);
-
-        case "title":
-          return compareStrings(
-            a.result.title,
-            b.result.title,
-            customSort.direction,
-          );
-
-        case "content-type":
-          return compareStrings(
-            a.result.type,
-            b.result.type,
-            customSort.direction,
-          );
-
-        case "file-type":
-          return compareStrings(
-            a.result.fileType,
-            b.result.fileType,
-            customSort.direction,
-          );
-      }
-    });
-  }
 
   switch (sort) {
     case "newest":
@@ -700,15 +632,6 @@ export async function searchContent(
   );
 
   const taxonomyMatch = options.taxonomyMatch ?? "any";
-
-  const taxonomyGroups = (options.taxonomyGroups ?? [])
-    .map<SearchTaxonomyFilterGroup>((group) => ({
-      taxonomy: Array.from(
-        new Set(group.taxonomy.map((value) => value.trim()).filter(Boolean)),
-      ),
-      taxonomyMatch: group.taxonomyMatch === "all" ? "all" : "any",
-    }))
-    .filter((group) => group.taxonomy.length > 0);
 
   const taxonomyScope = Array.from(
     new Set(
@@ -1041,21 +964,11 @@ export async function searchContent(
       return false;
     }
 
-    const resultTaxonomy = item.result.taxonomy ?? [];
-
-    if (taxonomyGroups.length > 0) {
-      return taxonomyGroups.every((group) =>
-        matchesTaxonomy({
-          resultTaxonomy,
-          requested: group.taxonomy,
-          mode: group.taxonomyMatch,
-        }),
-      );
-    }
-
     return matchesTaxonomy({
-      resultTaxonomy,
+      resultTaxonomy: item.result.taxonomy ?? [],
+
       requested: taxonomy,
+
       mode: taxonomyMatch,
     });
   });

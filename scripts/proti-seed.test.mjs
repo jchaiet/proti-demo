@@ -29,6 +29,7 @@ async function writeSeedConfig(repo) {
           name: "Acme",
           key: "acme",
           domains: ["localhost", "example.com"],
+          canonicalDomain: "localhost",
           defaultLocale: "en-us",
           locales: [
             {
@@ -115,6 +116,20 @@ function runSeed(repo, baseUrl, args = [], token = "editor-token") {
   });
 }
 
+function starterDocuments(overrides = {}) {
+  return {
+    homepageId: null,
+    headerId: null,
+    footerId: null,
+    navigationSetId: null,
+    ...overrides,
+  };
+}
+
+function siteNavigationDefaults({ references = [], resolved = [] } = {}) {
+  return { references, resolved };
+}
+
 test("plain seed creates only the configured Site", async () => {
   const repo = await createTempRepo();
 
@@ -145,6 +160,7 @@ test("plain seed creates only the configured Site", async () => {
     const mutations = sanity.requests[1].body.mutations;
     assert.equal(mutations.length, 1);
     assert.equal(mutations[0].createIfNotExists._type, "site");
+    assert.equal(mutations[0].createIfNotExists.canonicalDomain, "localhost");
   } finally {
     await sanity.close();
     await removeTempRepo(repo);
@@ -155,7 +171,9 @@ test("plain seed remains a no-op when the Site exists", async () => {
   const repo = await createTempRepo();
 
   const sanity = await startMockSanity(async (_request, response) => {
-    json(response, 200, { result: "site-acme" });
+    json(response, 200, {
+      result: { _id: "site-acme", canonicalDomain: "localhost" },
+    });
   });
 
   try {
@@ -172,7 +190,48 @@ test("plain seed remains a no-op when the Site exists", async () => {
   }
 });
 
-test("--starter-content creates Site plus minimal default-locale content", async () => {
+test("plain seed backfills a missing canonical domain without overwriting the Site", async () => {
+  const repo = await createTempRepo();
+
+  const sanity = await startMockSanity(async (request, response) => {
+    if (request.url.includes("/data/query/")) {
+      json(response, 200, { result: { _id: "site-acme" } });
+      return;
+    }
+
+    if (request.url.includes("/data/mutate/")) {
+      json(response, 200, { transactionId: "canonical-backfill" });
+      return;
+    }
+
+    json(response, 404, {});
+  });
+
+  try {
+    await prepare(repo);
+
+    const result = await runSeed(repo, sanity.baseUrl);
+
+    assert.equal(result.code, 0, result.stderr);
+    assert.match(result.stdout, /Added missing canonical domain/);
+    assert.equal(sanity.requests.length, 2);
+    assert.deepEqual(sanity.requests[1].body.mutations, [
+      {
+        patch: {
+          id: "site-acme",
+          setIfMissing: {
+            canonicalDomain: "localhost",
+          },
+        },
+      },
+    ]);
+  } finally {
+    await sanity.close();
+    await removeTempRepo(repo);
+  }
+});
+
+test("--starter-content creates Site, starter documents, and the Site default Navigation assignment", async () => {
   const repo = await createTempRepo();
   let queryCount = 0;
 
@@ -182,15 +241,10 @@ test("--starter-content creates Site plus minimal default-locale content", async
 
       if (queryCount === 1) {
         json(response, 200, { result: null });
+      } else if (queryCount === 2) {
+        json(response, 200, { result: starterDocuments() });
       } else {
-        json(response, 200, {
-          result: {
-            homepageId: null,
-            headerId: null,
-            footerId: null,
-            navigationSetId: null,
-          },
-        });
+        json(response, 200, { result: siteNavigationDefaults() });
       }
 
       return;
@@ -217,14 +271,15 @@ test("--starter-content creates Site plus minimal default-locale content", async
     assert.match(result.stdout, /Created: Header/);
     assert.match(result.stdout, /Created: Footer/);
     assert.match(result.stdout, /Created: Navigation Set/);
+    assert.match(result.stdout, /Assigned: Site default navigation/);
 
-    assert.equal(sanity.requests.length, 4);
+    assert.equal(sanity.requests.length, 6);
 
     const siteMutation = sanity.requests[1].body.mutations;
     assert.equal(siteMutation.length, 1);
     assert.equal(siteMutation[0].createIfNotExists._type, "site");
 
-    const starterMutations = sanity.requests[3].body.mutations;
+    const starterMutations = sanity.requests[4].body.mutations;
     assert.equal(starterMutations.length, 4);
 
     const documents = starterMutations.map(
@@ -256,7 +311,7 @@ test("--starter-content creates Site plus minimal default-locale content", async
     assert.equal(footer.locale, "en-us");
 
     assert.equal(navigationSet.key, "default");
-    assert.equal(navigationSet.isDefault, true);
+    assert.equal("isDefault" in navigationSet, false);
     assert.deepEqual(navigationSet.header, {
       _type: "reference",
       _ref: "navigation-header-acme-en-us-default",
@@ -265,6 +320,24 @@ test("--starter-content creates Site plus minimal default-locale content", async
       _type: "reference",
       _ref: "navigation-footer-acme-en-us-default",
     });
+
+    const siteDefaultMutation = sanity.requests[5].body.mutations;
+    assert.deepEqual(siteDefaultMutation, [
+      {
+        patch: {
+          id: "site-acme",
+          set: {
+            defaultNavigationSets: [
+              {
+                _key: "default-navigation-en-us",
+                _type: "reference",
+                _ref: "navigation-set-acme-en-us-default",
+              },
+            ],
+          },
+        },
+      },
+    ]);
   } finally {
     await sanity.close();
     await removeTempRepo(repo);
@@ -280,16 +353,13 @@ test("--starter-content can be added after the Site was already seeded", async (
       queryCount += 1;
 
       if (queryCount === 1) {
-        json(response, 200, { result: "site-acme" });
-      } else {
         json(response, 200, {
-          result: {
-            homepageId: null,
-            headerId: null,
-            footerId: null,
-            navigationSetId: null,
-          },
+          result: { _id: "site-acme", canonicalDomain: "localhost" },
         });
+      } else if (queryCount === 2) {
+        json(response, 200, { result: starterDocuments() });
+      } else {
+        json(response, 200, { result: siteNavigationDefaults() });
       }
 
       return;
@@ -306,8 +376,10 @@ test("--starter-content can be added after the Site was already seeded", async (
     assert.equal(result.code, 0, result.stderr);
     assert.match(result.stdout, /Site "site-acme" already exists\./);
     assert.match(result.stdout, /Created: Home/);
-    assert.equal(sanity.requests.length, 3);
-    assert.equal(sanity.requests[2].body.mutations.length, 4);
+    assert.match(result.stdout, /Assigned: Site default navigation/);
+    assert.equal(sanity.requests.length, 5);
+    assert.equal(sanity.requests[3].body.mutations.length, 4);
+    assert.equal(sanity.requests[4].body.mutations[0].patch.id, "site-acme");
   } finally {
     await sanity.close();
     await removeTempRepo(repo);
@@ -323,16 +395,18 @@ test("starter content reuses matching existing documents and never overwrites th
       queryCount += 1;
 
       if (queryCount === 1) {
-        json(response, 200, { result: "site-acme" });
-      } else {
         json(response, 200, {
-          result: {
+          result: { _id: "site-acme", canonicalDomain: "localhost" },
+        });
+      } else if (queryCount === 2) {
+        json(response, 200, {
+          result: starterDocuments({
             homepageId: "custom-home-id",
             headerId: "custom-header-id",
-            footerId: null,
-            navigationSetId: null,
-          },
+          }),
         });
+      } else {
+        json(response, 200, { result: siteNavigationDefaults() });
       }
 
       return;
@@ -350,7 +424,7 @@ test("starter content reuses matching existing documents and never overwrites th
     assert.match(result.stdout, /Existing: Home \(custom-home-id\)/);
     assert.match(result.stdout, /Existing: Header \(custom-header-id\)/);
 
-    const starterMutations = sanity.requests[2].body.mutations;
+    const starterMutations = sanity.requests[3].body.mutations;
     assert.equal(starterMutations.length, 2);
 
     const documents = starterMutations.map(
@@ -380,25 +454,200 @@ test("starter content reuses matching existing documents and never overwrites th
   }
 });
 
-test("starter content is a full no-op when all starter documents exist", async () => {
+test("starter content preserves existing defaults for other Locales when assigning the default Locale", async () => {
   const repo = await createTempRepo();
   let queryCount = 0;
 
   const sanity = await startMockSanity(async (request, response) => {
-    queryCount += 1;
+    if (request.url.includes("/data/query/")) {
+      queryCount += 1;
 
-    if (queryCount === 1) {
-      json(response, 200, { result: "site-acme" });
-    } else {
-      json(response, 200, {
-        result: {
-          homepageId: "home-existing",
-          headerId: "header-existing",
-          footerId: "footer-existing",
-          navigationSetId: "navigation-existing",
-        },
-      });
+      if (queryCount === 1) {
+        json(response, 200, {
+          result: { _id: "site-acme", canonicalDomain: "localhost" },
+        });
+      } else if (queryCount === 2) {
+        json(response, 200, {
+          result: starterDocuments({
+            homepageId: "home-existing",
+            headerId: "header-existing",
+            footerId: "footer-existing",
+            navigationSetId: "navigation-en",
+          }),
+        });
+      } else {
+        json(response, 200, {
+          result: siteNavigationDefaults({
+            references: [
+              {
+                _key: "default-navigation-es-us",
+                _type: "reference",
+                _ref: "navigation-es",
+              },
+            ],
+            resolved: [
+              {
+                _id: "navigation-es",
+                locale: "es-us",
+              },
+            ],
+          }),
+        });
+      }
+
+      return;
     }
+
+    json(response, 200, { transactionId: "site-default-update" });
+  });
+
+  try {
+    await prepare(repo);
+
+    const result = await runSeed(repo, sanity.baseUrl, ["--starter-content"]);
+
+    assert.equal(result.code, 0, result.stderr);
+    assert.match(
+      result.stdout,
+      /Assigned: Site default navigation \(navigation-en\)/,
+    );
+
+    const patch = sanity.requests[3].body.mutations[0].patch;
+
+    assert.deepEqual(patch.set.defaultNavigationSets, [
+      {
+        _key: "default-navigation-es-us",
+        _type: "reference",
+        _ref: "navigation-es",
+      },
+      {
+        _key: "default-navigation-en-us",
+        _type: "reference",
+        _ref: "navigation-en",
+      },
+    ]);
+  } finally {
+    await sanity.close();
+    await removeTempRepo(repo);
+  }
+});
+
+test("starter content respects an existing Site default Navigation Set for the default Locale", async () => {
+  const repo = await createTempRepo();
+  let queryCount = 0;
+
+  const sanity = await startMockSanity(async (request, response) => {
+    if (request.url.includes("/data/query/")) {
+      queryCount += 1;
+
+      if (queryCount === 1) {
+        json(response, 200, {
+          result: { _id: "site-acme", canonicalDomain: "localhost" },
+        });
+      } else if (queryCount === 2) {
+        json(response, 200, {
+          result: starterDocuments({
+            homepageId: "home-existing",
+            headerId: "header-existing",
+            footerId: "footer-existing",
+          }),
+        });
+      } else {
+        json(response, 200, {
+          result: siteNavigationDefaults({
+            references: [
+              {
+                _key: "existing-en-default",
+                _type: "reference",
+                _ref: "custom-navigation-en",
+              },
+            ],
+            resolved: [
+              {
+                _id: "custom-navigation-en",
+                locale: "en-us",
+              },
+            ],
+          }),
+        });
+      }
+
+      return;
+    }
+
+    json(response, 500, { error: "No mutation expected" });
+  });
+
+  try {
+    await prepare(repo);
+
+    const result = await runSeed(repo, sanity.baseUrl, ["--starter-content"]);
+
+    assert.equal(result.code, 0, result.stderr);
+    assert.match(
+      result.stdout,
+      /Existing: Navigation Set \(custom-navigation-en\)/,
+    );
+    assert.match(
+      result.stdout,
+      /Existing: Site default navigation \(custom-navigation-en\)/,
+    );
+    assert.match(
+      result.stdout,
+      /Starter content already exists\. No changes were made\./,
+    );
+    assert.equal(sanity.requests.length, 3);
+  } finally {
+    await sanity.close();
+    await removeTempRepo(repo);
+  }
+});
+
+test("starter content is a full no-op when all starter documents and default assignment exist", async () => {
+  const repo = await createTempRepo();
+  let queryCount = 0;
+
+  const sanity = await startMockSanity(async (request, response) => {
+    if (request.url.includes("/data/query/")) {
+      queryCount += 1;
+
+      if (queryCount === 1) {
+        json(response, 200, {
+          result: { _id: "site-acme", canonicalDomain: "localhost" },
+        });
+      } else if (queryCount === 2) {
+        json(response, 200, {
+          result: starterDocuments({
+            homepageId: "home-existing",
+            headerId: "header-existing",
+            footerId: "footer-existing",
+            navigationSetId: "navigation-existing",
+          }),
+        });
+      } else {
+        json(response, 200, {
+          result: siteNavigationDefaults({
+            references: [
+              {
+                _key: "default-navigation-en-us",
+                _type: "reference",
+                _ref: "navigation-existing",
+              },
+            ],
+            resolved: [
+              {
+                _id: "navigation-existing",
+                locale: "en-us",
+              },
+            ],
+          }),
+        });
+      }
+
+      return;
+    }
+
+    json(response, 500, { error: "No mutation expected" });
   });
 
   try {
@@ -411,7 +660,7 @@ test("starter content is a full no-op when all starter documents exist", async (
       result.stdout,
       /Starter content already exists\. No changes were made\./,
     );
-    assert.equal(sanity.requests.length, 2);
+    assert.equal(sanity.requests.length, 3);
   } finally {
     await sanity.close();
     await removeTempRepo(repo);

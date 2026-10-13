@@ -13,12 +13,14 @@ export const navigationOverrideType = defineType({
       title: 'Navigation Behavior',
       type: 'string',
       initialValue: 'inherit',
+      description:
+        'Use the Site + Locale default Navigation Set, choose a custom set, or hide navigation.',
 
       options: {
         layout: 'radio',
         list: [
           {
-            title: 'Inherit Site Default',
+            title: 'Inherit Site + Locale Default',
             value: 'inherit',
           },
           {
@@ -39,6 +41,7 @@ export const navigationOverrideType = defineType({
       name: 'navigationSet',
       title: 'Navigation Set',
       type: 'reference',
+      description: 'Select a Navigation Set from the same Site and Locale as this Page.',
 
       to: [
         {
@@ -92,7 +95,7 @@ export const navigationOverrideType = defineType({
       }
 
       return {
-        title: 'Site Default Navigation',
+        title: 'Site + Locale Default Navigation',
         subtitle: 'Inherited',
       }
     },

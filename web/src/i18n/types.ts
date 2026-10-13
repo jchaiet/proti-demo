@@ -28,8 +28,18 @@ export interface AuthorMessages {
   website: string;
 }
 
+export interface BlogMessages {
+  by: string;
+  editorialInformation: string;
+  updated: string;
+  reviewedBy: string;
+  reviewedOn: string;
+  sources: string;
+}
+
 export interface AppMessages {
   documentList: DocumentListMessages;
   headerUtilities: HeaderUtilitiesLabels;
   author: AuthorMessages;
+  blog: BlogMessages;
 }

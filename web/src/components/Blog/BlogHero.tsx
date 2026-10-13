@@ -9,11 +9,13 @@ export interface BlogHeroProps {
   summary?: string;
   showSummary?: boolean;
   publishedDate?: string;
+  publishedDateTime?: string;
   imageUrl?: string;
   imageAlt?: string;
 
   authorName?: string;
   authorHref?: string;
+  bylineLabel?: string;
 
   taxonomy?: CmsTaxonomyTerm[] | null;
 
@@ -56,10 +58,12 @@ export function BlogHero({
   summary,
   showSummary = false,
   publishedDate,
+  publishedDateTime,
   imageUrl,
   imageAlt = "",
   authorName,
   authorHref,
+  bylineLabel = "By",
   taxonomy,
   localePrefix,
 }: BlogHeroProps) {
@@ -71,12 +75,19 @@ export function BlogHero({
       href: getTaxonomySearchHref(term.title, localePrefix),
     }));
 
+  const publishedEyebrow =
+    publishedDate && publishedDateTime ? (
+      <time dateTime={publishedDateTime}>{publishedDate}</time>
+    ) : (
+      publishedDate
+    );
+
   return (
     <HeroBlock
       layout="blog"
       hAlignment="left"
       vAlignment="bottom"
-      eyebrow={publishedDate}
+      eyebrow={publishedEyebrow}
       title={title}
       headingProps={{
         level: 1,
@@ -88,7 +99,8 @@ export function BlogHero({
       byline={
         authorName ? (
           <>
-            By {authorHref ? <a href={authorHref}>{authorName}</a> : authorName}
+            {bylineLabel}{" "}
+            {authorHref ? <a href={authorHref}>{authorName}</a> : authorName}
           </>
         ) : undefined
       }

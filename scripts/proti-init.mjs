@@ -29,6 +29,33 @@ function normalizeDomain(value) {
     .replace(/\.$/, "");
 }
 
+function validateDomain(value) {
+  if (!value) {
+    throw new Error("Site domains cannot be empty.");
+  }
+
+  if (value.includes(":")) {
+    throw new Error(`Site domain "${value}" must not include a port.`);
+  }
+
+  const labels = value.split(".");
+
+  const invalidLabel = labels.find(
+    (label) =>
+      !label ||
+      label.length > 63 ||
+      !/^[a-z0-9-]+$/i.test(label) ||
+      label.startsWith("-") ||
+      label.endsWith("-"),
+  );
+
+  if (invalidLabel) {
+    throw new Error(`Site domain "${value}" is not a valid hostname.`);
+  }
+
+  return value;
+}
+
 function splitCsv(value) {
   return value
     .split(",")
@@ -262,6 +289,26 @@ try {
   if (domains.length === 0)
     throw new Error("At least one Site domain is required.");
 
+  domains.forEach(validateDomain);
+
+  const canonicalDomain = normalizeDomain(
+    await prompt(
+      rl,
+      scriptedAnswers,
+      scriptedState,
+      "Canonical domain",
+      existingConfig.site?.canonicalDomain || domains[0] || "",
+    ),
+  );
+
+  validateDomain(canonicalDomain);
+
+  if (!domains.includes(canonicalDomain)) {
+    throw new Error(
+      `Canonical domain "${canonicalDomain}" must be included in Site domains.`,
+    );
+  }
+
   const defaultLocale = normalizeLocale(
     await prompt(
       rl,
@@ -303,7 +350,14 @@ try {
     projectName,
     packageName,
     sanity: { projectId, dataset, studioUrl, previewUrl },
-    site: { name: siteName, key: siteKey, domains, defaultLocale, locales },
+    site: {
+      name: siteName,
+      key: siteKey,
+      domains,
+      canonicalDomain,
+      defaultLocale,
+      locales,
+    },
   };
 
   await fs.writeFile(CONFIG_PATH, `${JSON.stringify(config, null, 2)}\n`);

@@ -29,6 +29,14 @@ export const enUsMessages: AppMessages = {
     currentLanguage: "Current language: {language}. Choose language",
     availableLanguages: "Available languages",
   },
+  blog: {
+    by: "By",
+    editorialInformation: "Article editorial information",
+    updated: "Updated",
+    reviewedBy: "Reviewed by",
+    reviewedOn: "on",
+    sources: "Sources",
+  },
   author: {
     articlesWrittenBy: "Articles Written By {name}",
     noPublishedArticles: "No published articles by {name} yet.",
