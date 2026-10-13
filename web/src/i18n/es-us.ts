@@ -29,6 +29,14 @@ export const esUsMessages: AppMessages = {
     currentLanguage: "Idioma actual: {language}. Elegir idioma",
     availableLanguages: "Idiomas disponibles",
   },
+  blog: {
+    by: "Por",
+    editorialInformation: "Información editorial del artículo",
+    updated: "Actualizado",
+    reviewedBy: "Revisado por",
+    reviewedOn: "el",
+    sources: "Fuentes",
+  },
   author: {
     articlesWrittenBy: "Artículos escritos por {name}",
     noPublishedArticles: "Aún no hay artículos publicados por {name}.",

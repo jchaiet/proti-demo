@@ -28,7 +28,8 @@ beforeEach(() => {
 describe("resolveDocumentTranslations - Page", () => {
   it("returns exact locale equivalents and x-default when translations exist", async () => {
     mocks.fetch.mockResolvedValueOnce({
-      domains: ["example.com"],
+      domains: ["www.example.com", "example.com"],
+      canonicalDomain: "example.com",
       locales: [
         {
           code: "en-us",
@@ -51,7 +52,8 @@ describe("resolveDocumentTranslations - Page", () => {
       documentId: "page-en",
       documentType: "page",
       defaultLocale: "en-us",
-      domains: ["example.com"],
+      domains: ["www.example.com", "example.com"],
+      canonicalDomain: "example.com",
     });
 
     expect(result.localeHrefs).toEqual({
@@ -68,7 +70,8 @@ describe("resolveDocumentTranslations - Page", () => {
 
   it("does not advertise a locale whose exact Page equivalent is missing", async () => {
     mocks.fetch.mockResolvedValueOnce({
-      domains: ["example.com"],
+      domains: ["www.example.com", "example.com"],
+      canonicalDomain: "example.com",
       locales: [
         {
           code: "en-us",
@@ -91,7 +94,8 @@ describe("resolveDocumentTranslations - Page", () => {
       documentId: "page-en",
       documentType: "page",
       defaultLocale: "en-us",
-      domains: ["example.com"],
+      domains: ["www.example.com", "example.com"],
+      canonicalDomain: "example.com",
     });
 
     expect(result.localeHrefs).toEqual({
@@ -137,7 +141,8 @@ describe("resolveDocumentTranslations - Blog", () => {
       documentId: "blog-en",
       documentType: "blog",
       defaultLocale: "en-us",
-      domains: ["example.com"],
+      domains: ["www.example.com", "example.com"],
+      canonicalDomain: "example.com",
     });
 
     expect(result.localeHrefs).toEqual({
@@ -178,7 +183,8 @@ describe("resolveDocumentTranslations - Blog", () => {
       documentId: "blog-en",
       documentType: "blog",
       defaultLocale: "en-us",
-      domains: ["example.com"],
+      domains: ["www.example.com", "example.com"],
+      canonicalDomain: "example.com",
     });
 
     expect(result.localeHrefs).toEqual({

@@ -87,10 +87,10 @@ export async function validateBlogSlug(
   }
 
   if (!BLOG_SLUG_PATTERN.test(value)) {
-    return 'Slug may only contain lowercase letters, numbers, and hyphens.'
+    return 'URL segment may only contain lowercase letters, numbers, and hyphens.'
   }
 
   return (await hasDuplicateBlogSlug(value, context))
-    ? 'Another Blog with this slug already exists for this Site and Locale.'
+    ? 'Another Blog with this URL segment already exists for this Site and Locale.'
     : true
 }

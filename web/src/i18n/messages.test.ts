@@ -16,6 +16,10 @@ describe("getAppMessages", () => {
     expect(messages.author.expertiseAndCredentials).toBe(
       "Expertise & Credentials",
     );
+    expect(messages.blog.by).toBe("By");
+    expect(messages.blog.updated).toBe("Updated");
+    expect(messages.blog.reviewedBy).toBe("Reviewed by");
+    expect(messages.blog.sources).toBe("Sources");
   });
 
   it("returns the Spanish US application bundle", () => {
@@ -33,10 +37,16 @@ describe("getAppMessages", () => {
     expect(messages.author.expertiseAndCredentials).toBe(
       "Especialización y credenciales",
     );
+    expect(messages.blog.by).toBe("Por");
+    expect(messages.blog.updated).toBe("Actualizado");
+    expect(messages.blog.reviewedBy).toBe("Revisado por");
+    expect(messages.blog.sources).toBe("Fuentes");
   });
 
   it("falls back by language and then to English", () => {
     expect(getAppMessages("es-mx").documentList.previous).toBe("Anterior");
     expect(getAppMessages("de-de").documentList.previous).toBe("Previous");
+    expect(getAppMessages("es-mx").blog.sources).toBe("Fuentes");
+    expect(getAppMessages("de-de").blog.sources).toBe("Sources");
   });
 });

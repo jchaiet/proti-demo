@@ -15,6 +15,7 @@ type SiteLocale = {
 
 type SiteTranslationConfig = {
   domains?: string[];
+  canonicalDomain?: string;
   locales?: SiteLocale[];
 };
 
@@ -34,6 +35,7 @@ export interface ResolveDocumentTranslationsOptions {
    * translation availability is determined per configured locale.
    */
   domains?: string[];
+  canonicalDomain?: string;
 }
 
 export type DocumentTranslations = {
@@ -63,6 +65,7 @@ const SITE_TRANSLATION_CONFIG_QUERY = `
     _id == $siteId
   ][0]{
     domains,
+    canonicalDomain,
 
     locales[]{
       code
@@ -137,7 +140,8 @@ async function blogExists(
  *
  * Production requests consider published documents only; Draft Mode considers
  * the draft overlay as well. Missing translations are omitted so HeaderUtilities
- * can hide unavailable locales and SEO does not emit an incorrect hreflang.
+ * can fall back to the
+ * target Locale homepage and SEO does not emit an incorrect hreflang.
  */
 export async function resolveDocumentTranslations({
   siteId,
@@ -145,6 +149,7 @@ export async function resolveDocumentTranslations({
   documentType,
   defaultLocale,
   domains = [],
+  canonicalDomain,
 }: ResolveDocumentTranslationsOptions): Promise<DocumentTranslations> {
   const site = await sanityFetch<SiteTranslationConfig | null>(
     SITE_TRANSLATION_CONFIG_QUERY,
@@ -198,6 +203,7 @@ export async function resolveDocumentTranslations({
         .filter((result) => result.exists)
         .map((result) => result.locale),
       domains: domains.length > 0 ? domains : (site?.domains ?? []),
+      canonicalDomain: canonicalDomain ?? site?.canonicalDomain,
     });
   }
 
@@ -226,5 +232,6 @@ export async function resolveDocumentTranslations({
       .filter((result) => result.exists)
       .map((result) => result.locale),
     domains: domains.length > 0 ? domains : (site?.domains ?? []),
+    canonicalDomain: canonicalDomain ?? site?.canonicalDomain,
   });
 }

@@ -99,6 +99,15 @@ function arraysEqual(left, right) {
   return a.length === b.length && a.every((value, index) => value === b[index]);
 }
 
+function normalizeDomain(value) {
+  return String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\//, "")
+    .replace(/\/.*$/, "")
+    .replace(/\.$/, "");
+}
+
 function normalizeLocales(locales) {
   return (Array.isArray(locales) ? locales : [])
     .map(({ code, label }) => `${code}:${label ?? ""}`)
@@ -127,6 +136,7 @@ function validateConfig(config) {
     ["sanity.previewUrl", config.sanity?.previewUrl],
     ["site.name", config.site?.name],
     ["site.key", config.site?.key],
+    ["site.canonicalDomain", config.site?.canonicalDomain],
     ["site.defaultLocale", config.site?.defaultLocale],
   ];
 
@@ -145,6 +155,25 @@ function validateConfig(config) {
     fail(
       "Project configuration",
       "site.domains must contain at least one domain.",
+    );
+
+    valid = false;
+  }
+
+  if (
+    Array.isArray(config.site?.domains) &&
+    config.site.domains.length > 0 &&
+    typeof config.site?.canonicalDomain === "string" &&
+    config.site.canonicalDomain.trim() &&
+    !config.site.domains.some(
+      (domain) =>
+        normalizeDomain(domain) ===
+        normalizeDomain(config.site.canonicalDomain),
+    )
+  ) {
+    fail(
+      "Project configuration",
+      "site.canonicalDomain must be one of site.domains.",
     );
 
     valid = false;
@@ -264,6 +293,7 @@ async function checkSanitySite({ config, webEnv }) {
           name,
           key,
           domains,
+          canonicalDomain,
           defaultLocale,
           locales[]{code, label}
         }`,
@@ -352,6 +382,18 @@ async function checkSanitySite({ config, webEnv }) {
     warn(
       "Site domains",
       `Sanity: ${normalizeList(site.domains ?? []).join(", ") || "(none)"}; config: ${normalizeList(config.site.domains).join(", ")}.`,
+    );
+  }
+
+  if (
+    normalizeDomain(site.canonicalDomain) ===
+    normalizeDomain(config.site.canonicalDomain)
+  ) {
+    pass("Canonical domain", config.site.canonicalDomain);
+  } else {
+    fail(
+      "Canonical domain",
+      `Sanity has "${site.canonicalDomain ?? ""}", config has "${config.site.canonicalDomain}".`,
     );
   }
 

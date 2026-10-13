@@ -10,6 +10,23 @@ export const formBlockType = defineType({
 
   groups: [
     {
+      name: 'contentLayout',
+      title: 'Content & Layout',
+      default: true,
+    },
+    {
+      name: 'formFields',
+      title: 'Form Fields',
+    },
+    {
+      name: 'behavior',
+      title: 'Behavior',
+    },
+    {
+      name: 'submitButton',
+      title: 'Submit Button',
+    },
+    {
       name: 'styles',
       title: 'Styles',
     },
@@ -18,14 +35,18 @@ export const formBlockType = defineType({
   fields: [
     defineField({
       name: 'heading',
+      group: 'contentLayout',
       title: 'Heading',
       type: 'sectionHeading',
     }),
 
     defineField({
       name: 'layout',
+      group: 'contentLayout',
       title: 'Layout',
       type: 'string',
+
+      description: 'Controls how the form, heading, and optional side image are arranged.',
 
       initialValue: 'default',
 
@@ -53,6 +74,7 @@ export const formBlockType = defineType({
 
     defineField({
       name: 'alignment',
+      group: 'contentLayout',
       title: 'Content Alignment',
       type: 'string',
 
@@ -80,8 +102,11 @@ export const formBlockType = defineType({
 
     defineField({
       name: 'formPosition',
+      group: 'contentLayout',
       title: 'Form Position',
       type: 'string',
+
+      description: 'Choose whether the form appears before or after the supporting content.',
 
       initialValue: 'right',
 
@@ -103,8 +128,11 @@ export const formBlockType = defineType({
 
     defineField({
       name: 'image',
+      group: 'contentLayout',
       title: 'Side Image',
       type: 'image',
+
+      description: 'Optional supporting image displayed beside the form content.',
 
       options: {
         hotspot: true,
@@ -115,6 +143,7 @@ export const formBlockType = defineType({
 
     defineField({
       name: 'submitButtonText',
+      group: 'submitButton',
 
       title: 'Submit Button Text',
 
@@ -127,6 +156,7 @@ export const formBlockType = defineType({
 
     defineField({
       name: 'submitButtonVariant',
+      group: 'submitButton',
 
       title: 'Submit Button Style',
 
@@ -156,6 +186,7 @@ export const formBlockType = defineType({
 
     defineField({
       name: 'submitButtonSize',
+      group: 'submitButton',
 
       title: 'Submit Button Size',
 
@@ -185,6 +216,7 @@ export const formBlockType = defineType({
 
     defineField({
       name: 'submitButtonIcon',
+      group: 'submitButton',
 
       title: 'Submit Button Icon',
 
@@ -193,6 +225,7 @@ export const formBlockType = defineType({
 
     defineField({
       name: 'submitButtonIconAlignment',
+      group: 'submitButton',
 
       title: 'Icon Position',
 
@@ -220,8 +253,12 @@ export const formBlockType = defineType({
 
     defineField({
       name: 'formMode',
+      group: 'formFields',
       title: 'Form Type',
       type: 'string',
+
+      description:
+        'Use Single Page for one continuous form or Stepped Form for a guided multi-step flow.',
 
       initialValue: 'single',
 
@@ -245,8 +282,11 @@ export const formBlockType = defineType({
 
     defineField({
       name: 'steps',
+      group: 'formFields',
       title: 'Steps',
       type: 'array',
+
+      description: 'Add and order the steps in this guided form.',
 
       hidden: ({parent}) => parent?.formMode !== 'stepped',
 
@@ -278,6 +318,7 @@ export const formBlockType = defineType({
 
     defineField({
       name: 'nextButtonText',
+      group: 'behavior',
       title: 'Next Button Text',
       type: 'string',
 
@@ -288,6 +329,7 @@ export const formBlockType = defineType({
 
     defineField({
       name: 'previousButtonText',
+      group: 'behavior',
       title: 'Previous Button Text',
       type: 'string',
 
@@ -298,8 +340,11 @@ export const formBlockType = defineType({
 
     defineField({
       name: 'showProgress',
+      group: 'behavior',
       title: 'Show Progress',
       type: 'boolean',
+
+      description: 'Show visitors their progress through a stepped form.',
 
       initialValue: true,
 
@@ -308,8 +353,12 @@ export const formBlockType = defineType({
 
     defineField({
       name: 'fields',
+      group: 'formFields',
       title: 'Fields',
       type: 'array',
+
+      description: 'Add and order the fields in this single-page form.',
+
       hidden: ({parent}) => parent?.formMode === 'stepped',
 
       of: [
@@ -392,10 +441,12 @@ export const formBlockType = defineType({
      */
     defineField({
       name: 'formKey',
+      group: 'behavior',
       title: 'Form Key',
       type: 'slug',
 
-      description: 'Stable identifier used by the website to determine how this form is submitted.',
+      description:
+        'Stable internal identifier used by the website to route this form submission. It is not shown to visitors.',
 
       options: {
         source: 'heading.title',

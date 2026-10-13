@@ -1,7 +1,9 @@
 import {defineArrayMember, defineField, defineType} from 'sanity'
 
 import {PageLocaleInput} from '../../components/inputs/PageLocaleInput'
+import {NavigationKeyInput} from '../../components/inputs/NavigationKeyInput'
 import {validateSiteLocale} from '../validation/siteLocale'
+import {validateNavigationKey} from '../validation/navigationKey'
 import {validateDocumentInternalPageLinks} from '../validation/internalPageLink'
 import {createAccessibleImageFields} from '../objects/accessibleImageFields'
 
@@ -19,23 +21,55 @@ export const navigationHeaderType = defineType({
 
   groups: [
     {
-      name: 'content',
-      title: 'Header',
+      name: 'assignment',
+      title: 'Identity & Locale',
       default: true,
     },
     {
-      name: 'assignment',
-      title: 'Site & Locale',
+      name: 'content',
+      title: 'Header Content',
     },
   ],
 
   fields: [
     defineField({
+      name: 'site',
+      title: 'Site',
+      type: 'reference',
+      group: 'assignment',
+      description:
+        'Website this Header Navigation belongs to. Translated versions stay on the same Site.',
+      to: [
+        {
+          type: 'site',
+        },
+      ],
+      validation: (rule) => rule.required(),
+    }),
+
+    defineField({
+      name: 'locale',
+      title: 'Locale',
+      type: 'string',
+      group: 'assignment',
+      description:
+        'Locale-specific version of this Header Navigation. Translations reuse the same Key with a different Locale.',
+
+      components: {
+        input: PageLocaleInput,
+      },
+
+      validation: (rule) =>
+        rule.required().custom((locale, context) => validateSiteLocale(locale, context)),
+    }),
+
+    defineField({
       name: 'title',
       title: 'Header Name',
       type: 'string',
-      group: 'content',
-      description: 'Internal name such as Default Header or Marketing Minimal Header.',
+      group: 'assignment',
+      description:
+        'Editor-facing name for this Header Navigation. It is used in Studio and is not rendered on the website.',
       validation: (rule) => rule.required().max(120),
     }),
 
@@ -43,12 +77,14 @@ export const navigationHeaderType = defineType({
       name: 'key',
       title: 'Key',
       type: 'string',
-      group: 'content',
-      description: 'Stable internal key such as default-header or marketing-minimal-header.',
+      group: 'assignment',
+      description:
+        'Stable internal identity shared by translated Header Navigation documents. Generate it once from the Header Name, then keep the same Key for every Locale.',
+      components: {
+        input: NavigationKeyInput,
+      },
       validation: (rule) =>
-        rule.required().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, {
-          name: 'lowercase kebab-case',
-        }),
+        rule.required().custom((key, context) => validateNavigationKey(key, context)),
     }),
 
     defineField({
@@ -74,6 +110,7 @@ export const navigationHeaderType = defineType({
           },
         ],
       },
+      description: 'Choose the Site logo, a locale-specific custom logo, or no logo.',
       validation: (rule) => rule.required(),
     }),
 
@@ -162,6 +199,7 @@ export const navigationHeaderType = defineType({
       title: 'Primary Navigation',
       type: 'array',
       group: 'content',
+      description: 'Locale-specific primary navigation items rendered in this Header.',
       of: [
         defineArrayMember({
           type: 'navigationItem',
@@ -176,40 +214,13 @@ export const navigationHeaderType = defineType({
       type: 'array',
       group: 'content',
       description:
-        'Optional actions shown on the right side of the Header, such as Login or Get Started.',
+        'Optional locale-specific actions shown on the right side of the Header, such as Login or Get Started.',
       of: [
         defineArrayMember({
           type: 'cta',
         }),
       ],
       validation: (rule) => rule.max(3),
-    }),
-
-    defineField({
-      name: 'site',
-      title: 'Site',
-      type: 'reference',
-      group: 'assignment',
-      to: [
-        {
-          type: 'site',
-        },
-      ],
-      validation: (rule) => rule.required(),
-    }),
-
-    defineField({
-      name: 'locale',
-      title: 'Locale',
-      type: 'string',
-      group: 'assignment',
-
-      components: {
-        input: PageLocaleInput,
-      },
-
-      validation: (rule) =>
-        rule.required().custom((locale, context) => validateSiteLocale(locale, context)),
     }),
   ],
 

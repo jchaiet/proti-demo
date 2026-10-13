@@ -15,6 +15,7 @@ const SITE_BY_DOMAIN_QUERY = `
     name,
     key,
     domains,
+    canonicalDomain,
     defaultLocale,
     locales[]{
       code,

@@ -8,6 +8,7 @@ export type Site = {
   name: string;
   key: string;
   domains: string[];
+  canonicalDomain?: string;
   defaultLocale: string;
   locales: SiteLocale[];
 };

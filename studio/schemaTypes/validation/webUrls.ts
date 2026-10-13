@@ -244,6 +244,51 @@ export function validateSiteDomains(values: string[] | undefined): true | string
 }
 
 /**
+ * Validates the Site's canonical hostname.
+ *
+ * The value must use the same hostname-only format as `domains` and must
+ * exactly match one of the configured Site domains (case-insensitively).
+ */
+export function validateCanonicalDomain(
+  value: string | undefined,
+  domains: string[] | undefined,
+): true | string {
+  if (!value) {
+    return 'Canonical Domain is required.'
+  }
+
+  const valid = validateHostnameValue(value)
+
+  if (valid !== true) {
+    return valid.replace(/^Domain /, 'Canonical Domain ')
+  }
+
+  const normalizedCanonical = new URL(`https://${value.trim()}`).hostname
+    .replace(/\.$/, '')
+    .toLowerCase()
+
+  const normalizedDomains = new Set(
+    (domains ?? [])
+      .map((domain) => {
+        const domainValid = validateHostnameValue(domain)
+
+        if (domainValid !== true) {
+          return ''
+        }
+
+        return new URL(`https://${domain.trim()}`).hostname.replace(/\.$/, '').toLowerCase()
+      })
+      .filter(Boolean),
+  )
+
+  if (!normalizedDomains.has(normalizedCanonical)) {
+    return 'Canonical Domain must be one of the configured Site Domains.'
+  }
+
+  return true
+}
+
+/**
  * External redirect URLs use the same public-web URL rules, plus a guard for
  * redirecting a Site route back to itself via one of the Site's own domains.
  *

@@ -1,6 +1,7 @@
 import type { CmsBlog, CmsCitationSource } from "@/cms/types";
 
 import { BlockRenderer } from "@/components/BlockRenderer";
+import { getAppMessages } from "@/i18n";
 import { siteLocaleToLanguageTag } from "@/lib/routing/locale";
 import { BlogHero } from "./BlogHero";
 
@@ -9,12 +10,14 @@ import styles from "./styles.module.css";
 export interface BlogTemplateProps {
   blog: CmsBlog;
 
-  /*
-   * Kept in the public BlogTemplate API because the current
-   * catch-all route already supplies it. BlogTemplate does not
-   * need it directly for the byline.
+  /**
+   * Empty for the default locale.
+   *
+   * Example:
+   * /es-us
    */
   localePrefix?: string;
+
   visualEditing?: boolean;
 }
 
@@ -43,7 +46,8 @@ function getAuthorSlug(author: CmsBlog["author"]): string | undefined {
 }
 
 function getAuthorHref(
-  author: CmsBlog["author"],
+  author: CmsBlog["author"] | CmsBlog["reviewer"],
+  locale: string,
   localePrefix?: string,
 ): string | undefined {
   const slug = getAuthorSlug(author);
@@ -52,7 +56,19 @@ function getAuthorHref(
     return undefined;
   }
 
-  const prefix = normalizePrefix(localePrefix);
+  /*
+   * Older content may not have availability metadata yet. Preserve the
+   * current-locale behavior in that case. When availability is known, only
+   * use the localized Author route if that Author actually has that locale.
+   * Otherwise fall back to the unprefixed default-locale Author profile.
+   */
+  const hasAvailabilityMetadata = Boolean(author?.availableLocales?.length);
+  const hasCurrentLocale = author?.availableLocales?.includes(locale) ?? false;
+
+  const prefix =
+    !hasAvailabilityMetadata || hasCurrentLocale
+      ? normalizePrefix(localePrefix)
+      : "";
 
   return `${prefix}/authors/${slug}`;
 }
@@ -95,19 +111,31 @@ function CitationSource({
 }) {
   const publicationDate = formatPublishedDate(source.publicationDate, locale);
 
-  const meta = [source.publisher, publicationDate].filter(Boolean).join(" • ");
-
   return (
     <li>
-      {source.url ? (
-        <a href={source.url} target="_blank" rel="noopener noreferrer">
-          {source.title}
-        </a>
-      ) : (
-        <span>{source.title}</span>
-      )}
+      <cite>
+        {source.url ? (
+          <a href={source.url} target="_blank" rel="noopener noreferrer">
+            {source.title}
+          </a>
+        ) : (
+          source.title
+        )}
+      </cite>
 
-      {meta ? <span className={styles.sourceMeta}>{meta}</span> : null}
+      {source.publisher || publicationDate ? (
+        <span className={styles.sourceMeta}>
+          {source.publisher ? <span>{source.publisher}</span> : null}
+
+          {source.publisher && publicationDate ? " • " : null}
+
+          {publicationDate && source.publicationDate ? (
+            <time dateTime={source.publicationDate}>{publicationDate}</time>
+          ) : (
+            publicationDate
+          )}
+        </span>
+      ) : null}
     </li>
   );
 }
@@ -117,6 +145,8 @@ export async function BlogTemplate({
   localePrefix,
   visualEditing = false,
 }: BlogTemplateProps) {
+  const messages = getAppMessages(blog.locale).blog;
+
   const publishedDate = formatPublishedDate(blog.publishedAt, blog.locale);
 
   const lastModifiedDate = formatPublishedDate(
@@ -126,7 +156,8 @@ export async function BlogTemplate({
 
   const reviewedDate = formatPublishedDate(blog.reviewedAt, blog.locale);
 
-  const reviewerHref = getAuthorHref(blog.reviewer, localePrefix);
+  const authorHref = getAuthorHref(blog.author, blog.locale, localePrefix);
+  const reviewerHref = getAuthorHref(blog.reviewer, blog.locale, localePrefix);
 
   const hasEditorialDetails = Boolean(
     lastModifiedDate || blog.reviewer?.name || reviewedDate,
@@ -139,10 +170,12 @@ export async function BlogTemplate({
         summary={blog.summary}
         showSummary={blog.showSummaryInArticle}
         authorName={blog.author?.name}
-        authorHref={getAuthorHref(blog.author, localePrefix)}
+        authorHref={authorHref}
+        bylineLabel={messages.by}
         taxonomy={blog.taxonomy}
         localePrefix={localePrefix}
         publishedDate={publishedDate}
+        publishedDateTime={blog.publishedAt}
         imageUrl={blog.imageUrl}
         imageAlt={blog.imageAlt}
       />
@@ -150,18 +183,18 @@ export async function BlogTemplate({
       {hasEditorialDetails ? (
         <aside
           className={styles.editorialMeta}
-          aria-label="Article editorial information"
+          aria-label={messages.editorialInformation}
         >
           {lastModifiedDate && blog.lastModifiedAt ? (
             <p>
-              <strong>Updated:</strong>{" "}
+              <strong>{messages.updated}:</strong>{" "}
               <time dateTime={blog.lastModifiedAt}>{lastModifiedDate}</time>
             </p>
           ) : null}
 
           {blog.reviewer?.name ? (
             <p>
-              <strong>Reviewed by:</strong>{" "}
+              <strong>{messages.reviewedBy}:</strong>{" "}
               {reviewerHref ? (
                 <a href={reviewerHref}>{blog.reviewer.name}</a>
               ) : (
@@ -171,7 +204,8 @@ export async function BlogTemplate({
               {reviewedDate && blog.reviewedAt ? (
                 <>
                   {" "}
-                  on <time dateTime={blog.reviewedAt}>{reviewedDate}</time>
+                  {messages.reviewedOn}{" "}
+                  <time dateTime={blog.reviewedAt}>{reviewedDate}</time>
                 </>
               ) : null}
             </p>
@@ -194,7 +228,7 @@ export async function BlogTemplate({
           className={styles.sources}
           aria-labelledby="article-sources-heading"
         >
-          <h2 id="article-sources-heading">Sources</h2>
+          <h2 id="article-sources-heading">{messages.sources}</h2>
 
           <ol>
             {blog.sources.map((source, index) => (

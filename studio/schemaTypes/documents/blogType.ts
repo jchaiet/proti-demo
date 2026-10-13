@@ -308,7 +308,8 @@ export const blogType = defineType({
       title: 'Locale',
       type: 'string',
       group: 'routing',
-      description: 'Regional language version of this Blog.',
+      description:
+        'Regional language version of this Blog. The Site default Locale is omitted from public URLs.',
       components: {
         input: PageLocaleInput,
       },
@@ -318,10 +319,10 @@ export const blogType = defineType({
 
     defineField({
       name: 'slug',
-      title: 'Slug',
+      title: 'URL Segment',
       type: 'slug',
       group: 'routing',
-      description: 'Public Blog URL segment. Example: /blog/my-first-post',
+      description: 'This Blog’s portion of the public URL. Example: /blog/my-first-post',
       options: {
         source: 'title',
         maxLength: 96,

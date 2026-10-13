@@ -18,6 +18,9 @@ export interface CmsAuthor {
 
   _type: "author";
 
+  _createdAt?: string;
+  _updatedAt?: string;
+
   siteId: string;
 
   slug: string;
@@ -57,6 +60,9 @@ export interface CmsAuthor {
   profileUrl?: string;
 
   sameAs?: string[];
+
+  /** Locales with a real default/translated Author representation. */
+  availableLocales?: string[];
 }
 
 export interface CmsAuthorArticleTaxonomy {

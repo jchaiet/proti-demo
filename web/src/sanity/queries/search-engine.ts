@@ -9,6 +9,7 @@ export const SEARCH_SITE_BY_HOST_QUERY = `
     _id,
     name,
     domains,
+    canonicalDomain,
     defaultLocale,
 
     locales[]{
@@ -85,6 +86,11 @@ export const SITEMAP_AUTHORS_QUERY = `
     _id,
     _updatedAt,
 
-    "slug": slug.current
+    "slug": slug.current,
+
+    translations[]{
+      locale,
+      name
+    }
   }
 `;

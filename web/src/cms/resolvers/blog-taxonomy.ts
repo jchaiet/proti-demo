@@ -72,6 +72,7 @@ export interface BuildBlogTaxonomyLocaleLinksOptions {
   }>;
 
   domains?: string[];
+  canonicalDomain?: string;
 }
 
 export interface BlogTaxonomyLocaleLinks {
@@ -331,11 +332,13 @@ export function buildBlogTaxonomyLocaleLinks({
   defaultLocale,
   locales = [],
   domains = [],
+  canonicalDomain,
 }: BuildBlogTaxonomyLocaleLinksOptions): BlogTaxonomyLocaleLinks {
   return buildLocaleLinks({
     routePath: `/blog/${path}`,
     defaultLocale,
     locales,
     domains,
+    canonicalDomain,
   });
 }

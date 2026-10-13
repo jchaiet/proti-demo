@@ -35,9 +35,15 @@ describe("public URL helpers", () => {
     ).toBe("/es-us");
   });
 
-  it("uses https for public hosts and http for local development hosts", () => {
+  it("uses the explicit canonical domain instead of domains array order", () => {
+    expect(
+      getSiteOrigin(["www.example.com", "example.com"], "example.com"),
+    ).toBe("https://example.com");
+  });
+
+  it("falls back to the first Site domain during migration", () => {
     expect(getSiteOrigin(["example.com"])).toBe("https://example.com");
-    expect(getSiteOrigin(["localhost:3000"])).toBe("http://localhost:3000");
+    expect(getSiteOrigin(["localhost"])).toBe("http://localhost");
   });
 
   it("builds locale hrefs and hreflang values from one route contract", () => {
@@ -46,7 +52,8 @@ describe("public URL helpers", () => {
         routePath: "/products/widget",
         defaultLocale: "en-us",
         locales: [{ code: "en-us" }, { code: "es-us" }],
-        domains: ["example.com"],
+        domains: ["www.example.com", "example.com"],
+        canonicalDomain: "example.com",
       }),
     ).toEqual({
       localeHrefs: {
@@ -73,6 +80,26 @@ describe("public URL helpers", () => {
     ).toEqual({
       "en-US": "https://example.com/products/widget",
       "x-default": "https://example.com/products/widget",
+    });
+  });
+
+  it("keeps three-letter application locales routable but omits unsupported hreflang", () => {
+    expect(
+      buildLocaleLinks({
+        routePath: "/about",
+        defaultLocale: "en-us",
+        locales: [{ code: "en-us" }, { code: "fil-ph" }],
+        domains: ["example.com"],
+      }),
+    ).toEqual({
+      localeHrefs: {
+        "en-us": "/about",
+        "fil-ph": "/fil-ph/about",
+      },
+      languageAlternates: {
+        "en-US": "https://example.com/about",
+        "x-default": "https://example.com/about",
+      },
     });
   });
 

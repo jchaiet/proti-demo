@@ -91,19 +91,21 @@
   background: var(--mino-color-bg-surface, var(--bg-surface, #fff));
 }
 
-.expertiseHeading {
-  margin: 0;
-}
-
 .expertiseSection {
   display: flex;
   flex-direction: column;
   gap: var(--mino-spacing-xs, var(--spacing-xs, 8px));
 }
 
-.expertiseSection h3,
 .expertiseSection p {
   margin: 0;
+}
+
+.expertiseLabel {
+  color: var(--mino-color-text-primary, var(--text-primary));
+  font-size: var(--mino-font-size-sm, var(--font-size-sm, 14px));
+  font-weight: var(--mino-font-weight-bold, var(--font-weight-bold, 700));
+  line-height: var(--mino-line-height-heading, 1.3);
 }
 
 .expertiseList,
@@ -170,10 +172,6 @@
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     align-items: start;
-  }
-
-  .expertiseHeading {
-    grid-column: 1 / -1;
   }
 }
 

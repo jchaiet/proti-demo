@@ -50,6 +50,12 @@ vi.mock("mino-ui/blocks/RichTextBlock", () => ({
   RichTextBlock: ({ content }: { content: string }) => <div>{content}</div>,
 }));
 
+vi.mock("@/components/BlockRenderer/RichText", () => ({
+  RichText: ({ content }: { content: unknown[] }) => (
+    <div data-testid="author-portable-bio">{JSON.stringify(content)}</div>
+  ),
+}));
+
 import { AuthorTemplate } from "./AuthorTemplate";
 
 function buildPage(locale: string): CmsAuthorPage {
@@ -97,6 +103,26 @@ describe("AuthorTemplate localization", () => {
     expect(screen.getByText("Credentials")).toBeTruthy();
     expect(screen.getByText("Affiliation")).toBeTruthy();
 
+    expect(
+      screen.getByRole("complementary", {
+        name: "Expertise & Credentials",
+      }),
+    ).toBeTruthy();
+
+    expect(
+      screen.getByRole("heading", {
+        level: 1,
+        name: "Jane Smith",
+      }),
+    ).toBeTruthy();
+
+    expect(
+      screen.queryByRole("heading", {
+        level: 3,
+        name: "Expertise",
+      }),
+    ).toBeNull();
+
     const props = mocks.documentListProps as {
       title: string;
       emptyStateText: string;
@@ -142,6 +168,32 @@ describe("AuthorTemplate localization", () => {
         month: "long",
         day: "numeric",
       }).format(new Date("2026-09-08T16:44:40Z")),
+    );
+  });
+  it("renders native Portable Text for the Author bio when available", () => {
+    const page = buildPage("en-us");
+
+    page.author.bioPortableText = [
+      {
+        _key: "bio-1",
+        _type: "block",
+        style: "normal",
+        markDefs: [],
+        children: [
+          {
+            _key: "span-1",
+            _type: "span",
+            marks: [],
+            text: "Native portable bio",
+          },
+        ],
+      },
+    ];
+
+    render(<AuthorTemplate page={page} />);
+
+    expect(screen.getByTestId("author-portable-bio").textContent).toContain(
+      "Native portable bio",
     );
   });
 });

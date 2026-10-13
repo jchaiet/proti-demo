@@ -20,7 +20,8 @@ import { buildSeoMetadata } from "./seo";
 const siteRecord = {
   _id: "site-proti",
   name: "Proti",
-  domains: ["example.com"],
+  domains: ["www.example.com", "example.com"],
+  canonicalDomain: "example.com",
   defaultLocale: "en-us",
   defaults: {
     locale: "en-us",
@@ -76,6 +77,19 @@ it("applies the Site title template to normal documents", async () => {
   });
 
   expect(metadata.title).toBe("Widget | Proti Health");
+  expect(metadata.alternates?.canonical).toBe(
+    "https://example.com/products/widget",
+  );
+});
+
+it("uses the explicit canonical domain instead of the first Site domain", async () => {
+  const metadata = await buildSeoMetadata({
+    siteId: "site-proti",
+    locale: "en-us",
+    publicPath: "/products/widget",
+    title: "Widget",
+  });
+
   expect(metadata.alternates?.canonical).toBe(
     "https://example.com/products/widget",
   );
@@ -233,7 +247,8 @@ it("uses the hotspot-aware Site social preset as the final image fallback", asyn
 it("uses http for localhost Site domains", async () => {
   mocks.fetch.mockResolvedValue({
     ...siteRecord,
-    domains: ["localhost:3000"],
+    domains: ["localhost"],
+    canonicalDomain: "localhost",
   });
 
   const metadata = await buildSeoMetadata({
@@ -243,7 +258,7 @@ it("uses http for localhost Site domains", async () => {
     title: "Page",
   });
 
-  expect(metadata.alternates?.canonical).toBe("http://localhost:3000/page");
+  expect(metadata.alternates?.canonical).toBe("http://localhost/page");
 });
 
 it("returns empty metadata when the Site SEO record cannot be resolved", async () => {

@@ -16,6 +16,19 @@ export const pollBlockType = defineType({
 
   groups: [
     {
+      name: 'content',
+      title: 'Content',
+      default: true,
+    },
+    {
+      name: 'results',
+      title: 'Results',
+    },
+    {
+      name: 'messages',
+      title: 'Messages',
+    },
+    {
       name: 'styles',
       title: 'Styles',
     },
@@ -24,6 +37,7 @@ export const pollBlockType = defineType({
   fields: [
     defineField({
       name: 'heading',
+      group: 'content',
       title: 'Poll Heading',
       type: 'sectionHeading',
 
@@ -32,10 +46,12 @@ export const pollBlockType = defineType({
 
     defineField({
       name: 'pollKey',
+      group: 'content',
       title: 'Poll Key',
       type: 'slug',
 
-      description: 'Stable identifier used when recording votes.',
+      description:
+        'Stable internal identifier used when recording votes. It is not shown to visitors.',
 
       options: {
         source: 'heading.title',
@@ -48,6 +64,7 @@ export const pollBlockType = defineType({
 
     defineField({
       name: 'options',
+      group: 'content',
       title: 'Poll Options',
       type: 'array',
 
@@ -120,6 +137,7 @@ export const pollBlockType = defineType({
 
     defineField({
       name: 'layout',
+      group: 'content',
       title: 'Option Layout',
       type: 'string',
 
@@ -147,6 +165,7 @@ export const pollBlockType = defineType({
 
     defineField({
       name: 'alignment',
+      group: 'content',
 
       title: 'Alignment',
 
@@ -175,7 +194,20 @@ export const pollBlockType = defineType({
     }),
 
     defineField({
+      name: 'showResultsOnSubmit',
+      group: 'results',
+      title: 'Show Results',
+      type: 'boolean',
+
+      description:
+        'Show poll results after the visitor submits a vote. Disable this for confirmation-only polls.',
+
+      initialValue: true,
+    }),
+
+    defineField({
       name: 'resultsType',
+      group: 'results',
       title: 'Results Type',
       type: 'string',
 
@@ -209,13 +241,14 @@ export const pollBlockType = defineType({
 
     defineField({
       name: 'singleResultOptionId',
+      group: 'results',
       title: 'Result Option ID',
       type: 'string',
 
       description: 'Option whose vote count should be shown. For example: yes or helpful.',
 
       hidden: ({parent}) =>
-        !parent?.showResultsOnSubmit || parent?.resultsType !== 'singleOptionCount',
+        parent?.showResultsOnSubmit === false || parent?.resultsType !== 'singleOptionCount',
 
       validation: (Rule) =>
         Rule.custom((value, context) => {
@@ -227,7 +260,10 @@ export const pollBlockType = defineType({
               }
             | undefined
 
-          if (!parent?.showResultsOnSubmit || parent.resultsType !== 'singleOptionCount') {
+          if (
+            parent?.showResultsOnSubmit === false ||
+            parent?.resultsType !== 'singleOptionCount'
+          ) {
             return true
           }
 
@@ -235,7 +271,7 @@ export const pollBlockType = defineType({
             return 'Result Option ID is required.'
           }
 
-          const optionExists = parent.options?.some((option) => option.id === value)
+          const optionExists = parent?.options?.some((option) => option.id === value)
 
           return optionExists ? true : 'Result Option ID must match one of the Poll Option IDs.'
         }),
@@ -243,6 +279,7 @@ export const pollBlockType = defineType({
 
     defineField({
       name: 'singleResultMessage',
+      group: 'results',
       title: 'Single Result Message',
       type: 'string',
 
@@ -252,7 +289,7 @@ export const pollBlockType = defineType({
       initialValue: '{count} people found this helpful.',
 
       hidden: ({parent}) =>
-        !parent?.showResultsOnSubmit || parent?.resultsType !== 'singleOptionCount',
+        parent?.showResultsOnSubmit === false || parent?.resultsType !== 'singleOptionCount',
 
       validation: (Rule) =>
         Rule.custom((value, context) => {
@@ -263,7 +300,10 @@ export const pollBlockType = defineType({
               }
             | undefined
 
-          if (!parent?.showResultsOnSubmit || parent.resultsType !== 'singleOptionCount') {
+          if (
+            parent?.showResultsOnSubmit === false ||
+            parent?.resultsType !== 'singleOptionCount'
+          ) {
             return true
           }
 
@@ -272,17 +312,8 @@ export const pollBlockType = defineType({
     }),
 
     defineField({
-      name: 'showResultsOnSubmit',
-      title: 'Show Results',
-      type: 'boolean',
-
-      description: 'Show poll results after the visitor submits their vote.',
-
-      initialValue: true,
-    }),
-
-    defineField({
       name: 'confirmationMessage',
+      group: 'messages',
 
       title: 'Confirmation Message',
       description: 'Message shown after the visitor successfully submits their vote.',
@@ -294,8 +325,11 @@ export const pollBlockType = defineType({
 
     defineField({
       name: 'errorMessage',
+      group: 'messages',
 
       title: 'Error Message',
+
+      description: 'Message shown when a vote cannot be recorded.',
 
       type: 'string',
 

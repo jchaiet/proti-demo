@@ -6,6 +6,7 @@ import {validateSiteTranslations} from '../validation/siteTranslations'
 import {createAccessibleImageFields} from '../objects/accessibleImageFields'
 import {type ImageValue, validateImageAltForImage} from '../validation/imageAccessibility'
 import {validateUniqueWebUrls, validateWebUrl} from '../validation/webUrls'
+import {validateAuthorBioHeadingQuality} from '../validation/headingQuality'
 
 export const authorType = defineType({
   name: 'author',
@@ -59,7 +60,9 @@ export const authorType = defineType({
       type: 'richText',
       group: 'profile',
       description:
-        'Author biography for the Site default Locale. Supports formatted text, links, and lists.',
+        'Author biography for the Site default Locale. Supports formatted text, links, and lists. The Author name is already the page H1, so use H2-H6 for Bio headings.',
+      validation: (rule) =>
+        rule.custom((value) => validateAuthorBioHeadingQuality(value)).warning(),
     }),
 
     defineField({
@@ -236,7 +239,10 @@ export const authorType = defineType({
               name: 'bioRichText',
               title: 'Bio',
               type: 'richText',
-              description: 'Localized biography. Supports formatted text, links, and lists.',
+              description:
+                'Localized biography. Supports formatted text, links, and lists. The Author name is already the page H1, so use H2-H6 for Bio headings.',
+              validation: (rule) =>
+                rule.custom((value) => validateAuthorBioHeadingQuality(value)).warning(),
             }),
 
             defineField({
@@ -286,11 +292,10 @@ export const authorType = defineType({
 
     defineField({
       name: 'slug',
-      title: 'Slug',
+      title: 'URL Segment',
       type: 'slug',
       group: 'routing',
-      description:
-        'Stable Author identifier shared across locales and available for a future Author profile route.',
+      description: 'Public Author URL segment shared across locales. Example: /authors/jane-smith',
 
       options: {
         source: 'name',
@@ -314,7 +319,7 @@ export const authorType = defineType({
           }
 
           if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value)) {
-            return 'Slug may only contain lowercase letters, numbers, and hyphens.'
+            return 'URL Segment may only contain lowercase letters, numbers, and hyphens.'
           }
 
           return true

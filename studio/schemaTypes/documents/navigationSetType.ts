@@ -1,7 +1,9 @@
 import {defineField, defineType} from 'sanity'
 
 import {PageLocaleInput} from '../../components/inputs/PageLocaleInput'
+import {NavigationKeyInput} from '../../components/inputs/NavigationKeyInput'
 import {validateSiteLocale} from '../validation/siteLocale'
+import {validateNavigationKey} from '../validation/navigationKey'
 import {validateNavigationSetReferences} from '../validation/navigationReferences'
 import {siteLocaleReferenceFilter} from '../validation/referenceFilters'
 
@@ -15,23 +17,55 @@ export const navigationSetType = defineType({
 
   groups: [
     {
-      name: 'content',
-      title: 'Navigation Set',
+      name: 'assignment',
+      title: 'Identity & Locale',
       default: true,
     },
     {
-      name: 'assignment',
-      title: 'Site & Locale',
+      name: 'composition',
+      title: 'Header & Footer',
     },
   ],
 
   fields: [
     defineField({
+      name: 'site',
+      title: 'Site',
+      type: 'reference',
+      group: 'assignment',
+      description:
+        'Website this Navigation Set belongs to. Translated versions stay on the same Site.',
+      to: [
+        {
+          type: 'site',
+        },
+      ],
+      validation: (rule) => rule.required(),
+    }),
+
+    defineField({
+      name: 'locale',
+      title: 'Locale',
+      type: 'string',
+      group: 'assignment',
+      description:
+        'Locale-specific version of this Navigation Set. Translations reuse the same Key with a different Locale.',
+
+      components: {
+        input: PageLocaleInput,
+      },
+
+      validation: (rule) =>
+        rule.required().custom((locale, context) => validateSiteLocale(locale, context)),
+    }),
+
+    defineField({
       name: 'title',
       title: 'Navigation Set Name',
       type: 'string',
-      group: 'content',
-      description: 'Internal name such as Default, Marketing Minimal, or Campaign.',
+      group: 'assignment',
+      description:
+        'Editor-facing name for this Navigation Set. It is used in Studio and is not rendered on the website.',
       validation: (rule) => rule.required().max(120),
     }),
 
@@ -39,20 +73,24 @@ export const navigationSetType = defineType({
       name: 'key',
       title: 'Key',
       type: 'string',
-      group: 'content',
-      description: 'Stable internal key such as default, marketing-minimal, or campaign.',
+      group: 'assignment',
+      description:
+        'Stable internal identity shared by translated Navigation Set documents. Generate it once from the Navigation Set Name, then keep the same Key for every Locale.',
+      components: {
+        input: NavigationKeyInput,
+      },
       validation: (rule) =>
-        rule.required().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, {
-          name: 'lowercase kebab-case',
-        }),
+        rule.required().custom((key, context) => validateNavigationKey(key, context)),
     }),
 
     defineField({
       name: 'headerMode',
       title: 'Header',
       type: 'string',
-      group: 'content',
+      group: 'composition',
       initialValue: 'custom',
+      description:
+        'Choose whether this Navigation Set renders a Header Navigation for its Site and Locale.',
 
       options: {
         layout: 'radio',
@@ -75,7 +113,9 @@ export const navigationSetType = defineType({
       name: 'header',
       title: 'Header Navigation',
       type: 'reference',
-      group: 'content',
+      group: 'composition',
+      description:
+        'Select a Header Navigation from the same Site and Locale as this Navigation Set.',
 
       to: [
         {
@@ -105,8 +145,10 @@ export const navigationSetType = defineType({
       name: 'footerMode',
       title: 'Footer',
       type: 'string',
-      group: 'content',
+      group: 'composition',
       initialValue: 'custom',
+      description:
+        'Choose whether this Navigation Set renders a Footer Navigation for its Site and Locale.',
 
       options: {
         layout: 'radio',
@@ -129,7 +171,9 @@ export const navigationSetType = defineType({
       name: 'footer',
       title: 'Footer Navigation',
       type: 'reference',
-      group: 'content',
+      group: 'composition',
+      description:
+        'Select a Footer Navigation from the same Site and Locale as this Navigation Set.',
 
       to: [
         {
@@ -153,33 +197,6 @@ export const navigationSetType = defineType({
 
           return value ? true : 'Select a Footer Navigation.'
         }),
-    }),
-
-    defineField({
-      name: 'site',
-      title: 'Site',
-      type: 'reference',
-      group: 'assignment',
-      to: [
-        {
-          type: 'site',
-        },
-      ],
-      validation: (rule) => rule.required(),
-    }),
-
-    defineField({
-      name: 'locale',
-      title: 'Locale',
-      type: 'string',
-      group: 'assignment',
-
-      components: {
-        input: PageLocaleInput,
-      },
-
-      validation: (rule) =>
-        rule.required().custom((locale, context) => validateSiteLocale(locale, context)),
     }),
   ],
 

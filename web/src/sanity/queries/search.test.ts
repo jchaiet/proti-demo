@@ -56,5 +56,6 @@ describe("Search GROQ contract", () => {
     expect(SEARCH_SITE_SETTINGS_QUERY).toContain(
       "seoDefaults[\n          locale == $locale",
     );
+    expect(SEARCH_SITE_SETTINGS_QUERY).toContain("canonicalDomain");
   });
 });

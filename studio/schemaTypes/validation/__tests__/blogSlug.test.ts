@@ -50,7 +50,7 @@ describe('Blog slug validation', () => {
         },
         context,
       ),
-    ).resolves.toBe('Slug may only contain lowercase letters, numbers, and hyphens.')
+    ).resolves.toBe('URL segment may only contain lowercase letters, numbers, and hyphens.')
 
     expect(getClient).not.toHaveBeenCalled()
   })
@@ -123,7 +123,7 @@ describe('Blog slug validation', () => {
         },
         context,
       ),
-    ).resolves.toBe('Another Blog with this slug already exists for this Site and Locale.')
+    ).resolves.toBe('Another Blog with this URL segment already exists for this Site and Locale.')
   })
 
   it('normalizes draft ids and queries with the raw perspective', async () => {

@@ -11,6 +11,12 @@ describe("BLOG_BY_SLUG_QUERY editorial contract", () => {
     expect(BLOG_BY_SLUG_QUERY).toContain('"expertise": coalesce(');
     expect(BLOG_BY_SLUG_QUERY).toContain("credentials[]{");
     expect(BLOG_BY_SLUG_QUERY).toContain('"affiliation": select(');
+    expect(BLOG_BY_SLUG_QUERY).toContain(
+      '"defaultLocale": site->defaultLocale',
+    );
+    expect(BLOG_BY_SLUG_QUERY).toContain(
+      '"translatedLocales": translations[defined(name) && name != ""].locale',
+    );
   });
 
   it("defaults visible Summary display to off for existing Blogs", () => {

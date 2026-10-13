@@ -67,6 +67,33 @@ function getHomeHref(localePrefix: string): string {
   return localePrefix || "/";
 }
 
+function getAuthorProfilePublicPath(
+  author:
+    | {
+        slug?: string;
+        availableLocales?: string[];
+      }
+    | undefined,
+  locale: string,
+  defaultLocale: string,
+): string | undefined {
+  if (!author?.slug) {
+    return undefined;
+  }
+
+  const profileLocale = author.availableLocales?.length
+    ? author.availableLocales.includes(locale)
+      ? locale
+      : defaultLocale
+    : locale;
+
+  return buildLocalePublicPath({
+    locale: profileLocale,
+    defaultLocale,
+    path: `/authors/${author.slug}`,
+  });
+}
+
 export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
@@ -124,7 +151,13 @@ export async function generateMetadata({
       locales: site.locales,
 
       domains: site.domains,
+      canonicalDomain: site.canonicalDomain,
+      availableLocales: author.availableLocales,
     });
+
+    const hasLocalizedAuthor =
+      author.availableLocales?.includes(locale) ??
+      locale === site.defaultLocale;
 
     return buildSeoMetadata({
       siteId: site._id,
@@ -141,6 +174,13 @@ export async function generateMetadata({
       imageAlt: author.imageAlt,
 
       type: "website",
+
+      seo: hasLocalizedAuthor
+        ? undefined
+        : {
+            indexing: "noindex",
+            following: "follow",
+          },
 
       languageAlternates: authorLinks.languageAlternates,
     });
@@ -172,6 +212,7 @@ export async function generateMetadata({
       locales: site.locales,
 
       domains: site.domains,
+      canonicalDomain: site.canonicalDomain,
     });
 
     return buildSeoMetadata({
@@ -213,6 +254,7 @@ export async function generateMetadata({
       defaultLocale: site.defaultLocale,
 
       domains: site.domains,
+      canonicalDomain: site.canonicalDomain,
     });
 
     return buildSeoMetadata({
@@ -237,15 +279,15 @@ export async function generateMetadata({
 
       modifiedAt: blog.lastModifiedAt,
 
-      articleAuthorUrls: blog.author?.slug
-        ? [
-            buildLocalePublicPath({
-              locale,
-              defaultLocale: site.defaultLocale,
-              path: `/authors/${blog.author.slug}`,
-            }),
-          ]
-        : undefined,
+      articleAuthorUrls: (() => {
+        const authorPath = getAuthorProfilePublicPath(
+          blog.author,
+          locale,
+          site.defaultLocale,
+        );
+
+        return authorPath ? [authorPath] : undefined;
+      })(),
 
       articleTags: blog.taxonomy?.map((term) => term.title),
 
@@ -269,6 +311,7 @@ export async function generateMetadata({
     defaultLocale: site.defaultLocale,
 
     domains: site.domains,
+    canonicalDomain: site.canonicalDomain,
   });
 
   return buildSeoMetadata({
@@ -387,6 +430,8 @@ export default async function Page({ params, searchParams }: PageProps) {
       locales: site.locales,
 
       domains: site.domains,
+      canonicalDomain: site.canonicalDomain,
+      availableLocales: authorPage.author.availableLocales,
     });
 
     const publicPath = buildLocalePublicPath({
@@ -447,6 +492,25 @@ export default async function Page({ params, searchParams }: PageProps) {
               mainEntityId: authorPersonId,
 
               breadcrumbId: authorBreadcrumbId,
+
+              dateCreated: authorPage.author._createdAt,
+
+              dateModified: authorPage.author._updatedAt,
+
+              hasPart: authorPage.articles.map((article) => ({
+                headline: article.title,
+
+                url: new URL(
+                  buildLocalePublicPath({
+                    locale,
+                    defaultLocale: site.defaultLocale,
+                    path: `/blog/${article.slug}`,
+                  }),
+                  `${structuredSite.origin}/`,
+                ).toString(),
+
+                publishedAt: article.publishedAt,
+              })),
             }),
 
             buildPersonSchema({
@@ -492,6 +556,7 @@ export default async function Page({ params, searchParams }: PageProps) {
       locales: site.locales,
 
       domains: site.domains,
+      canonicalDomain: site.canonicalDomain,
     });
 
     const publicPath = buildLocalePublicPath({
@@ -600,6 +665,7 @@ export default async function Page({ params, searchParams }: PageProps) {
       defaultLocale: site.defaultLocale,
 
       domains: site.domains,
+      canonicalDomain: site.canonicalDomain,
     });
 
     const publicPath = buildLocalePublicPath({
@@ -633,29 +699,31 @@ export default async function Page({ params, searchParams }: PageProps) {
         )
       : null;
 
+    const blogAuthorPath = getAuthorProfilePublicPath(
+      blog.author,
+      locale,
+      site.defaultLocale,
+    );
+
     const blogAuthorUrl =
-      structuredSite && blog.author?.slug
+      structuredSite && blogAuthorPath
         ? resolveStructuredDataUrl({
             site: structuredSite,
-
-            publicPath: buildLocalePublicPath({
-              locale,
-              defaultLocale: site.defaultLocale,
-              path: `/authors/${blog.author.slug}`,
-            }),
+            publicPath: blogAuthorPath,
           })
         : undefined;
 
+    const blogReviewerPath = getAuthorProfilePublicPath(
+      blog.reviewer,
+      locale,
+      site.defaultLocale,
+    );
+
     const blogReviewerUrl =
-      structuredSite && blog.reviewer?.slug
+      structuredSite && blogReviewerPath
         ? resolveStructuredDataUrl({
             site: structuredSite,
-
-            publicPath: buildLocalePublicPath({
-              locale,
-              defaultLocale: site.defaultLocale,
-              path: `/authors/${blog.reviewer.slug}`,
-            }),
+            publicPath: blogReviewerPath,
           })
         : undefined;
 
@@ -693,6 +761,8 @@ export default async function Page({ params, searchParams }: PageProps) {
               primaryImageId: blogPrimaryImageId,
 
               reviewedBy: blog.reviewer,
+
+              reviewedByUrl: blogReviewerUrl,
 
               lastReviewed: blog.reviewedAt,
             }),
@@ -739,6 +809,8 @@ export default async function Page({ params, searchParams }: PageProps) {
               modifiedAt: blog.lastModifiedAt,
 
               author: blog.author,
+
+              authorUrl: blogAuthorUrl,
 
               citations: blog.sources,
 
@@ -787,6 +859,7 @@ export default async function Page({ params, searchParams }: PageProps) {
     defaultLocale: site.defaultLocale,
 
     domains: site.domains,
+    canonicalDomain: site.canonicalDomain,
   });
 
   const publicPath = buildLocalePublicPath({

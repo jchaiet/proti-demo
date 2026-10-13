@@ -19,6 +19,7 @@ describe("SEO GROQ contracts", () => {
   it("projects the full Site social image object rather than asset->url", () => {
     expect(SITE_SEO_QUERY).toContain("socialImage {");
     expect(SITE_SEO_QUERY).not.toContain("asset->url");
+    expect(SITE_SEO_QUERY).toContain("canonicalDomain");
   });
 });
 
@@ -28,6 +29,7 @@ describe("sitemap/search-engine GROQ contracts", () => {
     expect(SEARCH_SITE_BY_HOST_QUERY).toContain("$hostname in domains");
     expect(SEARCH_SITE_BY_HOST_QUERY).toContain("seoDefaults[]{");
     expect(SEARCH_SITE_BY_HOST_QUERY).toContain("indexing");
+    expect(SEARCH_SITE_BY_HOST_QUERY).toContain("canonicalDomain");
   });
 
   it("keeps Pages and Blogs Site-scoped while projecting document SEO", () => {
@@ -46,6 +48,9 @@ describe("sitemap/search-engine GROQ contracts", () => {
 
     expect(SITEMAP_AUTHORS_QUERY).toContain("site._ref == $siteId");
     expect(SITEMAP_AUTHORS_QUERY).not.toContain("locale == $locale");
+    expect(SITEMAP_AUTHORS_QUERY).toContain("translations[]{");
+    expect(SITEMAP_AUTHORS_QUERY).toContain("locale");
+    expect(SITEMAP_AUTHORS_QUERY).toContain("name");
   });
 
   it("projects the editorial Blog lastModifiedAt field for sitemap accuracy", () => {

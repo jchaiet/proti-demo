@@ -81,7 +81,7 @@ export const pageType = defineType({
       type: 'navigationOverride',
       group: 'navigation',
       description:
-        'Inherit the default Navigation Set configured on this Site for the Page Locale, select a custom set, or hide Header and Footer navigation for this Page.',
+        'Inherit the Site + Locale default Navigation Set, select a custom set, or hide Header and Footer navigation for this Page.',
     }),
 
     defineField({

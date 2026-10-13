@@ -45,6 +45,7 @@ async function createRepo({
       name: "Acme Health",
       key: "acme",
       domains: ["localhost", "example.com"],
+      canonicalDomain: "localhost",
       defaultLocale: "en-us",
       locales: [
         {
@@ -207,6 +208,7 @@ async function startSanity({ site, status = 200 } = {}) {
                       name: "Acme Health",
                       key: "acme",
                       domains: ["localhost", "example.com"],
+                      canonicalDomain: "localhost",
                       defaultLocale: "en-us",
                       locales: [
                         {
@@ -344,6 +346,7 @@ test("CMS drift is reported as a warning", async () => {
       name: "Acme Health",
       key: "acme",
       domains: ["localhost", "new.example.com"],
+      canonicalDomain: "localhost",
       defaultLocale: "en-us",
       locales: [
         {

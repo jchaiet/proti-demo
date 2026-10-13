@@ -61,7 +61,8 @@ beforeEach(() => {
     site: {
       _id: "site-proti",
       name: "Proti",
-      domains: ["example.com"],
+      domains: ["www.example.com", "example.com"],
+      canonicalDomain: "example.com",
       defaultLocale: "en-us",
       locales: [
         {
@@ -206,6 +207,12 @@ it("emits indexable Page/Blog, shared Taxonomy, and shared Author URLs using loc
     {
       _id: "author-jane",
       slug: "jane-smith",
+      translations: [
+        {
+          locale: "es-us",
+          name: "Juana Smith",
+        },
+      ],
     },
   ];
 
@@ -244,6 +251,35 @@ it("emits indexable Page/Blog, shared Taxonomy, and shared Author URLs using loc
   );
 
   expect(homepage?.lastModified).toEqual(new Date("2026-09-01T12:00:00Z"));
+});
+
+it("only emits non-default Author routes when localized Author content exists", async () => {
+  state.authors = [
+    {
+      _id: "author-default-only",
+      slug: "default-only",
+      translations: [],
+    },
+    {
+      _id: "author-spanish",
+      slug: "spanish",
+      translations: [
+        { locale: "es-us", name: "Autora" },
+        { locale: "fr-ca", name: "" },
+      ],
+    },
+  ];
+
+  const urls = (await buildSiteSitemap("example.com")).map(
+    (entry) => entry.url,
+  );
+
+  expect(urls).toContain("https://example.com/authors/default-only");
+  expect(urls).not.toContain("https://example.com/es-us/authors/default-only");
+
+  expect(urls).toContain("https://example.com/authors/spanish");
+  expect(urls).toContain("https://example.com/es-us/authors/spanish");
+  expect(urls).not.toContain("https://example.com/fr-ca/authors/spanish");
 });
 
 it("prefers the Blog editorial lastModifiedAt value for sitemap lastModified", async () => {
@@ -442,6 +478,34 @@ it("deduplicates accidental duplicate URLs", async () => {
       (entry) => entry.url === "https://example.com/blog/nutrition",
     ),
   ).toHaveLength(1);
+});
+
+it("uses canonicalDomain for sitemap and robots output even when requested through an alias", async () => {
+  state.site = {
+    ...state.site,
+    domains: ["www.example.com", "example.com"],
+    canonicalDomain: "example.com",
+  };
+
+  state.pages = [
+    {
+      _id: "home-en",
+      locale: "en-us",
+      isHomepage: true,
+    },
+  ];
+
+  const sitemap = await buildSiteSitemap("www.example.com");
+
+  expect(sitemap[0]?.url).toBe("https://example.com/");
+
+  await expect(buildRobotsConfig("www.example.com")).resolves.toEqual({
+    rules: {
+      userAgent: "*",
+      allow: "/",
+    },
+    sitemap: "https://example.com/sitemap.xml",
+  });
 });
 
 it("allows crawling on a configured host and advertises its sitemap", async () => {

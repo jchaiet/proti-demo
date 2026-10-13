@@ -105,6 +105,7 @@ type StructuredDataOrganizationRecord = Omit<
 type StructuredDataSiteRecord = {
   name?: string;
   domains?: string[];
+  canonicalDomain?: string;
 
   locales?: Array<{
     code?: string;
@@ -129,6 +130,7 @@ export interface WebPageStructuredDataOptions {
   primaryImageId?: string;
 
   reviewedBy?: StructuredDataAuthor;
+  reviewedByUrl?: string;
   lastReviewed?: string;
 }
 
@@ -145,6 +147,15 @@ export interface ProfilePageStructuredDataOptions {
 
   mainEntityId: string;
   breadcrumbId?: string;
+
+  dateCreated?: string;
+  dateModified?: string;
+
+  hasPart?: Array<{
+    headline: string;
+    url: string;
+    publishedAt?: string;
+  }>;
 }
 
 export interface BlogPostingStructuredDataOptions {
@@ -165,6 +176,7 @@ export interface BlogPostingStructuredDataOptions {
   modifiedAt?: string;
 
   author?: StructuredDataAuthor;
+  authorUrl?: string;
 
   citations?: StructuredDataCitation[];
 
@@ -259,6 +271,22 @@ function normalizeSchemaDate(value?: string): string | undefined {
   return new Date(timestamp).toISOString().slice(0, 10);
 }
 
+function normalizeSchemaDateTime(value?: string): string | undefined {
+  const trimmed = value?.trim();
+
+  if (!trimmed) {
+    return undefined;
+  }
+
+  const timestamp = Date.parse(trimmed);
+
+  if (Number.isNaN(timestamp)) {
+    return undefined;
+  }
+
+  return new Date(timestamp).toISOString();
+}
+
 function buildPostalAddress(
   address: StructuredDataOrganizationAddress | undefined,
 ): JsonLdObject | null {
@@ -333,6 +361,7 @@ export async function resolveStructuredDataSite(
         ][0]{
           name,
           domains,
+          canonicalDomain,
 
           locales[] {
             code
@@ -399,7 +428,7 @@ export async function resolveStructuredDataSite(
     return null;
   }
 
-  const origin = getSiteOrigin(site.domains);
+  const origin = getSiteOrigin(site.domains, site.canonicalDomain);
 
   if (!origin) {
     return null;
@@ -503,7 +532,7 @@ function buildCredentialSchema(
   const recognizedBy = credential.recognizedBy?.trim();
 
   return compactObject({
-    "@type": "Credential",
+    "@type": "EducationalOccupationalCredential",
 
     name,
 
@@ -564,7 +593,7 @@ export function buildPersonSchema({
 
   const profileUrl = author.profileUrl?.trim() || undefined;
 
-  const sameAs = compactStringArray([
+  const sameAs = uniqueStringArray([
     ...(author.sameAs ?? []),
 
     ...(pageUrl && profileUrl && profileUrl !== pageUrl ? [profileUrl] : []),
@@ -698,6 +727,7 @@ export function buildWebPageSchema({
   breadcrumbId,
   primaryImageId,
   reviewedBy,
+  reviewedByUrl,
   lastReviewed,
 }: WebPageStructuredDataOptions): JsonLdObject {
   return compactObject({
@@ -722,9 +752,12 @@ export function buildWebPageSchema({
     },
 
     reviewedBy: reviewedBy
-      ? {
+      ? compactObject({
+          "@type": "Person",
           "@id": getPersonSchemaId(site, reviewedBy),
-        }
+          name: reviewedBy.name,
+          url: reviewedByUrl?.trim() || null,
+        })
       : null,
 
     lastReviewed: normalizeSchemaDate(lastReviewed) ?? null,
@@ -757,7 +790,24 @@ export function buildProfilePageSchema({
   locale,
   mainEntityId,
   breadcrumbId,
+  dateCreated,
+  dateModified,
+  hasPart = [],
 }: ProfilePageStructuredDataOptions): JsonLdObject {
+  const authoredContent = hasPart
+    .filter((item) => item.headline.trim() && item.url.trim())
+    .map((item) =>
+      compactObject({
+        "@type": "BlogPosting",
+        "@id": getBlogPostingSchemaId(item.url),
+        url: item.url,
+        headline: item.headline,
+        datePublished: normalizeSchemaDateTime(item.publishedAt) ?? null,
+        author: {
+          "@id": mainEntityId,
+        },
+      }),
+    );
   return compactObject({
     "@type": "ProfilePage",
 
@@ -776,6 +826,10 @@ export function buildProfilePageSchema({
 
     inLanguage: siteLocaleToLanguageTag(locale),
 
+    dateCreated: normalizeSchemaDateTime(dateCreated) ?? null,
+
+    dateModified: normalizeSchemaDateTime(dateModified) ?? null,
+
     isPartOf: {
       "@id": getWebSiteSchemaId(site),
     },
@@ -793,6 +847,8 @@ export function buildProfilePageSchema({
           "@id": breadcrumbId,
         }
       : null,
+
+    hasPart: authoredContent.length > 0 ? authoredContent : null,
   });
 }
 
@@ -806,6 +862,7 @@ export function buildBlogPostingSchema({
   publishedAt,
   modifiedAt,
   author,
+  authorUrl,
   citations,
   keywords,
   topics,
@@ -840,7 +897,7 @@ export function buildBlogPostingSchema({
 
     dateModified: modifiedAt ?? publishedAt ?? null,
 
-    keywords: compactStringArray(keywords) ?? null,
+    keywords: uniqueStringArray(keywords) ?? null,
 
     articleSection: topicNames ?? null,
 
@@ -854,6 +911,7 @@ export function buildBlogPostingSchema({
     citation: citationSchemas.length > 0 ? citationSchemas : null,
 
     mainEntityOfPage: {
+      "@type": "WebPage",
       "@id": getWebPageSchemaId(url),
     },
 
@@ -862,9 +920,12 @@ export function buildBlogPostingSchema({
     },
 
     author: author
-      ? {
+      ? compactObject({
+          "@type": "Person",
           "@id": getPersonSchemaId(site, author),
-        }
+          name: author.name,
+          url: authorUrl?.trim() || null,
+        })
       : null,
 
     publisher: {

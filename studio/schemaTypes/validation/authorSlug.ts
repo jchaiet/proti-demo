@@ -152,8 +152,8 @@ export async function validateUniqueAuthorSlug(value: unknown, context: Validati
 
   return {
     message:
-      `Another Author already uses this slug for the selected Site: ${ownerLabel}. ` +
-      'Choose a different slug before publishing this Author.',
+      `Another Author already uses this URL segment for the selected Site: ${ownerLabel}. ` +
+      'Choose a different URL segment before publishing this Author.',
     path: ['slug'],
   }
 }
