@@ -4,6 +4,10 @@ Use this before merging a release PR and before tagging a Proti baseline.
 
 ## Version / release target
 
+- [ ] Root/Web/Studio package versions match the intended Proti `0.3.0` release.
+- [ ] Independently-versioned local Mino UI tarball is present in `web/` and matches `web/package.json` and the root lockfile.
+- [ ] Review [v0.3.0 Release Notes](releases/v0.3.0.md) and [SEO/GEO](SEO_GEO.md).
+
 - [ ] Release target is documented in `CHANGELOG.md`.
 - [ ] Release PR contains only intended changes.
 - [ ] `git status` is clean after the final validation run.
@@ -169,6 +173,17 @@ Do not loosen `--frozen-lockfile` to make a release pass. Fix dependency, tarbal
 - [ ] `CHANGELOG.md` includes the release.
 - [ ] Environment variable examples contain placeholders only—never real secrets.
 
+## v0.3 SEO/GEO sign-off
+
+- [ ] Representative Page, Blog, and Author HTML: canonical, hreflang, `lang`, metadata, robots and JSON-LD confirmed.
+- [ ] Locale selector only offers existing equivalents and has no broken fallback items.
+- [ ] Sitemap/robots reflect production Site canonical domain and indexed routes.
+- [ ] Publish/revert webhook revalidation verified in the deployed environment.
+- [ ] Secrets (including E2E environment credentials) rotated if disclosed and all local env files ignored.
+- [ ] `.github` workflows and CI status requirements inspected in the actual repository; not present in the supplied documentation archive.
+- [ ] Confirm optional Web/Studio `.env.example` templates are tracked; these were not present in the supplied documentation archive.
+- [ ] Baselines were inspected/committed and final `pnpm test:e2e` passed without regenerating them.
+
 ## Tagging
 
 After the release PR is merged and `main` is green:
@@ -176,8 +191,8 @@ After the release PR is merged and `main` is green:
 ```bash
 git checkout main
 git pull --ff-only
-git tag v0.2.0
-git push origin v0.2.0
+git tag -a v0.3.0 -m "Proti v0.3.0"
+git push origin v0.3.0
 ```
 
 Adjust the tag version for later releases.

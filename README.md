@@ -231,6 +231,13 @@ Before tagging a release, use:
 - [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md)
 - [`CHANGELOG.md`](CHANGELOG.md)
 
+## Documentation index
+
+- [Getting Started](docs/GETTING_STARTED.md) · [Architecture](docs/ARCHITECTURE.md) · [Configuration](docs/CONFIGURATION.md)
+- [Content Model](docs/CONTENT_MODEL.md) · [Components](docs/COMPONENTS.md) · [Editor Guide](docs/EDITOR_GUIDE.md) · [Translations](docs/TRANSLATIONS.md)
+- [SEO/GEO](docs/SEO_GEO.md) · [Testing](docs/TESTING.md) · [Deployment](docs/DEPLOYMENT.md)
+- [v0.3.0 Release Notes](docs/releases/v0.3.0.md) · [Release Checklist](docs/RELEASE_CHECKLIST.md) · [Changelog](CHANGELOG.md)
+
 ## Current baseline
 
-The current release target is **Proti v0.2.0**.
+The current release target is **Proti v0.3.0**. The implementation passed final developer and integration checks; complete the repository artifact/CI audit before tagging. The `mino-ui-0.0.3.tgz` package dependency is independently versioned and must be present in the release repository.

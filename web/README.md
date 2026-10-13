@@ -2,6 +2,8 @@
 
 The Proti Web package is the Next.js application for the Website + CMS Starter. It resolves content from Sanity, renders Mino UI components, supports localized routes, search, Draft Mode/visual editing, webhook-driven cache revalidation, and Playwright regression testing.
 
+See also the repository-level [Architecture](../docs/ARCHITECTURE.md), [SEO/GEO](../docs/SEO_GEO.md), [Testing](../docs/TESTING.md), and [Deployment](../docs/DEPLOYMENT.md) guides.
+
 ## Technology
 
 The current package includes:
@@ -26,7 +28,7 @@ pnpm install
 The package currently references Mino UI through a local tarball:
 
 ```text
-mino-ui-0.0.2.tgz
+mino-ui-0.0.3.tgz
 ```
 
 Make sure that file is present at the expected path before installing dependencies.
