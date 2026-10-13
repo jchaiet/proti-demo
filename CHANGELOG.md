@@ -2,6 +2,32 @@
 
 All notable Proti baseline changes are recorded here.
 
+## v0.3.0 — SEO/GEO and Locale Integrity
+
+### Added
+
+- Site canonical-domain-driven SEO origin used by canonical URLs, alternates, sitemap, robots, and structured data.
+- Locale/hreflang validation and direct translation availability handling.
+- Structured-data entity graph builders for Site/Organization, WebPage, BlogPosting, Person/ProfilePage, CollectionPage, and breadcrumbs.
+- Editorial heading/image accessibility and SEO-output regression coverage.
+- SEO/GEO, translation, architecture, deployment, testing, editor, and release documentation.
+
+### Improved
+
+- Default/unprefixed locale and exact-alternate language switching behavior.
+- Author locale availability for profiles and connected Blog bylines.
+- Semantic source-quality support for Blog reviews, authorship, citations, and discoverability.
+
+### Fixed / Regression
+
+- Blog/Author resolver normalization of missing `translatedLocales` arrays (runtime error during Playwright smoke tests).
+- Next.js development-indicator visual snapshot drift; approved Chromium baselines regenerated after inspection.
+
+### Validation
+
+- Reported green: Mino UI, Web, Studio, root starter checks, Playwright development/production, and manual integration checks for routing, SEO/GEO, search, modals and revalidation.
+- Local Mino tarball, lockfile, tracked CI workflows and example-env files still require verification in the release repository before tagging.
+
 ## v0.2.0 — Developer Experience
 
 ### Added

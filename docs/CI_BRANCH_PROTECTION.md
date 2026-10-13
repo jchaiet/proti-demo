@@ -1,6 +1,6 @@
 # CI and Branch Protection
 
-This guide documents the finalized GitHub CI and branch-protection setup for Proti.
+This guide describes the intended GitHub CI and branch-protection setup for Proti. Confirm the rules and workflow against the live repository: `.github/` was not included in the v0.3 source archive supplied for documentation.
 
 ## Purpose
 
@@ -176,7 +176,7 @@ A first-run message such as `pnpm cache is not found` is normal.
 Web currently consumes:
 
 ```text
-web/mino-ui-0.0.2.tgz
+web/mino-ui-0.0.3.tgz
 ```
 
 After intentionally rebuilding/replacing it:

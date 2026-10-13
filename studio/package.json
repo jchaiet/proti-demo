@@ -1,7 +1,7 @@
 {
-  "name": "proti-demo-studio",
+  "name": "proti-studio",
   "private": true,
-  "version": "1.0.0",
+  "version": "0.3.0",
   "main": "package.json",
   "license": "UNLICENSED",
   "scripts": {

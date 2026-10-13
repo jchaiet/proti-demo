@@ -1,5 +1,7 @@
 # Proti Sanity Studio
 
+See the repository [Editor Guide](../docs/EDITOR_GUIDE.md), [Content Model](../docs/CONTENT_MODEL.md), and [Translations](../docs/TRANSLATIONS.md).
+
 This package is the Sanity Content Studio for Proti. It defines the content model, authoring structure, translation actions, validation, navigation, taxonomy, reusable blocks, and CMS-side configuration used by the Next.js Web application.
 
 ## Install
@@ -12,13 +14,14 @@ pnpm install
 
 ## Environment Configuration
 
-There is currently **no `studio/.env.example`**.
+Studio reads its configuration from `studio/sanity.config.ts`:
 
-The Studio's Sanity project/dataset configuration is handled by the current Studio configuration rather than a documented Studio env-file contract. Do not create an env template solely for documentation.
+- `SANITY_STUDIO_PROJECT_ID` (required)
+- `SANITY_STUDIO_DATASET` (defaults to `production`)
+- `SANITY_STUDIO_TITLE` (optional)
+- `SANITY_STUDIO_PREVIEW_URL` (defaults to `http://localhost:3000`)
 
-If the Studio is later changed to read project/dataset configuration from environment variables, add a committed `studio/.env.example` at the same time and document those variables here.
-
-The Web application's Sanity and revalidation environment variables are documented separately in `web/.env.example` and `web/README.md`.
+The root `pnpm proti:init` workflow writes `studio/.env.local` and `web/.env.local`. Do not commit real credentials. The uploaded documentation source archive did not contain a Studio example-env template; verify placeholder templates separately in the release repository. See [Configuration](../docs/CONFIGURATION.md).
 
 ## Development
 
@@ -297,7 +300,7 @@ Key translation behaviors include:
 - Blogs can retain the same slug in multiple locales.
 - Navigation Header/Footer internal Page links are remapped to target-locale Pages.
 - Navigation Set translation creates/resolves the matching translated Header/Footer.
-- Modal and other keyed content translations use stable keys.
+- Keyed content translations use stable keys. The translation-action implementation includes Modal support, but the current `studio/sanity.config.ts` action registration omits `modal`; verify the intended Modal authoring UI before relying on this action.
 - Parent-first rules are enforced where the hierarchy requires a translated parent.
 
 The Web language selector only exposes translations that actually exist. A missing translation is not represented as a fallback link to the target locale homepage.

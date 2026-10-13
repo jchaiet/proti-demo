@@ -1,14 +1,19 @@
 # Proti Playwright E2E tests
 
+For the v0.3 production-release workflow, see [Testing](../../docs/TESTING.md). Screenshot updates are an intentional approval action, not a mandatory step before every run.
+
 This setup belongs in the **web app root**, next to that app's `package.json`.
 It does not belong in the Sanity Studio package.
 
 ## 1. Install Playwright browsers
 
+Playwright is already a Web development dependency in Proti v0.3. Install browser binaries if necessary:
+
 ```bash
-pnpm add -D @playwright/test@1.63.0
 pnpm exec playwright install chromium firefox
 ```
+
+Do not re-add the dependency just to run existing tests.
 
 On Linux CI, if the runner does not already have the required system dependencies:
 
@@ -66,9 +71,9 @@ The Chromium mobile project uses Playwright's full device descriptor rather
 than only shrinking the viewport. That also emulates relevant mobile browser
 properties such as touch, screen size and user agent.
 
-## 5. Establish the visual baseline
+## 5. Establish or intentionally refresh the visual baseline
 
-After smoke tests are green:
+**Only** when no approved baseline exists or a visual change has been reviewed and accepted (and smoke tests are green):
 
 ```bash
 pnpm test:e2e:update
@@ -88,6 +93,8 @@ Review those images and commit them.
 Firefox is intentionally excluded from `visual.spec.ts`. It still runs the
 functional smoke tests, giving Proti cross-browser coverage without requiring a
 second browser-specific screenshot baseline.
+
+For an existing approved baseline, **skip the update command**. Refreshing snapshots automatically can hide an actual regression. See [Testing](../../docs/TESTING.md).
 
 ## 6. Normal visual regression run
 
