@@ -9,7 +9,7 @@ import { resolveLink } from "@/cms/resolvers/link";
 export async function mapFullBleedCard(
   card: CmsFullBleedCard,
 ): Promise<FullBleedCardProps | null> {
-  const imageSrc = resolveSanityImage(card.image);
+  const imageSrc = resolveSanityImage(card.image, { width: 1600 });
 
   if (!imageSrc) {
     return null;

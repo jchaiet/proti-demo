@@ -1,3 +1,5 @@
+import { cache } from "react";
+
 import type { CmsBlock, CmsImage } from "@/cms/types";
 
 import { resolveSanityImagePreset } from "@/cms/resolvers/image";
@@ -48,30 +50,33 @@ const HOMEPAGE_QUERY = `
   }
 `;
 
-const ROOT_PAGE_QUERY = `
+/**
+ * A route's slugs can be resolved in one request instead of one request per
+ * path segment. Candidate documents are scoped to the requested Site/Locale;
+ * their parent references are checked in order below so identical slugs in
+ * different branches cannot resolve to the wrong Page.
+ */
+const PAGE_ROUTE_CANDIDATES_QUERY = `
   *[
     _type == "page" &&
     site._ref == $siteId &&
     locale == $locale &&
-    slug == $slug &&
-    !defined(parent) &&
+    slug in $slugs &&
     isHomepage != true
-  ][0]{
-    _id
+  ]{
+    _id,
+    slug,
+    parent {
+      _ref
+    }
   }
 `;
 
-const CHILD_PAGE_QUERY = `
-  *[
-    _type == "page" &&
-    site._ref == $siteId &&
-    locale == $locale &&
-    slug == $slug &&
-    parent._ref == $parentId
-  ][0]{
-    _id
-  }
-`;
+type PageRouteCandidate = {
+  _id: string;
+  slug?: string;
+  parent?: { _ref?: string } | null;
+};
 
 export const PAGE_BY_ID_QUERY = `
   *[
@@ -178,6 +183,8 @@ async function getPageById(
   };
 }
 
+const cachedGetPageById = cache(getPageById);
+
 type PageRouteLookup = {
   _id: string;
   slug?: string;
@@ -218,11 +225,13 @@ async function getPageRouteById(
  * by translation / routing checks where we only need to know whether an
  * equivalent Page exists.
  */
-export async function resolvePageIdBySegments(
+async function resolvePageIdByRouteKey(
   siteId: string,
   locale: string,
-  segments: string[],
+  routeKey: string,
 ): Promise<string | null> {
+  const segments = JSON.parse(routeKey) as string[];
+
   if (segments.length === 0) {
     const homepage = await sanityFetch<PageLookup | null>(HOMEPAGE_QUERY, {
       siteId,
@@ -232,34 +241,61 @@ export async function resolvePageIdBySegments(
     return homepage?._id ?? null;
   }
 
-  const rootPage = await sanityFetch<PageLookup | null>(ROOT_PAGE_QUERY, {
-    siteId,
-    locale,
-    slug: segments[0],
-  });
+  const candidates = await sanityFetch<PageRouteCandidate[]>(
+    PAGE_ROUTE_CANDIDATES_QUERY,
+    {
+      siteId,
+      locale,
+      slugs: Array.from(new Set(segments)),
+    },
+  );
 
-  if (!rootPage) {
+  if (!Array.isArray(candidates) || candidates.length === 0) {
     return null;
   }
 
-  let currentPageId = rootPage._id;
+  let currentPageId: string | null = null;
 
-  for (const slug of segments.slice(1)) {
-    const childPage = await sanityFetch<PageLookup | null>(CHILD_PAGE_QUERY, {
-      siteId,
-      locale,
-      slug,
-      parentId: currentPageId,
-    });
+  for (const slug of segments) {
+    const matchingPage: PageRouteCandidate | undefined = candidates.find(
+      (candidate) =>
+        candidate.slug === slug &&
+        Boolean(candidate._id) &&
+        (currentPageId === null
+          ? // Root Pages must have no parent object, not merely a missing ref.
+            candidate.parent == null
+          : candidate.parent?._ref === currentPageId),
+    );
 
-    if (!childPage) {
+    if (!matchingPage) {
       return null;
     }
 
-    currentPageId = childPage._id;
+    currentPageId = matchingPage._id;
   }
 
   return currentPageId;
+}
+
+/*
+ * React memoization prevents metadata and route rendering from repeating the
+ * same Site/Locale/path lookup in a request. This is not a cross-request
+ * cache; Sanity's existing publish/draft cache policy remains unchanged.
+ * Stringifying the segments produces the same key for independently created
+ * arrays in generateMetadata() and Page().
+ */
+const cachedResolvePageIdByRouteKey = cache(resolvePageIdByRouteKey);
+
+export async function resolvePageIdBySegments(
+  siteId: string,
+  locale: string,
+  segments: string[],
+): Promise<string | null> {
+  return cachedResolvePageIdByRouteKey(
+    siteId,
+    locale,
+    JSON.stringify(segments),
+  );
 }
 
 /**
@@ -335,5 +371,10 @@ export async function resolvePageBySegments(
     return null;
   }
 
-  return getPageById(pageId, siteId, locale, options.visualEditing === true);
+  return cachedGetPageById(
+    pageId,
+    siteId,
+    locale,
+    options.visualEditing === true,
+  );
 }

@@ -11,9 +11,9 @@ export async function mapArticleCard(
 ): Promise<ArticleCardProps> {
   const resolvedLink = card.link ? await resolveLink(card.link) : undefined;
 
-  const imageUrl = resolveSanityImage(card.image);
+  const imageUrl = resolveSanityImage(card.image, { width: 960 });
 
-  const avatarUrl = resolveSanityImage(card.author?.avatar);
+  const avatarUrl = resolveSanityImage(card.author?.avatar, { width: 240 });
 
   return {
     title: card.title,

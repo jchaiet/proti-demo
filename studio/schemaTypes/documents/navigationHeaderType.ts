@@ -199,7 +199,8 @@ export const navigationHeaderType = defineType({
       title: 'Primary Navigation',
       type: 'array',
       group: 'content',
-      description: 'Locale-specific primary navigation items rendered in this Header.',
+      description:
+        'Top-level Header items. Open an item and choose Navigation Type: Link, Dropdown, or Mega Menu. Within a Mega Menu, add sections containing Links, Tiles, Cards, or a Featured section.',
       of: [
         defineArrayMember({
           type: 'navigationItem',

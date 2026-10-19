@@ -108,9 +108,12 @@ describe("locale alternate language tags", () => {
         }
 
         if (query.includes("slug.current == $slug")) {
-          return {
-            _id: `blog-${String(params?.locale ?? "unknown")}`,
-          };
+          expect(params?.locales).toEqual(["en-us", "es-us", "fil-ph"]);
+          return [
+            { locale: "en-us" },
+            { locale: "es-us" },
+            { locale: "fil-ph" },
+          ];
         }
 
         throw new Error(`Unexpected query: ${query}`);

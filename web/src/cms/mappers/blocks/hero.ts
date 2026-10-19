@@ -27,7 +27,9 @@ export async function mapHeroBlock(block: CmsHeroBlock): Promise<HeroProps> {
   });
 
   const imageSrc =
-    block.mediaType === "image" ? resolveSanityImage(block.image) : undefined;
+    block.mediaType === "image"
+      ? resolveSanityImage(block.image, { width: 1920 })
+      : undefined;
 
   const videoSrc = block.mediaType === "video" ? block.videoUrl : undefined;
 

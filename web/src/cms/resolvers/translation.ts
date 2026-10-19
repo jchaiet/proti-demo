@@ -83,14 +83,15 @@ const BLOG_SLUG_BY_ID_QUERY = `
   }
 `;
 
-const BLOG_BY_SLUG_QUERY = `
+/** Fetch available locales with one GROQ request, regardless of locale count. */
+const BLOG_LOCALES_BY_SLUG_QUERY = `
   *[
     _type == "blog" &&
     site._ref == $siteId &&
-    locale == $locale &&
+    locale in $locales &&
     slug.current == $slug
-  ][0]{
-    _id
+  ]{
+    locale
   }
 `;
 
@@ -109,18 +110,32 @@ async function getBlogSlugById(
   return blog?.slug ?? null;
 }
 
-async function blogExists(
+async function getBlogAvailableLocales(
   siteId: string,
-  locale: string,
+  locales: string[],
   slug: string,
-): Promise<boolean> {
-  const blog = await sanityFetch<{ _id: string } | null>(BLOG_BY_SLUG_QUERY, {
-    siteId,
-    locale,
-    slug,
-  });
+): Promise<string[]> {
+  const matches = await sanityFetch<Array<{ locale?: string }> | null>(
+    BLOG_LOCALES_BY_SLUG_QUERY,
+    {
+      siteId,
+      locales,
+      slug,
+    },
+  );
 
-  return Boolean(blog?._id);
+  const configuredLocales = new Set(locales);
+
+  return Array.from(
+    new Set(
+      (matches ?? [])
+        .map((match) => match.locale)
+        .filter(
+          (locale): locale is string =>
+            typeof locale === "string" && configuredLocales.has(locale),
+        ),
+    ),
+  );
 }
 
 /**
@@ -216,21 +231,17 @@ export async function resolveDocumentTranslations({
     };
   }
 
-  const results = await Promise.all(
-    localeCodes.map(async (locale) => ({
-      locale,
-
-      exists: await blogExists(siteId, locale, slug),
-    })),
+  const availableLocales = await getBlogAvailableLocales(
+    siteId,
+    localeCodes,
+    slug,
   );
 
   return buildLocaleLinks({
     routePath: `/blog/${slug}`,
     defaultLocale,
     locales: localeCodes.map((code) => ({ code })),
-    availableLocales: results
-      .filter((result) => result.exists)
-      .map((result) => result.locale),
+    availableLocales,
     domains: domains.length > 0 ? domains : (site?.domains ?? []),
     canonicalDomain: canonicalDomain ?? site?.canonicalDomain,
   });

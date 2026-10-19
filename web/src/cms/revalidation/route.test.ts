@@ -2,8 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildAllSitePublicPaths,
+  buildAffectedPagePaths,
   buildAuthorPaths,
   buildBlogPath,
+  buildBlogTranslationCounterpartPaths,
+  buildPageTranslationCounterpartPaths,
   buildPagePaths,
   buildTaxonomyPaths,
   type SitePublicRouteIndex,
@@ -67,6 +70,101 @@ const index: SitePublicRouteIndex = {
 };
 
 describe("revalidation route builders", () => {
+  it("invalidates only the changed Page hierarchy rather than every Page in the locale", () => {
+    const movedParent = {
+      _id: "products-en",
+      _type: "page" as const,
+      siteId: "site-a",
+      locale: "en-us",
+      slug: "catalog",
+    };
+
+    expect(buildAffectedPagePaths(index, movedParent)).toEqual([
+      "/catalog",
+      "/catalog/widget",
+    ]);
+  });
+
+  it("identifies existing translated Pages when publishing a new same-path locale", () => {
+    const withTranslation = {
+      ...index,
+      pages: [
+        ...index.pages!,
+        { _id: "products-es", locale: "es-us", slug: "products" },
+      ],
+    };
+
+    expect(
+      buildPageTranslationCounterpartPaths(withTranslation, {
+        _id: "products-es",
+        _type: "page",
+        siteId: "site-a",
+        locale: "es-us",
+        slug: "products",
+      }),
+    ).toEqual(["/products"]);
+  });
+
+  it("matches changed parent and descendant paths to existing translated routes", () => {
+    const withTranslation = {
+      ...index,
+      pages: [
+        ...index.pages!,
+        { _id: "products-es", locale: "es-us", slug: "products" },
+        {
+          _id: "widget-es",
+          locale: "es-us",
+          slug: "widget",
+          parentId: "products-es",
+        },
+      ],
+    };
+
+    expect(
+      buildPageTranslationCounterpartPaths(withTranslation, {
+        _id: "products-en",
+        _type: "page",
+        siteId: "site-a",
+        locale: "en-us",
+        slug: "products",
+      }),
+    ).toEqual(["/es-us/products", "/es-us/products/widget"]);
+
+    // The source parent has moved from /products to /catalog; the ES
+    // counterparts at the old route must drop stale hreflang references.
+    expect(
+      buildPageTranslationCounterpartPaths(withTranslation, {
+        _id: "products-en",
+        _type: "page",
+        siteId: "site-a",
+        locale: "en-us",
+        slug: "catalog",
+      }),
+    ).toEqual([]);
+  });
+
+  it("identifies same-slug Blog counterparts without invalidating unrelated Blogs", () => {
+    expect(
+      buildBlogTranslationCounterpartPaths(index, {
+        _id: "blog-es",
+        _type: "blog",
+        siteId: "site-a",
+        locale: "es-us",
+        slug: "nutrition",
+      }),
+    ).toEqual(["/blog/nutrition"]);
+
+    expect(
+      buildBlogTranslationCounterpartPaths(index, {
+        _id: "blog-es",
+        _type: "blog",
+        siteId: "site-a",
+        locale: "es-us",
+        slug: "unrelated",
+      }),
+    ).toEqual([]);
+  });
+
   it("builds locale-aware Page paths and keeps authored Search pages", () => {
     expect(buildPagePaths(index)).toEqual([
       "/",

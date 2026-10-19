@@ -25,7 +25,7 @@ async function mapCarouselItem(
 ): Promise<CarouselBlockItemConfig | null> {
   switch (item._type) {
     case "carouselImageItem": {
-      const imageSrc = resolveSanityImage(item.image);
+      const imageSrc = resolveSanityImage(item.image, { width: 1200 });
 
       if (!imageSrc) {
         return null;

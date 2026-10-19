@@ -129,12 +129,7 @@ describe("resolveDocumentTranslations - Blog", () => {
       .mockResolvedValueOnce({
         slug: "nutrition-basics",
       })
-      .mockResolvedValueOnce({
-        _id: "blog-en",
-      })
-      .mockResolvedValueOnce({
-        _id: "blog-es",
-      });
+      .mockResolvedValueOnce([{ locale: "en-us" }, { locale: "es-us" }]);
 
     const result = await resolveDocumentTranslations({
       siteId: "site-proti",
@@ -143,6 +138,14 @@ describe("resolveDocumentTranslations - Blog", () => {
       defaultLocale: "en-us",
       domains: ["www.example.com", "example.com"],
       canonicalDomain: "example.com",
+    });
+
+    expect(mocks.fetch).toHaveBeenCalledTimes(3);
+    expect(mocks.fetch.mock.calls[2]?.[0]).toContain("locale in $locales");
+    expect(mocks.fetch.mock.calls[2]?.[1]).toEqual({
+      siteId: "site-proti",
+      locales: ["en-us", "es-us"],
+      slug: "nutrition-basics",
     });
 
     expect(result.localeHrefs).toEqual({
@@ -173,10 +176,7 @@ describe("resolveDocumentTranslations - Blog", () => {
       .mockResolvedValueOnce({
         slug: "nutrition-basics",
       })
-      .mockResolvedValueOnce({
-        _id: "blog-en",
-      })
-      .mockResolvedValueOnce(null);
+      .mockResolvedValueOnce([{ locale: "en-us" }]);
 
     const result = await resolveDocumentTranslations({
       siteId: "site-proti",

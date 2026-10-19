@@ -12,6 +12,13 @@ import { resolveSiteByHost } from "@/sanity/queries/site";
 
 export const dynamic = "force-dynamic";
 
+// Bound unauthenticated requests before they issue a potentially expensive GROQ query.
+const MAX_SEARCH_QUERY_LENGTH = 200;
+const MAX_SEARCH_URL_QUERY_LENGTH = 4096;
+const MAX_SEARCH_PAGE = 500;
+const MAX_SEARCH_TAXONOMY_FILTERS = 25;
+const MAX_SEARCH_TAXONOMY_ID_LENGTH = 128;
+
 const VALID_TYPES = new Set<SearchContentType>(["page", "blog"]);
 
 const VALID_SORTS = new Set<SearchSort>([
@@ -118,6 +125,13 @@ function getSiteLocales(site: { locales?: unknown }): string[] {
 
 export async function GET(request: NextRequest) {
   try {
+    if (request.nextUrl.search.length > MAX_SEARCH_URL_QUERY_LENGTH) {
+      return NextResponse.json(
+        { error: "Search request is too long." },
+        { status: 414 },
+      );
+    }
+
     const host = getRequestHost(request);
 
     if (!host) {
@@ -146,6 +160,13 @@ export async function GET(request: NextRequest) {
 
     const query = request.nextUrl.searchParams.get("q")?.trim() ?? "";
 
+    if (query.length > MAX_SEARCH_QUERY_LENGTH) {
+      return NextResponse.json(
+        { error: "Search query is too long." },
+        { status: 400 },
+      );
+    }
+
     const requestedLocale = request.nextUrl.searchParams.get("locale")?.trim();
 
     const locale = requestedLocale || site.defaultLocale;
@@ -165,6 +186,13 @@ export async function GET(request: NextRequest) {
 
     const page = parsePositiveInt(request.nextUrl.searchParams.get("page"), 1);
 
+    if (page > MAX_SEARCH_PAGE) {
+      return NextResponse.json(
+        { error: "Search page is out of range." },
+        { status: 400 },
+      );
+    }
+
     const pageSize = Math.min(
       50,
       parsePositiveInt(request.nextUrl.searchParams.get("pageSize"), 12),
@@ -173,6 +201,16 @@ export async function GET(request: NextRequest) {
     const types = parseTypes(request.nextUrl.searchParams.get("type"));
 
     const taxonomy = parseTaxonomy(request);
+
+    if (
+      taxonomy.length > MAX_SEARCH_TAXONOMY_FILTERS ||
+      taxonomy.some((id) => id.length > MAX_SEARCH_TAXONOMY_ID_LENGTH)
+    ) {
+      return NextResponse.json(
+        { error: "Too many or invalid taxonomy filters." },
+        { status: 400 },
+      );
+    }
 
     const taxonomyMatch = parseTaxonomyMatch(
       request.nextUrl.searchParams.get("taxonomyMatch"),

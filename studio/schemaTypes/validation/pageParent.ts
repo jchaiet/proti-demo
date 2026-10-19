@@ -120,7 +120,7 @@ export async function validatePageParent(
     )
 
     if (!parentPage) {
-      break
+      return 'Parent Page could not be found. Select an existing Parent Page or remove the reference.'
     }
 
     if (cleanId(parentPage.site?._ref) !== currentSiteId) {

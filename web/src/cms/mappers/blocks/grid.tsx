@@ -23,7 +23,7 @@ async function mapGridItem(
 ): Promise<GridBlockItemConfig | null> {
   switch (item._type) {
     case "gridImageItem": {
-      const imageSrc = resolveSanityImage(item.image);
+      const imageSrc = resolveSanityImage(item.image, { width: 1200 });
 
       if (!imageSrc) {
         return null;
@@ -151,7 +151,7 @@ export async function mapGridBlock(
 
     grayscaleImages: block.grayscaleImages ?? false,
 
-    imageSrc: resolveSanityImage(block.sideImage),
+    imageSrc: resolveSanityImage(block.sideImage, { width: 1200 }),
 
     imageAlt: block.sideImage?.alt ?? "",
   };

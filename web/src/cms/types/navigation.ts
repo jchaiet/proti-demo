@@ -1,6 +1,7 @@
 import type { CmsCta } from "./cta";
 import type { CmsIcon } from "./icon";
 import type { CmsLink } from "./link";
+import type { CmsImage } from "./image";
 
 export type CmsNavigationOverrideMode = "inherit" | "custom" | "none";
 
@@ -43,15 +44,110 @@ export interface CmsNavigationSubItem {
   badge?: string;
 }
 
+export type CmsNavigationItemMode = "link" | "dropdown" | "mega";
+export type CmsNavigationMegaTone = "surface" | "muted" | "accent";
+export type CmsNavigationMegaSpan = 1 | 2 | 3 | 4;
+
+export interface CmsNavigationMegaTile {
+  _key: string;
+  label: string;
+  description?: string;
+  link?: CmsLink;
+  illustration?: CmsImage;
+  tone?: CmsNavigationMegaTone;
+  span?: CmsNavigationMegaSpan;
+}
+
+export interface CmsNavigationMegaCard {
+  _key: string;
+  _type: "navigationMegaCard";
+  title: string;
+  eyebrow?: string;
+  description?: string;
+  link?: CmsLink;
+  image?: CmsImage;
+  ctaLabel?: string;
+  tone?: CmsNavigationMegaTone;
+  span?: CmsNavigationMegaSpan;
+}
+
+export type CmsNavigationMegaContentItem =
+  | (CmsNavigationSubItem & {
+      _type: "navigationSubItem";
+      span?: CmsNavigationMegaSpan;
+    })
+  | (CmsNavigationMegaTile & { _type: "navigationMegaTile" })
+  | CmsNavigationMegaCard;
+
+export interface CmsNavigationMegaCategory {
+  _key: string;
+  label: string;
+  description?: string;
+  icon?: CmsIcon;
+  links?: CmsNavigationSubItem[];
+}
+
+export type CmsNavigationMegaSection =
+  | {
+      _key: string;
+      _type: "navigationMegaLinksSection";
+      title?: string;
+      span?: CmsNavigationMegaSpan;
+      items?: CmsNavigationSubItem[];
+    }
+  | {
+      _key: string;
+      _type: "navigationMegaTilesSection";
+      title?: string;
+      span?: CmsNavigationMegaSpan;
+      columns?: 1 | 2 | 3;
+      items?: CmsNavigationMegaTile[];
+    }
+  | {
+      _key: string;
+      _type: "navigationMegaContentSection";
+      title?: string;
+      span?: CmsNavigationMegaSpan;
+      columns?: 1 | 2 | 3;
+      items?: CmsNavigationMegaContentItem[];
+    }
+  | {
+      _key: string;
+      _type: "navigationMegaExplorerSection";
+      title?: string;
+      span?: CmsNavigationMegaSpan;
+      items?: CmsNavigationMegaCategory[];
+    }
+  | {
+      _key: string;
+      _type: "navigationMegaFeatureSection";
+      presentation?: "tile" | "card";
+      ctaLabel?: string;
+      title: string;
+      eyebrow?: string;
+      description?: string;
+      link?: CmsLink;
+      illustration?: CmsImage;
+      tone?: CmsNavigationMegaTone;
+      span?: CmsNavigationMegaSpan;
+    };
+
+export interface CmsNavigationMegaMenu {
+  columns?: 2 | 3 | 4 | 5;
+  sections?: CmsNavigationMegaSection[];
+}
+
 export interface CmsNavigationItem {
   _key: string;
 
   label: string;
   link?: CmsLink;
+  mode?: CmsNavigationItemMode;
 
   badge?: string;
 
   children?: CmsNavigationSubItem[];
+  megaMenu?: CmsNavigationMegaMenu;
 }
 
 export interface CmsNavigationHeader {

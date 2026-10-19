@@ -60,3 +60,22 @@ describe("getDynamicDocumentListQuery", () => {
     expect(query).not.toContain("asset->url");
   });
 });
+
+describe("Dynamic Document List Page routing", () => {
+  it("projects the string-valued Page slug, homepage flag, and parent reference", () => {
+    const query = getDynamicDocumentListQuery("newest");
+
+    expect(query).toContain('_type == "page" => slug');
+    expect(query).toContain("slug.current");
+    expect(query).toContain("isHomepage");
+    expect(query).toContain('"parentId": parent._ref');
+  });
+
+  it("keeps sorting and limit at query time, before resolving Page parents", () => {
+    const query = getDynamicDocumentListQuery("title-desc");
+
+    expect(query).toContain("| order(title desc)");
+    expect(query).toContain("[0...$limit]");
+    expect(query).toContain("count($taxonomyIds) == 0");
+  });
+});

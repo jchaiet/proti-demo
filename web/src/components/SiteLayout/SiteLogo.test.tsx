@@ -43,6 +43,20 @@ describe("SiteLogo", () => {
     );
     expect(image.getAttribute("width")).toBe("180");
     expect(image.getAttribute("height")).toBe("40");
+    expect(image.getAttribute("loading")).toBe("eager");
+  });
+
+  it("supports lazy loading when placed below the fold", () => {
+    render(
+      <SiteLogo
+        href="/"
+        loading="lazy"
+        logo={{ src: "/logo.svg", alt: "Logo" }}
+      />,
+    );
+    expect(
+      screen.getByRole("img", { name: "Logo" }).getAttribute("loading"),
+    ).toBe("lazy");
   });
 
   it("falls back to the configured text when no image source exists", () => {

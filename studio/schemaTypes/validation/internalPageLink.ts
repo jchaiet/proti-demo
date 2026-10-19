@@ -76,6 +76,74 @@ function looksLikeLink(value: Record<string, unknown>): value is LinkValue {
   )
 }
 
+/**
+ * A top-level Header navigation item renders one destination branch at a time.
+ * Sanity retains the other branches when an editor switches Navigation Type,
+ * and hidden fields are still validated unless we explicitly exclude them.
+ */
+function isNavigationItem(value: unknown): value is Record<string, unknown> {
+  if (!isRecord(value)) {
+    return false
+  }
+
+  return (
+    value._type === 'navigationItem' ||
+    (typeof value.mode === 'string' &&
+      'label' in value &&
+      ('link' in value || 'children' in value || 'megaMenu' in value))
+  )
+}
+
+function isInactiveNavigationBranch(item: Record<string, unknown>, key: string): boolean {
+  switch (item.mode) {
+    case 'link':
+      return key === 'children' || key === 'megaMenu'
+    case 'dropdown':
+      return key === 'link' || key === 'megaMenu'
+    case 'mega':
+      return key === 'link' || key === 'children'
+    default:
+      // Older navigation items have no explicit mode. Keep validating the
+      // branches they already contain until an editor selects a mode.
+      return false
+  }
+}
+
+/** Read a field's parent from its Sanity validation path if needed. */
+function pathParent(document: unknown, path: readonly unknown[] | undefined): unknown {
+  if (!Array.isArray(path) || path.at(-1) !== 'link') {
+    return undefined
+  }
+
+  let current: unknown = document
+
+  for (const segment of path.slice(0, -1)) {
+    if (Array.isArray(current)) {
+      if (typeof segment === 'number') {
+        current = current[segment]
+      } else if (isRecord(segment) && typeof segment._key === 'string') {
+        current = current.find((entry) => isRecord(entry) && entry._key === segment._key)
+      } else {
+        return undefined
+      }
+    } else if (isRecord(current) && typeof segment === 'string') {
+      current = current[segment]
+    } else {
+      return undefined
+    }
+  }
+
+  return current
+}
+
+function isInactiveNavigationLink(context: ValidationContext): boolean {
+  const parent = isNavigationItem(context.parent)
+    ? context.parent
+    : pathParent(context.document, context.path)
+
+  return isNavigationItem(parent) && isInactiveNavigationBranch(parent, 'link')
+}
+
 function arrayPathSegment(value: unknown, index: number): SanityPathSegment {
   if (isRecord(value) && typeof value._key === 'string') {
     return {
@@ -111,6 +179,12 @@ function collectInternalLinks(
   }
 
   for (const [key, child] of Object.entries(value)) {
+    // Only traverse the branch the Header will render. Sanity keeps hidden
+    // values when Navigation Type changes, but those links are not active.
+    if (isNavigationItem(value) && isInactiveNavigationBranch(value, key)) {
+      continue
+    }
+
     /*
      * We already inspected the Link object's own internalPage above.
      * A reference object itself does not need recursive traversal.
@@ -136,7 +210,9 @@ export async function validateInternalPageLink(
 ): Promise<true | string> {
   const link = value as LinkValue | undefined
 
-  if (link?.type !== 'internal') {
+  // The top-level Link field is hidden for Dropdown/Mega Menu items. Its
+  // saved (often default "internal") destination should not block publishing.
+  if (isInactiveNavigationLink(context) || link?.type !== 'internal') {
     return true
   }
 

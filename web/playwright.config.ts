@@ -88,6 +88,29 @@ export default defineConfig({
         },
       },
     },
+
+    {
+      // Responsive Firefox coverage (a narrow desktop viewport, not a real
+      // Firefox Android device emulation).
+      name: "firefox-mobile",
+      testIgnore: /visual\.spec\.ts/,
+      use: {
+        ...devices["Desktop Firefox"],
+        viewport: { width: 390, height: 844 },
+      },
+    },
+
+    // WebKit requires an additional browser install. Enable it explicitly
+    // with PLAYWRIGHT_INCLUDE_WEBKIT=1 to preserve the existing default suite.
+    ...(process.env.PLAYWRIGHT_INCLUDE_WEBKIT === "1"
+      ? [
+          {
+            name: "webkit-mobile",
+            testIgnore: /visual\.spec\.ts/,
+            use: { ...devices["iPhone 13"] },
+          },
+        ]
+      : []),
   ],
 
   webServer: skipWebServer

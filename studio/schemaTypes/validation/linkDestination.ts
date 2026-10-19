@@ -5,6 +5,8 @@ type LinkValue = {
 type NavigationItemValue = {
   link?: unknown
   children?: unknown[]
+  mode?: string
+  megaMenu?: {sections?: unknown[]}
 }
 
 /**
@@ -46,6 +48,21 @@ export function validateNavigationItemDestination(value: unknown): true | string
 
   const item = value as NavigationItemValue
 
+  if (item.mode === 'mega') {
+    return (item.megaMenu?.sections?.length ?? 0) > 0
+      ? true
+      : 'Add a Mega Menu with at least one section.'
+  }
+
+  if (item.mode === 'dropdown') {
+    return (item.children?.length ?? 0) > 0 ? true : 'Add at least one Dropdown Item.'
+  }
+
+  if (item.mode === 'link') {
+    return hasLinkDestination(item.link) ? true : 'Add a Link destination.'
+  }
+
+  // Legacy documents have no explicit mode; infer their existing behavior.
   if (hasLinkDestination(item.link) || (item.children?.length ?? 0) > 0) {
     return true
   }

@@ -455,3 +455,159 @@ export function buildAllSitePublicPaths(
 
   return unique(paths);
 }
+
+/**
+ * When a Page is published, unpublished, or moves to a different route,
+ * its same-path translations may gain or lose hreflang / language-switcher
+ * links. Those Pages do not reference each other in Sanity, so reverse
+ * reference traversal alone cannot invalidate them.
+ *
+ * Reconstruct the changed Page's route and its descendants using the
+ * webhook snapshot (important for deletes and parent slug changes), then
+ * limit invalidation to changed routes and their existing counterparts.
+ */
+function getAffectedPageRoutePaths(
+  index: SitePublicRouteIndex,
+  snapshot: RevalidationDocumentSnapshot,
+): string[] {
+  if (snapshot._type !== "page" || !snapshot.locale) {
+    return [];
+  }
+
+  const pages = withSnapshotPage(index.pages ?? [], snapshot);
+  const pagesById = new Map(
+    pages.map((page) => [cleanId(page._id), page] as const),
+  );
+  const changedId = cleanId(snapshot._id);
+  const affectedRoutePaths = new Set<string>();
+
+  for (const page of pages) {
+    if (page.locale !== snapshot.locale) {
+      continue;
+    }
+
+    // A changed parent can also change the routes of every descendant.
+    let currentId = cleanId(page._id);
+    const visited = new Set<string>();
+    let isAffected = false;
+
+    for (let depth = 0; currentId && depth < 50; depth++) {
+      if (visited.has(currentId)) break;
+      if (currentId === changedId) {
+        isAffected = true;
+        break;
+      }
+
+      visited.add(currentId);
+      currentId = cleanId(pagesById.get(currentId)?.parentId);
+    }
+
+    if (!isAffected) {
+      continue;
+    }
+
+    const segments = getPageSegments(page, pagesById);
+
+    if (!segments || (segments.length > 0 && isReservedPageRoute(segments))) {
+      continue;
+    }
+
+    affectedRoutePaths.add(
+      segments.length === 0 ? "/" : `/${segments.join("/")}`,
+    );
+  }
+
+  return unique(affectedRoutePaths);
+}
+
+/** Invalidate only a changed Page's public route and its descendants. */
+export function buildAffectedPagePaths(
+  index: SitePublicRouteIndex,
+  snapshot: RevalidationDocumentSnapshot,
+): string[] {
+  const config = resolveConfig(index);
+  const locale = snapshot.locale;
+
+  if (!config || !locale) {
+    return [];
+  }
+
+  return getAffectedPageRoutePaths(index, snapshot).map((routePath) =>
+    buildLocalePublicPath({
+      locale,
+      defaultLocale: config.defaultLocale,
+      path: routePath,
+    }),
+  );
+}
+
+export function buildPageTranslationCounterpartPaths(
+  index: SitePublicRouteIndex,
+  snapshot: RevalidationDocumentSnapshot,
+): string[] {
+  const config = resolveConfig(index);
+
+  if (!config || !snapshot.locale) {
+    return [];
+  }
+
+  const affectedRoutePaths = getAffectedPageRoutePaths(index, snapshot);
+
+  if (affectedRoutePaths.length === 0) {
+    return [];
+  }
+
+  const counterparts = new Set<string>();
+
+  for (const locale of config.locales) {
+    if (locale === snapshot.locale) continue;
+
+    const existing = new Set(buildPagePaths(index, { locale }));
+
+    for (const routePath of affectedRoutePaths) {
+      const candidate = buildLocalePublicPath({
+        locale,
+        defaultLocale: config.defaultLocale,
+        path: routePath,
+      });
+
+      if (existing.has(candidate)) {
+        counterparts.add(candidate);
+      }
+    }
+  }
+
+  return unique(counterparts);
+}
+
+/**
+ * Blog translations share their slug, but have no direct references to
+ * other locales. A create/delete or slug change affects the published
+ * language links on any Blog with the same slug in another Locale.
+ */
+export function buildBlogTranslationCounterpartPaths(
+  index: SitePublicRouteIndex,
+  snapshot: RevalidationDocumentSnapshot,
+): string[] {
+  if (snapshot._type !== "blog" || !snapshot.slug || !snapshot.locale) {
+    return [];
+  }
+
+  const config = resolveConfig(index);
+
+  if (!config) {
+    return [];
+  }
+
+  return unique(
+    (index.blogs ?? [])
+      .filter(
+        (blog) =>
+          blog.locale !== snapshot.locale &&
+          blog.slug === snapshot.slug &&
+          config.locales.includes(blog.locale ?? ""),
+      )
+      .map((blog) => buildBlogPath(blog, config.defaultLocale))
+      .filter((path): path is string => Boolean(path)),
+  );
+}

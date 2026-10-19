@@ -2,8 +2,11 @@ import { sanityClient } from "@/sanity/client";
 
 import {
   buildAllSitePublicPaths,
+  buildAffectedPagePaths,
   buildAuthorPaths,
   buildBlogPath,
+  buildBlogTranslationCounterpartPaths,
+  buildPageTranslationCounterpartPaths,
   buildPagePaths,
   buildRedirectPath,
   buildTaxonomyPaths,
@@ -152,7 +155,7 @@ export const DYNAMIC_DOCUMENT_LIST_CONSUMERS_QUERY = `
           sections[
             _type == "documentListBlock" &&
             sourceMode == "dynamic" &&
-            "blog" in dynamicContentTypes
+            $changedType in dynamicContentTypes
           ]
         ) > 0
       ) ||
@@ -162,7 +165,7 @@ export const DYNAMIC_DOCUMENT_LIST_CONSUMERS_QUERY = `
           component[
             _type == "documentListBlock" &&
             sourceMode == "dynamic" &&
-            "blog" in dynamicContentTypes
+            $changedType in dynamicContentTypes
           ]
         ) > 0
       )
@@ -189,7 +192,7 @@ export const DYNAMIC_DOCUMENT_LIST_CONSUMERS_QUERY = `
       _type == "singleton" => component[
         _type == "documentListBlock" &&
         sourceMode == "dynamic" &&
-        "blog" in dynamicContentTypes
+        $changedType in dynamicContentTypes
       ]{
         "taxonomyIds": dynamicTaxonomy[]._ref,
         "taxonomyMatchLogic": coalesce(dynamicTaxonomyMatchLogic, "any")
@@ -198,7 +201,7 @@ export const DYNAMIC_DOCUMENT_LIST_CONSUMERS_QUERY = `
       sections[
         _type == "documentListBlock" &&
         sourceMode == "dynamic" &&
-        "blog" in dynamicContentTypes
+        $changedType in dynamicContentTypes
       ]{
         "taxonomyIds": dynamicTaxonomy[]._ref,
         "taxonomyMatchLogic": coalesce(dynamicTaxonomyMatchLogic, "any")
@@ -252,6 +255,21 @@ function pageRouteChanged(
     sameValue(before.slug, after.slug) &&
     sameValue(before.parentId, after.parentId) &&
     before.isHomepage === after.isHomepage
+  );
+}
+
+function blogRouteChanged(
+  before?: RevalidationDocumentSnapshot | null,
+  after?: RevalidationDocumentSnapshot | null,
+): boolean {
+  if (!before || !after || before._type !== "blog" || after._type !== "blog") {
+    return Boolean(before || after);
+  }
+
+  return !(
+    sameValue(before.siteId, after.siteId) &&
+    sameValue(before.locale, after.locale) &&
+    sameValue(before.slug, after.slug)
   );
 }
 
@@ -538,10 +556,44 @@ async function addPageRouteChangePaths(
 
     const index = await getSiteRouteIndex(snapshot.siteId, routeIndexCache);
 
-    for (const path of buildPagePaths(index, {
-      locale: snapshot.locale,
-      snapshot,
-    })) {
+    for (const path of buildAffectedPagePaths(index, snapshot)) {
+      paths.add(path);
+    }
+  }
+}
+
+/**
+ * Language alternates are computed by matching routes/slugs, not Sanity
+ * references. Their existing cached Pages need invalidation whenever a
+ * counterpart appears, disappears, or changes its public route.
+ */
+async function addTranslationCounterpartPaths(
+  paths: Set<string>,
+  before: RevalidationDocumentSnapshot | null | undefined,
+  after: RevalidationDocumentSnapshot | null | undefined,
+  routeIndexCache: RouteIndexCache,
+): Promise<void> {
+  const needsPageCounterparts =
+    (before?._type === "page" || after?._type === "page") &&
+    pageRouteChanged(before, after);
+
+  const needsBlogCounterparts =
+    (before?._type === "blog" || after?._type === "blog") &&
+    blogRouteChanged(before, after);
+
+  if (!needsPageCounterparts && !needsBlogCounterparts) {
+    return;
+  }
+
+  for (const snapshot of [before, after]) {
+    if (!snapshot?.siteId) continue;
+
+    const index = await getSiteRouteIndex(snapshot.siteId, routeIndexCache);
+    const counterparts = needsPageCounterparts
+      ? buildPageTranslationCounterpartPaths(index, snapshot)
+      : buildBlogTranslationCounterpartPaths(index, snapshot);
+
+    for (const path of counterparts) {
       paths.add(path);
     }
   }
@@ -735,22 +787,23 @@ async function addDynamicDocumentListConsumerPaths(
 ): Promise<void> {
   /*
    * Dynamic Document Lists are query dependencies rather than reference
-   * dependencies. A newly published Blog can change a Page/Blog/Singleton
-   * list even though that consumer never references the Blog document ID.
+   * dependencies. A newly published Page or Blog can change a
+   * Page/Blog/Singleton list even though that consumer never references the
+   * new document ID.
    *
-   * Blog changes can alter list membership/content directly. Taxonomy changes
-   * can alter the tags rendered on Blog cards, so include Blogs that reference
-   * the changed Taxonomy as candidate list items too.
+   * Page/Blog changes can alter list membership/content directly. Taxonomy
+   * changes can alter the tags rendered on Blog cards, so include Blogs that
+   * reference the changed Taxonomy as candidate list items too.
    */
-  if (rootType !== "blog" && rootType !== "taxonomy") {
+  if (rootType !== "page" && rootType !== "blog" && rootType !== "taxonomy") {
     return;
   }
 
   const candidates: RevalidationDocumentSnapshot[] = [];
 
-  if (rootType === "blog") {
+  if (rootType === "page" || rootType === "blog") {
     for (const snapshot of [payload.before, payload.after]) {
-      if (snapshot?._type === "blog") {
+      if (snapshot?._type === rootType) {
         candidates.push(snapshot);
       }
     }
@@ -806,6 +859,7 @@ async function addDynamicDocumentListConsumerPaths(
       {
         siteId,
         locales,
+        changedType: rootType === "taxonomy" ? "blog" : rootType,
       },
     );
 
@@ -875,6 +929,13 @@ export async function resolveRevalidationPlan(
   }
 
   await addPageRouteChangePaths(
+    paths,
+    payload.before,
+    payload.after,
+    routeIndexCache,
+  );
+
+  await addTranslationCounterpartPaths(
     paths,
     payload.before,
     payload.after,
