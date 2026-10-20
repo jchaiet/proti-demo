@@ -63,6 +63,14 @@ const context = {
   locale: "en-us",
 };
 
+type HeroPriorityElement = ReactElement<{
+  imageFetchPriority?: "high" | "low" | "auto";
+  imageLoading?: "eager" | "lazy";
+}>;
+
+type HeroWrapperElement = ReactElement<{ children: HeroPriorityElement }>;
+type BlockRendererElement = ReactElement<{ children: HeroWrapperElement[] }>;
+
 describe("BlockRenderer empty content", () => {
   it("renders nothing when blocks are undefined", async () => {
     await expect(
@@ -106,14 +114,9 @@ describe("BlockRenderer LCP priority", () => {
       context,
     });
 
-    const children = (result as ReactElement<{ children: ReactElement[] }>)
-      .props.children;
-    const firstHero = children[0].props.children as ReactElement<
-      Record<string, unknown>
-    >;
-    const secondHero = children[1].props.children as ReactElement<
-      Record<string, unknown>
-    >;
+    const children = (result as BlockRendererElement).props.children;
+    const firstHero = children[0].props.children;
+    const secondHero = children[1].props.children;
     expect(firstHero.props.imageFetchPriority).toBe("high");
     expect(firstHero.props.imageLoading).toBe("eager");
     expect(secondHero.props.imageFetchPriority).toBe("auto");
@@ -129,11 +132,8 @@ describe("BlockRenderer LCP priority", () => {
       blocks: [{ _type: "heroBlock", _key: "related" }] as CmsBlock[],
       context: { ...context, priorityHeroImage: false },
     });
-    const children = (result as ReactElement<{ children: ReactElement[] }>)
-      .props.children;
-    const hero = children[0].props.children as ReactElement<
-      Record<string, unknown>
-    >;
+    const children = (result as BlockRendererElement).props.children;
+    const hero = children[0].props.children;
     expect(hero.props.imageFetchPriority).toBe("auto");
   });
 });
