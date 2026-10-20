@@ -3,6 +3,7 @@ import type { CmsRedirect, ResolvedRedirect } from "@/cms/types";
 import { PUBLISHED_SANITY_FETCH_OPTIONS } from "@/sanity/cache";
 import { sanityClient } from "@/sanity/client";
 import { getPageUrl } from "@/sanity/queries/page-url";
+import { isSafeRedirectPath, isSafeWebUrl } from "@/lib/security/urls";
 import { REDIRECT_BY_SOURCE_QUERY } from "@/sanity/queries/redirect";
 
 export interface ResolveRedirectOptions {
@@ -126,7 +127,7 @@ async function resolveDestination(
     case "path": {
       const path = redirect.destination.path;
 
-      if (!path) {
+      if (!isSafeRedirectPath(path)) {
         return null;
       }
 
@@ -134,7 +135,9 @@ async function resolveDestination(
     }
 
     case "external":
-      return redirect.destination.externalUrl ?? null;
+      return isSafeWebUrl(redirect.destination.externalUrl)
+        ? redirect.destination.externalUrl
+        : null;
 
     default:
       return null;

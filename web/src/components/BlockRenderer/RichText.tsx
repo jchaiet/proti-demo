@@ -11,6 +11,7 @@ import { Heading } from "mino-ui/core/Heading";
 import { Text } from "mino-ui/core/Text";
 
 import { RichTextBlock } from "mino-ui/blocks/RichTextBlock";
+import { isSafeContentHref } from "@/lib/security/urls";
 
 import type { RichTextBlockProps } from "mino-ui/blocks/RichTextBlock";
 
@@ -166,7 +167,8 @@ const portableTextComponents = {
 
       value?: LinkValue;
     }) => {
-      const href = value?.href ?? "#";
+      const href = value?.href;
+      if (!isSafeContentHref(href)) return <>{children}</>;
 
       const newTab = value?.openInNewTab === true;
 

@@ -12,6 +12,9 @@ import {structure} from './structure'
 import {media} from 'sanity-plugin-media'
 import {ShowTranslationsAction} from './actions/ShowTranslationsAction'
 import {presentationResolve} from './presentation/resolve'
+import {presentationAllowedOrigins} from './utils/presentationOrigins'
+
+import './styles/studio.css'
 
 const projectId = process.env.SANITY_STUDIO_PROJECT_ID
 const dataset = process.env.SANITY_STUDIO_DATASET || 'production'
@@ -23,8 +26,6 @@ if (!projectId) {
     'Missing SANITY_STUDIO_PROJECT_ID. Run "pnpm proti:init" from the repository root or configure the Studio environment variable.',
   )
 }
-
-const previewOrigin = new URL(previewUrl).origin
 
 export default defineConfig({
   name: 'default',
@@ -42,7 +43,7 @@ export default defineConfig({
           disable: '/api/draft-mode/disable',
         },
       },
-      allowOrigins: Array.from(new Set(['http://localhost:*', previewOrigin])),
+      allowOrigins: presentationAllowedOrigins(previewUrl, process.env.NODE_ENV === 'production'),
       resolve: presentationResolve,
     }),
     visionTool(),

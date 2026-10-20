@@ -18,7 +18,7 @@ export async function mapResourceCard(
 
     href: resolvedLink?.href,
 
-    imageUrl: resolveSanityImage(card.image),
+    imageUrl: resolveSanityImage(card.image, { width: 960 }),
 
     imageAlt: card.image?.alt ?? "",
 

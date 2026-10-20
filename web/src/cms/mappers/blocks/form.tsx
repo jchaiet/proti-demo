@@ -12,6 +12,7 @@ import { CmsRichText } from "@/components/CmsRichText";
 
 export type MappedFormBlockProps = Omit<FormBlockProps, "onSubmit"> & {
   formKey: string;
+  blockKey: string;
   submitButtonIconName?: CmsIcon;
 };
 
@@ -324,6 +325,8 @@ export function mapFormBlock(block: CmsFormBlock): MappedFormBlockProps {
     ...heading,
 
     formKey: block.formKey?.current ?? block._key,
+
+    blockKey: block._key,
 
     layout: block.layout ?? "default",
 

@@ -21,11 +21,11 @@ export function mapTestimonialCard(
 
       company: card.author.company,
 
-      avatarUrl: resolveSanityImage(card.author.avatar),
+      avatarUrl: resolveSanityImage(card.author.avatar, { width: 240 }),
     },
 
     rating: card.rating,
 
-    companyLogoUrl: resolveSanityImage(card.companyLogo),
+    companyLogoUrl: resolveSanityImage(card.companyLogo, { width: 320 }),
   };
 }

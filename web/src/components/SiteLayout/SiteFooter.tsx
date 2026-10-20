@@ -1,5 +1,3 @@
-"use client";
-
 import type { AnchorHTMLAttributes } from "react";
 
 import { Footer, FooterColumn, FooterLink } from "mino-ui/core/Footer";
@@ -28,7 +26,7 @@ function getAnchorProps(
 
 export function SiteFooter({ footer, homeHref }: SiteFooterProps) {
   const logo = footer.logo ? (
-    <SiteLogo logo={footer.logo} href={homeHref} />
+    <SiteLogo logo={footer.logo} href={homeHref} loading="lazy" />
   ) : undefined;
 
   const socials =

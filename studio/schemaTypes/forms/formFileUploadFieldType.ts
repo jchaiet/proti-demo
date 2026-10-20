@@ -11,6 +11,8 @@ export const formFileUploadFieldType = defineType({
   name: 'formFileUploadField',
   title: 'File Upload',
   type: 'object',
+  description:
+    'Requires a dedicated file-storage submission adapter. The default Proti webhook adapter does not accept file attachments.',
 
   fields: [
     defineField({

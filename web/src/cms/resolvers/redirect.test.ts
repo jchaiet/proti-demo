@@ -52,6 +52,27 @@ beforeEach(() => {
 });
 
 describe("resolveRedirect", () => {
+  it("refuses unsafe path and external redirect destinations from stale CMS data", async () => {
+    for (const destination of [
+      { type: "path" as const, path: "//attacker.test" },
+      { type: "path" as const, path: "/\\attacker.test" },
+      { type: "external" as const, externalUrl: "javascript:alert(1)" },
+      {
+        type: "external" as const,
+        externalUrl: "https://user:pass@example.com",
+      },
+    ]) {
+      mocks.fetch.mockResolvedValueOnce([redirectDocument({ destination })]);
+      await expect(
+        resolveRedirect({
+          siteId: "site-a",
+          locale: "en-us",
+          sourcePath: "/old",
+        }),
+      ).resolves.toBeNull();
+    }
+  });
+
   it("does not query without Site and Locale identity", async () => {
     await expect(
       resolveRedirect({

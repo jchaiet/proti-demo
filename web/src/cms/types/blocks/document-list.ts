@@ -153,6 +153,11 @@ export interface CmsDynamicDocumentListItem {
 
   slug?: string;
 
+  /** Pages have a string slug and can be nested beneath another Page. */
+  isHomepage?: boolean;
+
+  parentId?: string;
+
   date?: string;
 
   thumbnailImage?: CmsImage;

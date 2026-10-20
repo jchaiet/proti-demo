@@ -78,6 +78,49 @@ const HEADER_PROJECTION = `
 
     label,
     badge,
+    mode,
+
+    megaMenu {
+      columns,
+      sections[] {
+        _key,
+        _type,
+        title,
+        eyebrow,
+        description,
+        presentation,
+        ctaLabel,
+        span,
+        tone,
+        columns,
+        link { ${LINK_PROJECTION} },
+        illustration { asset, crop, hotspot, alt },
+        items[] {
+          _key,
+          _type,
+          label,
+          title,
+          eyebrow,
+          description,
+          ctaLabel,
+          badge,
+          icon,
+          tone,
+          span,
+          link { ${LINK_PROJECTION} },
+          illustration { asset, crop, hotspot, alt },
+          image { asset, crop, hotspot, alt },
+          links[] {
+            _key,
+            label,
+            description,
+            badge,
+            icon,
+            link { ${LINK_PROJECTION} }
+          }
+        }
+      }
+    },
 
     link {
       ${LINK_PROJECTION}

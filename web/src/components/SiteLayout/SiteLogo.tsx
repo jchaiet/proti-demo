@@ -7,9 +7,10 @@ import styles from "./styles.module.css";
 export interface SiteLogoProps {
   logo: MappedNavigationLogo;
   href: string;
+  loading?: "eager" | "lazy";
 }
 
-export function SiteLogo({ logo, href }: SiteLogoProps) {
+export function SiteLogo({ logo, href, loading = "eager" }: SiteLogoProps) {
   const accessibleLabel = logo.alt || logo.text || "Home";
 
   return (
@@ -25,7 +26,7 @@ export function SiteLogo({ logo, href }: SiteLogoProps) {
           width={180}
           height={40}
           className={styles.logoImage}
-          loading="eager"
+          loading={loading}
           unoptimized
         />
       ) : (

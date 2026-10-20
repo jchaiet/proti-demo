@@ -83,6 +83,170 @@ describe("resolveRevalidationPlan", () => {
     fetchMock.mockReset();
   });
 
+  it("invalidates an existing English Page when its Spanish translation is published", async () => {
+    mockFetch({
+      indexes: {
+        "site-a": {
+          ...siteIndex,
+          pages: [
+            ...siteIndex.pages,
+            { _id: "page-es", locale: "es-us", slug: "products" },
+          ],
+        },
+      },
+    });
+
+    const plan = await resolveRevalidationPlan({
+      after: {
+        _id: "page-es",
+        _type: "page",
+        siteId: "site-a",
+        locale: "es-us",
+        slug: "products",
+      },
+    });
+
+    expect(plan?.paths).toContain("/products");
+    expect(plan?.paths).toContain("/es-us/products");
+    expect(plan?.paths).toContain("/sitemap.xml");
+  });
+
+  it("invalidates the surviving Page when its translation is deleted", async () => {
+    mockFetch();
+
+    const plan = await resolveRevalidationPlan({
+      before: {
+        _id: "page-es",
+        _type: "page",
+        siteId: "site-a",
+        locale: "es-us",
+        slug: "products",
+      },
+      after: null,
+    });
+
+    expect(plan?.paths).toContain("/products");
+    expect(plan?.paths).toContain("/es-us/products");
+  });
+
+  it("invalidates translated descendants when an English parent route changes", async () => {
+    const translatedIndex = {
+      ...siteIndex,
+      pages: [
+        { _id: "home-en", locale: "en-us", isHomepage: true },
+        { _id: "parent-en", locale: "en-us", slug: "catalog" },
+        {
+          _id: "child-en",
+          locale: "en-us",
+          slug: "widget",
+          parentId: "parent-en",
+        },
+        { _id: "parent-es", locale: "es-us", slug: "products" },
+        {
+          _id: "child-es",
+          locale: "es-us",
+          slug: "widget",
+          parentId: "parent-es",
+        },
+      ],
+    };
+    mockFetch({ indexes: { "site-a": translatedIndex } });
+
+    const plan = await resolveRevalidationPlan({
+      before: {
+        _id: "parent-en",
+        _type: "page",
+        siteId: "site-a",
+        locale: "en-us",
+        slug: "products",
+      },
+      after: {
+        _id: "parent-en",
+        _type: "page",
+        siteId: "site-a",
+        locale: "en-us",
+        slug: "catalog",
+      },
+    });
+
+    expect(plan?.paths).toContain("/es-us/products");
+    expect(plan?.paths).toContain("/es-us/products/widget");
+    expect(plan?.paths).toContain("/products/widget");
+    expect(plan?.paths).toContain("/catalog/widget");
+  });
+
+  it("invalidates an English Blog when its Spanish counterpart is added or deleted", async () => {
+    const translatedIndex = {
+      ...siteIndex,
+      blogs: [
+        { _id: "blog-en", locale: "en-us", slug: "nutrition" },
+        { _id: "blog-es", locale: "es-us", slug: "nutrition" },
+      ],
+    };
+    mockFetch({ indexes: { "site-a": translatedIndex } });
+
+    const added = await resolveRevalidationPlan({
+      after: {
+        _id: "blog-es",
+        _type: "blog",
+        siteId: "site-a",
+        locale: "es-us",
+        slug: "nutrition",
+      },
+    });
+    const deleted = await resolveRevalidationPlan({
+      before: {
+        _id: "blog-es",
+        _type: "blog",
+        siteId: "site-a",
+        locale: "es-us",
+        slug: "nutrition",
+      },
+      after: null,
+    });
+
+    expect(added?.paths).toContain("/blog/nutrition");
+    expect(deleted?.paths).toContain("/blog/nutrition");
+    expect(added?.paths).toContain("/es-us/blog/nutrition");
+  });
+
+  it("invalidates both old and new Blog locale counterparts when the slug changes", async () => {
+    mockFetch({
+      indexes: {
+        "site-a": {
+          ...siteIndex,
+          blogs: [
+            { _id: "blog-en-old", locale: "en-us", slug: "old-slug" },
+            { _id: "blog-en-new", locale: "en-us", slug: "new-slug" },
+            { _id: "blog-es", locale: "es-us", slug: "new-slug" },
+          ],
+        },
+      },
+    });
+
+    const plan = await resolveRevalidationPlan({
+      before: {
+        _id: "blog-es",
+        _type: "blog",
+        siteId: "site-a",
+        locale: "es-us",
+        slug: "old-slug",
+      },
+      after: {
+        _id: "blog-es",
+        _type: "blog",
+        siteId: "site-a",
+        locale: "es-us",
+        slug: "new-slug",
+      },
+    });
+
+    expect(plan?.paths).toContain("/blog/old-slug");
+    expect(plan?.paths).toContain("/blog/new-slug");
+    expect(plan?.paths).toContain("/es-us/blog/old-slug");
+    expect(plan?.paths).toContain("/es-us/blog/new-slug");
+  });
+
   it("revalidates Pages that consume a Singleton", async () => {
     mockFetch({
       reverse: [
@@ -213,7 +377,6 @@ describe("resolveRevalidationPlan", () => {
     });
 
     expect(plan?.paths).toEqual([
-      "/",
       "/catalog",
       "/catalog/widget",
       "/products",
@@ -295,6 +458,60 @@ describe("resolveRevalidationPlan", () => {
       "/es-us/blog/topics/nutrition",
       "/sitemap.xml",
     ]);
+  });
+
+  it("invalidates dynamic Page Document List consumers on Page publication", async () => {
+    mockFetch({
+      indexes: {
+        "site-a": {
+          ...siteIndex,
+          pages: [
+            ...siteIndex.pages,
+            { _id: "page-list-host", locale: "en-us", slug: "resources" },
+            { _id: "page-filtered-host", locale: "en-us", slug: "filtered" },
+          ],
+        },
+      },
+      dynamicConsumers: [
+        {
+          _id: "page-list-host",
+          _type: "page",
+          siteId: "site-a",
+          locale: "en-us",
+          slug: "resources",
+          dynamicLists: [{ taxonomyIds: [] }],
+        },
+        {
+          _id: "page-filtered-host",
+          _type: "page",
+          siteId: "site-a",
+          locale: "en-us",
+          slug: "filtered",
+          dynamicLists: [{ taxonomyIds: ["taxonomy-tag"] }],
+        },
+      ],
+    });
+
+    const plan = await resolveRevalidationPlan({
+      after: {
+        _id: "page-a",
+        _type: "page",
+        siteId: "site-a",
+        locale: "en-us",
+        slug: "products",
+      },
+    });
+
+    expect(plan?.paths).toContain("/products");
+    expect(plan?.paths).toContain("/resources");
+    expect(plan?.paths).not.toContain("/filtered");
+    // A separate Page with a dynamic Page list needs refreshing even though
+    // it does not reference the new Page.
+    // The route index fixture must include the consumer routes.
+    expect(fetchMock).toHaveBeenCalledWith(
+      DYNAMIC_DOCUMENT_LIST_CONSUMERS_QUERY,
+      expect.objectContaining({ changedType: "page", siteId: "site-a" }),
+    );
   });
 
   it("revalidates Pages with matching dynamic Blog Document Lists", async () => {

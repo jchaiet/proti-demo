@@ -102,7 +102,11 @@ export async function BlockRenderer({ blocks, context }: Props) {
 
               return (
                 <BlockStyles key={block._key} config={block.styles}>
-                  <Form {...props} />
+                  <Form
+                    {...props}
+                    siteId={context.siteId}
+                    locale={context.locale}
+                  />
                 </BlockStyles>
               );
             }

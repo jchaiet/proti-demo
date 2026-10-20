@@ -10,6 +10,7 @@ const SORT_EXPRESSIONS: Record<CmsDocumentListDynamicSort, string> = {
   "title-desc": "title desc",
 };
 
+// Page.slug is a string; other content types use Sanity's slug object.
 export function getDynamicDocumentListQuery(
   sort: CmsDocumentListDynamicSort,
 ): string {
@@ -58,7 +59,15 @@ export function getDynamicDocumentListQuery(
 
       path,
 
-      "slug": slug.current,
+      "slug": select(
+        _type == "page" => slug,
+        slug.current
+      ),
+
+      _type == "page" => {
+        isHomepage,
+        "parentId": parent._ref
+      },
 
       "date": coalesce(
         publishedAt,

@@ -41,6 +41,17 @@ import {citationSourceType} from './objects/citationSourceType'
 
 import {navigationItemType} from './objects/navigationItemType'
 import {navigationSubItemType} from './objects/navigationSubItemType'
+import {
+  navigationMegaMenuType,
+  navigationMegaTileType,
+  navigationMegaCardType,
+  navigationMegaCategoryType,
+  navigationMegaLinksSectionType,
+  navigationMegaTilesSectionType,
+  navigationMegaContentSectionType,
+  navigationMegaExplorerSectionType,
+  navigationMegaFeatureSectionType,
+} from './objects/navigationMegaMenuTypes'
 import {footerColumnType} from './objects/footerColumnType'
 import {footerLinkType} from './objects/footerLinkType'
 import {navigationSocialLinkType} from './objects/navigationSocialLinkType'
@@ -97,6 +108,15 @@ export const schemaTypes = [
   // Navigation objects
   navigationItemType,
   navigationSubItemType,
+  navigationMegaMenuType,
+  navigationMegaTileType,
+  navigationMegaCardType,
+  navigationMegaCategoryType,
+  navigationMegaLinksSectionType,
+  navigationMegaTilesSectionType,
+  navigationMegaContentSectionType,
+  navigationMegaExplorerSectionType,
+  navigationMegaFeatureSectionType,
   footerColumnType,
   footerLinkType,
   navigationSocialLinkType,

@@ -2,170 +2,167 @@ import { createHash } from "node:crypto";
 
 import { NextResponse } from "next/server";
 
+import {
+  parsePollVote,
+  pollOriginAllowed,
+  readPollVoteBody,
+} from "@/lib/polls/validation";
+import {
+  createPollHistoryCookie,
+  getPollCookie,
+  POLL_COOKIE_MAX_AGE,
+  POLL_COOKIE_NAME,
+  pollFingerprint,
+  pollVisitorSecret,
+  readPollHistory,
+} from "@/lib/polls/visitor";
 import { sanityClient } from "@/sanity/client";
 
-interface VoteRequest {
-  pollKey?: string;
-  siteId?: string;
-  locale?: string;
-  optionId?: string;
-}
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 interface PollResult {
   _id: string;
   _type: "pollResult";
-
   pollKey: string;
   siteId: string;
   locale: string;
-
   votes?: Record<string, number>;
 }
 
-const OPTION_ID_PATTERN = /^[A-Za-z0-9_]+$/;
-
+// Never trust client-provided site, locale, poll and option identifiers alone.
+// Only published Page/Blog content can authorize a particular poll + option.
 const VALID_POLL_QUERY = `
-  count(
-    *[
-      _type in [
-        "page",
-        "blog"
-      ] &&
-
-      site._ref == $siteId &&
-
-      locale == $locale &&
-
-      count(
-        sections[
-          _type == "pollBlock" &&
-
-          pollKey.current == $pollKey &&
-
-          $optionId in options[].id
-        ]
-      ) > 0
-    ]
-  ) > 0
+  count(*[
+    _type in ["page", "blog"] &&
+    site._ref == $siteId &&
+    locale == $locale &&
+    count(sections[
+      _type == "pollBlock" &&
+      coalesce(pollKey.current, _key) == $pollKey &&
+      $optionId in options[].id
+    ]) > 0
+  ]) > 0
 `;
 
-function getResultId(siteId: string, locale: string, pollKey: string): string {
-  const hash = createHash("sha256")
+function resultId(siteId: string, locale: string, pollKey: string): string {
+  return `pollResult.${createHash("sha256")
     .update(`${siteId}:${locale}:${pollKey}`)
     .digest("hex")
-    .slice(0, 40);
+    .slice(0, 40)}`;
+}
 
-  return `pollResult.${hash}`;
+function reply(error: string, status: number): NextResponse {
+  return NextResponse.json(
+    { error },
+    { status, headers: { "Cache-Control": "no-store" } },
+  );
 }
 
 export async function POST(request: Request) {
-  const writeToken = process.env.SANITY_API_WRITE_TOKEN;
-
-  if (!writeToken) {
-    return NextResponse.json(
-      {
-        error: "Poll voting is not configured.",
-      },
-      {
-        status: 500,
-      },
-    );
+  if (!pollOriginAllowed(request))
+    return reply("Voting origin is not allowed.", 403);
+  if (
+    !/^application\/json(?:\s*;|\s*$)/i.test(
+      request.headers.get("content-type") ?? "",
+    )
+  ) {
+    return reply("Expected JSON.", 415);
   }
 
-  let body: VoteRequest;
+  const parsed = await readPollVoteBody(request);
+
+  if (parsed.status !== "ok") {
+    if (parsed.status === "large") {
+      return reply("Vote request is too large.", 413);
+    }
+
+    return reply("Invalid request body.", 400);
+  }
+
+  const vote = parsePollVote(parsed.value);
+
+  if (!vote) return reply("Invalid poll vote data.", 400);
+
+  const secret = pollVisitorSecret();
+  const writeToken = process.env.SANITY_API_WRITE_TOKEN?.trim();
+  if (!secret || !writeToken)
+    return reply("Poll voting is not configured.", 503);
+
+  const history = readPollHistory(getPollCookie(request), secret);
+  const fingerprint = pollFingerprint(vote.siteId, vote.locale, vote.pollKey);
+  const readClient = sanityClient.withConfig({
+    perspective: "published",
+    useCdn: false,
+  });
 
   try {
-    body = (await request.json()) as VoteRequest;
+    const available = await readClient.fetch<boolean>(VALID_POLL_QUERY, {
+      siteId: vote.siteId,
+      locale: vote.locale,
+      pollKey: vote.pollKey,
+      optionId: vote.optionId,
+    });
+    if (!available) return reply("Poll or option not found.", 404);
   } catch {
-    return NextResponse.json(
-      {
-        error: "Invalid request body.",
-      },
-      {
-        status: 400,
-      },
-    );
+    return reply("Poll voting is temporarily unavailable.", 503);
   }
 
-  const { pollKey, siteId, locale, optionId } = body;
+  const documentId = resultId(vote.siteId, vote.locale, vote.pollKey);
+  try {
+    if (history.includes(fingerprint)) {
+      const existing = await readClient.fetch<Pick<PollResult, "votes"> | null>(
+        `*[_id == $id][0]{votes}`,
+        { id: documentId },
+      );
+      return NextResponse.json(
+        { votes: existing?.votes ?? {}, alreadyVoted: true },
+        { headers: { "Cache-Control": "no-store" } },
+      );
+    }
 
-  if (!pollKey || !siteId || !locale || !optionId) {
-    return NextResponse.json(
-      {
-        error: "Missing poll vote data.",
-      },
-      {
-        status: 400,
-      },
-    );
-  }
+    const writeClient = sanityClient.withConfig({
+      token: writeToken,
+      useCdn: false,
+    });
+    await writeClient.createIfNotExists({
+      _id: documentId,
+      _type: "pollResult",
+      pollKey: vote.pollKey,
+      siteId: vote.siteId,
+      locale: vote.locale,
+      votes: {},
+    });
 
-  if (!OPTION_ID_PATTERN.test(optionId)) {
-    return NextResponse.json(
-      {
-        error: "Invalid poll option.",
-      },
-      {
-        status: 400,
-      },
-    );
-  }
+    // Sanity's server-side increment is atomic. Never read/modify/write.
+    const votePath = `votes.${vote.optionId}`;
+    const result = (await writeClient
+      .patch(documentId)
+      .setIfMissing({ [votePath]: 0 })
+      .inc({ [votePath]: 1 })
+      .commit()) as PollResult;
 
-  const readClient = sanityClient.withConfig({
-    useCdn: false,
-  });
-
-  const validPoll = await readClient.fetch<boolean>(VALID_POLL_QUERY, {
-    pollKey,
-    siteId,
-    locale,
-    optionId,
-  });
-
-  if (!validPoll) {
-    return NextResponse.json(
+    const response = NextResponse.json(
+      { votes: result.votes ?? {}, alreadyVoted: false },
       {
-        error: "Poll or option not found.",
-      },
-      {
-        status: 404,
+        headers: { "Cache-Control": "no-store" },
       },
     );
+    response.cookies.set(
+      POLL_COOKIE_NAME,
+      createPollHistoryCookie([...history, fingerprint], secret),
+      {
+        httpOnly: true,
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+        path: "/",
+        maxAge: POLL_COOKIE_MAX_AGE,
+      },
+    );
+    return response;
+  } catch {
+    // In cookie-only mode we cannot know whether a timed-out Sanity write
+    // committed. A retry could count twice. Do not assert otherwise.
+    return reply("Poll voting is temporarily unavailable.", 503);
   }
-
-  const writeClient = sanityClient.withConfig({
-    token: writeToken,
-
-    useCdn: false,
-  });
-
-  const documentId = getResultId(siteId, locale, pollKey);
-
-  await writeClient.createIfNotExists({
-    _id: documentId,
-
-    _type: "pollResult",
-
-    pollKey,
-    siteId,
-    locale,
-
-    votes: {},
-  });
-
-  const votePath = `votes.${optionId}`;
-
-  const result = (await writeClient
-    .patch(documentId)
-    .setIfMissing({
-      [votePath]: 0,
-    })
-    .inc({
-      [votePath]: 1,
-    })
-    .commit()) as PollResult;
-
-  return NextResponse.json({
-    votes: result.votes ?? {},
-  });
 }

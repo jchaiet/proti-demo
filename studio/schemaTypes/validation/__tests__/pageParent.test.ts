@@ -49,6 +49,21 @@ describe('Page parent validation', () => {
     await expect(validatePageParent({_ref: 'page-parent'}, context)).resolves.toBe(true)
   })
 
+  it('rejects a broken Parent reference rather than publishing an unreachable Page', async () => {
+    const {context} = createValidationContext({
+      document: {
+        _id: 'page-child',
+        site: {_ref: 'site-a'},
+        locale: 'en-us',
+      },
+      fetchResults: [null],
+    })
+
+    await expect(validatePageParent({_ref: 'deleted-page'}, context)).resolves.toBe(
+      'Parent Page could not be found. Select an existing Parent Page or remove the reference.',
+    )
+  })
+
   it('rejects a Parent Page from another Site', async () => {
     const {context} = createValidationContext({
       document: {

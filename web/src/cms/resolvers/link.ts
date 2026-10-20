@@ -1,6 +1,13 @@
+import { cache } from "react";
+
 import type { CmsLink } from "../types";
 
 import { getPageUrl } from "@/sanity/queries/page-url";
+import { isSafeWebUrl } from "@/lib/security/urls";
+
+// Request-scoped promise deduplication for repeated header/footer/CTA links.
+// Unlike module-level caching, this does not retain stale URLs across requests.
+const getPageUrlCached = cache(getPageUrl);
 
 export type ResolvedLink = {
   href: string;
@@ -9,9 +16,11 @@ export type ResolvedLink = {
 };
 
 export async function resolveLink(
-  link: CmsLink,
+  link: CmsLink | null | undefined,
 ): Promise<ResolvedLink | undefined> {
-  switch (link.type) {
+  // A reference or Link object can be absent in legacy/incomplete CMS content.
+  // Treat it as an unavailable destination rather than crashing the page.
+  switch (link?.type) {
     case "none":
       return undefined;
 
@@ -20,7 +29,7 @@ export async function resolveLink(
         return undefined;
       }
 
-      const href = await getPageUrl(link.internalPage._ref);
+      const href = await getPageUrlCached(link.internalPage._ref);
 
       if (!href) {
         return undefined;
@@ -32,7 +41,7 @@ export async function resolveLink(
     }
 
     case "external": {
-      if (!link.externalUrl) {
+      if (!isSafeWebUrl(link.externalUrl)) {
         return undefined;
       }
 
