@@ -30,6 +30,8 @@ export interface BlockRendererContext {
   localePrefix?: string;
   visualEditing?: boolean;
   searchParams?: Record<string, string | string[] | undefined>;
+  /** Set to false when an earlier component (for example BlogHero) owns LCP. */
+  priorityHeroImage?: boolean;
 }
 
 type Props = {
@@ -45,14 +47,23 @@ export async function BlockRenderer({ blocks, context }: Props) {
   return (
     <>
       {await Promise.all(
-        blocks.map(async (block) => {
+        blocks.map(async (block, index) => {
+          const isLeadingBlock =
+            index === 0 && context.priorityHeroImage !== false;
+
           switch (block._type) {
             case "heroBlock": {
               const props = await mapHeroBlock(block);
 
               return (
                 <BlockStyles key={block._key} config={block.styles}>
-                  <Hero {...props} />
+                  <Hero
+                    {...props}
+                    imageLoading={isLeadingBlock ? "eager" : "lazy"}
+                    imageFetchPriority={
+                      isLeadingBlock && props.imageSrc ? "high" : "auto"
+                    }
+                  />
                 </BlockStyles>
               );
             }
@@ -162,7 +173,7 @@ export async function BlockRenderer({ blocks, context }: Props) {
                 <BlockRenderer
                   key={block._key}
                   blocks={[component]}
-                  context={context}
+                  context={{ ...context, priorityHeroImage: isLeadingBlock }}
                 />
               );
             }

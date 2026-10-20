@@ -11,7 +11,10 @@ import type {
 
 import { portableTextToPlainText } from "@/cms/resolvers/portable-text-markdown";
 
-import { resolveSanityImagePreset } from "@/cms/resolvers/image";
+import {
+  resolveSanityImagePreset,
+  resolveSanityImageSrcSet,
+} from "@/cms/resolvers/image";
 
 import { sanityFetch } from "@/sanity/fetch";
 
@@ -159,6 +162,10 @@ export async function getBlogBySlug({
     ...blog,
 
     imageUrl: resolveSanityImagePreset(mainImage, "hero"),
+
+    imageSrcSet: resolveSanityImageSrcSet(mainImage, undefined, {
+      aspectRatio: 16 / 9,
+    }),
 
     socialImageUrl: resolveSanityImagePreset(mainImage, "social"),
 

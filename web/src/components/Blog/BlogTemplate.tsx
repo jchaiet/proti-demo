@@ -177,6 +177,7 @@ export async function BlogTemplate({
         publishedDate={publishedDate}
         publishedDateTime={blog.publishedAt}
         imageUrl={blog.imageUrl}
+        imageSrcSet={blog.imageSrcSet}
         imageAlt={blog.imageAlt}
       />
 
@@ -220,6 +221,7 @@ export async function BlogTemplate({
           locale: blog.locale,
           localePrefix,
           visualEditing,
+          priorityHeroImage: false, // BlogHero is already the leading image.
         }}
       />
 

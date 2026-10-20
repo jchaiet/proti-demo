@@ -1,6 +1,9 @@
 import type { CmsHeroBlock } from "@/cms/types";
 import { mapCtaGroup } from "../cta-group";
-import { resolveSanityImage } from "../../resolvers/image";
+import {
+  resolveSanityImage,
+  resolveSanityImageSrcSet,
+} from "../../resolvers/image";
 import type { HeroProps } from "mino-ui/blocks/HeroBlock";
 import { mapSectionHeading } from "../section-heading";
 
@@ -31,6 +34,19 @@ export async function mapHeroBlock(block: CmsHeroBlock): Promise<HeroProps> {
       ? resolveSanityImage(block.image, { width: 1920 })
       : undefined;
 
+  const imageSrcSet =
+    block.mediaType === "image"
+      ? resolveSanityImageSrcSet(block.image)
+      : undefined;
+
+  // Keep sizes aligned with the component's responsive layout.
+  const imageSizes =
+    block.layout === "full-bleed"
+      ? "100vw"
+      : block.layout === "split" || block.layout === "split-35-65"
+        ? "(max-width: 767px) 100vw, (max-width: 1300px) 60vw, 850px"
+        : "(max-width: 767px) 100vw, (max-width: 1300px) 90vw, 1200px";
+
   const videoSrc = block.mediaType === "video" ? block.videoUrl : undefined;
 
   const heading = mapSectionHeading(block.heading);
@@ -49,6 +65,10 @@ export async function mapHeroBlock(block: CmsHeroBlock): Promise<HeroProps> {
     mediaPosition: resolveMediaPosition(block),
 
     imageSrc,
+
+    imageSrcSet,
+
+    imageSizes: imageSrc ? imageSizes : undefined,
 
     imageAlt: block.image?.alt ?? "",
 

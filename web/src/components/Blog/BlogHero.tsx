@@ -11,6 +11,7 @@ export interface BlogHeroProps {
   publishedDate?: string;
   publishedDateTime?: string;
   imageUrl?: string;
+  imageSrcSet?: string;
   imageAlt?: string;
 
   authorName?: string;
@@ -60,6 +61,7 @@ export function BlogHero({
   publishedDate,
   publishedDateTime,
   imageUrl,
+  imageSrcSet,
   imageAlt = "",
   authorName,
   authorHref,
@@ -94,7 +96,11 @@ export function BlogHero({
       }}
       description={showSummary ? summary : undefined}
       imageSrc={imageUrl}
+      imageSrcSet={imageSrcSet}
+      imageSizes="(max-width: 767px) 100vw, (max-width: 1300px) 90vw, 1200px"
       imageAlt={imageAlt}
+      imageLoading="eager"
+      imageFetchPriority={imageUrl ? "high" : undefined}
       categories={categories}
       byline={
         authorName ? (

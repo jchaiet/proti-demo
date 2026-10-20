@@ -48,6 +48,7 @@ export interface CmsBlog {
   reviewedAt?: string;
 
   imageUrl?: string;
+  imageSrcSet?: string;
   socialImageUrl?: string;
   imageAlt?: string;
 

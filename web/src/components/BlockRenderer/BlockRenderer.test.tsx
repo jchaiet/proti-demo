@@ -1,4 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
+import type { ReactElement } from "react";
+import { mapHeroBlock } from "@/cms/mappers/blocks";
+import type { CmsBlock } from "@/cms/types";
 
 vi.mock("@/cms/mappers/blocks", () => ({
   mapAccordionBlock: vi.fn(),
@@ -60,6 +63,14 @@ const context = {
   locale: "en-us",
 };
 
+type HeroPriorityElement = ReactElement<{
+  imageFetchPriority?: "high" | "low" | "auto";
+  imageLoading?: "eager" | "lazy";
+}>;
+
+type HeroWrapperElement = ReactElement<{ children: HeroPriorityElement }>;
+type BlockRendererElement = ReactElement<{ children: HeroWrapperElement[] }>;
+
 describe("BlockRenderer empty content", () => {
   it("renders nothing when blocks are undefined", async () => {
     await expect(
@@ -86,5 +97,43 @@ describe("BlockRenderer empty content", () => {
         context,
       }),
     ).resolves.toBeNull();
+  });
+});
+
+describe("BlockRenderer LCP priority", () => {
+  it("prioritizes the first CMS Hero only", async () => {
+    vi.mocked(mapHeroBlock).mockResolvedValue({
+      title: "Demo",
+      imageSrc: "https://example.test/hero.jpg",
+    });
+    const result = await BlockRenderer({
+      blocks: [
+        { _type: "heroBlock", _key: "first" },
+        { _type: "heroBlock", _key: "second" },
+      ] as CmsBlock[],
+      context,
+    });
+
+    const children = (result as BlockRendererElement).props.children;
+    const firstHero = children[0].props.children;
+    const secondHero = children[1].props.children;
+    expect(firstHero.props.imageFetchPriority).toBe("high");
+    expect(firstHero.props.imageLoading).toBe("eager");
+    expect(secondHero.props.imageFetchPriority).toBe("auto");
+    expect(secondHero.props.imageLoading).toBe("lazy");
+  });
+
+  it("does not prioritize CMS Hero content after a BlogHero", async () => {
+    vi.mocked(mapHeroBlock).mockResolvedValue({
+      title: "Related",
+      imageSrc: "https://example.test/related.jpg",
+    });
+    const result = await BlockRenderer({
+      blocks: [{ _type: "heroBlock", _key: "related" }] as CmsBlock[],
+      context: { ...context, priorityHeroImage: false },
+    });
+    const children = (result as BlockRendererElement).props.children;
+    const hero = children[0].props.children;
+    expect(hero.props.imageFetchPriority).toBe("auto");
   });
 });
