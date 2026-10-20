@@ -176,3 +176,19 @@ describe("BlogHero taxonomy Search links", () => {
     ).toBe("/es-us/authors/jane-smith");
   });
 });
+
+describe("BlogHero LCP image", () => {
+  it("marks the leading Blog hero image high priority and forwards responsive candidates", () => {
+    render(
+      <BlogHero
+        title="Nutrition"
+        imageUrl="https://cdn.example.test/blog?w=1600"
+        imageSrcSet="https://cdn.example.test/blog?w=480 480w, https://cdn.example.test/blog?w=1600 1600w"
+      />,
+    );
+    const props = mocks.heroProps as Record<string, unknown>;
+    expect(props.imageFetchPriority).toBe("high");
+    expect(props.imageLoading).toBe("eager");
+    expect(props.imageSrcSet).toContain("480w");
+  });
+});

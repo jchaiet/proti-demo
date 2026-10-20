@@ -16,6 +16,10 @@ const mocks = vi.hoisted(() => ({
       ? `https://cdn.example.test/image?w=${options.width}`
       : undefined,
   ),
+  resolveSanityImageSrcSet: vi.fn(
+    () =>
+      "https://cdn.example.test/image?w=480 480w, https://cdn.example.test/image?w=1920 1920w",
+  ),
   resolveLink: vi.fn(async () => undefined),
   mapCtaGroup: vi.fn(async () => ({ ctas: [], ctaGroupProps: undefined })),
   mapSectionHeading: vi.fn(() => ({})),
@@ -23,6 +27,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/cms/resolvers/image", () => ({
   resolveSanityImage: mocks.resolveSanityImage,
+  resolveSanityImageSrcSet: mocks.resolveSanityImageSrcSet,
 }));
 vi.mock("@/cms/resolvers/link", () => ({ resolveLink: mocks.resolveLink }));
 vi.mock("@/cms/mappers/cta-group", () => ({ mapCtaGroup: mocks.mapCtaGroup }));
@@ -59,10 +64,15 @@ beforeEach(() => {
 
 describe("CMS image request sizes", () => {
   it("requests a 1920px hero without discarding crop and hotspot", async () => {
-    await mapHeroBlock(asCms<CmsHeroBlock>({ mediaType: "image", image }));
+    const result = await mapHeroBlock(
+      asCms<CmsHeroBlock>({ mediaType: "image", image }),
+    );
     expect(mocks.resolveSanityImage).toHaveBeenCalledWith(image, {
       width: 1920,
     });
+    expect(mocks.resolveSanityImageSrcSet).toHaveBeenCalledWith(image);
+    expect(result.imageSrcSet).toContain("480w");
+    expect(result.imageSizes).toContain("100vw");
   });
 
   it("requests 1200px grid item and side images", async () => {
@@ -140,6 +150,7 @@ describe("CMS image request sizes", () => {
       asCms<CmsHeroBlock>({ mediaType: "video" }),
     );
     expect(result.imageSrc).toBeUndefined();
+    expect(result.imageSrcSet).toBeUndefined();
     expect(mocks.resolveSanityImage).not.toHaveBeenCalled();
   });
 });

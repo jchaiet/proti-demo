@@ -99,6 +99,38 @@ export function resolveSanityImage(
   return builder.url();
 }
 
+/**
+ * Responsive sources use the same complete Sanity image object as the fallback.
+ * This preserves editor-authored crop and hotspot for every candidate.
+ */
+export function resolveSanityImageSrcSet(
+  image: CmsImage | null | undefined,
+  widths: readonly number[] = [480, 768, 960, 1280, 1600, 1920],
+  options: { aspectRatio?: number } = {},
+): string | undefined {
+  if (!image?.asset?._ref) return undefined;
+
+  const candidates = Array.from(new Set(widths))
+    .filter((width) => Number.isSafeInteger(width) && width > 0)
+    .sort((a, b) => a - b)
+    .map((width) => {
+      const height =
+        options.aspectRatio &&
+        Number.isFinite(options.aspectRatio) &&
+        options.aspectRatio > 0
+          ? Math.round(width / options.aspectRatio)
+          : undefined;
+      const url = resolveSanityImage(image, {
+        width,
+        ...(height ? { height } : {}),
+      });
+      return url ? `${url} ${width}w` : null;
+    })
+    .filter((value): value is string => value !== null);
+
+  return candidates.length ? candidates.join(", ") : undefined;
+}
+
 export function resolveSanityImagePreset(
   image: CmsImage | null | undefined,
 
