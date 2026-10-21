@@ -2,7 +2,10 @@ import type { ArticleCardProps } from "mino-ui/cards/ArticleCard";
 
 import type { CmsArticleCard } from "@/cms/types";
 
-import { resolveSanityImage } from "@/cms/resolvers/image";
+import {
+  resolveSanityImage,
+  resolveSanityImageSrcSet,
+} from "@/cms/resolvers/image";
 
 import { resolveLink } from "@/cms/resolvers/link";
 
@@ -23,6 +26,13 @@ export async function mapArticleCard(
     href: resolvedLink?.href,
 
     imageUrl,
+
+    imageSrcSet: resolveSanityImageSrcSet(
+      card.image,
+      [320, 480, 640, 768, 960, 1200],
+    ),
+
+    imageSizes: "(max-width: 767px) 100vw, (max-width: 1100px) 50vw, 33vw",
 
     imageAlt: card.image?.alt ?? "",
 

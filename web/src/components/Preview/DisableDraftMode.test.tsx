@@ -1,40 +1,53 @@
 import { render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
-const mocks = vi.hoisted(() => ({
-  isPresentationTool: false,
-}));
-
-vi.mock("next-sanity/hooks", () => ({
-  useIsPresentationTool: () => mocks.isPresentationTool,
-}));
-
-import { DisableDraftMode } from "./DisableDraftMode";
-
-beforeEach(() => {
-  mocks.isPresentationTool = false;
-});
+import { DisableDraftMode, isEmbeddedPreviewWindow } from "./DisableDraftMode";
 
 describe("DisableDraftMode", () => {
-  it("renders an explicit link to the draft-mode disable endpoint", () => {
+  it("renders an explicit link to the draft-mode disable endpoint in a standalone tab", async () => {
     render(<DisableDraftMode />);
 
-    const link = screen.getByRole("link", {
+    const link = await screen.findByRole("link", {
       name: "Exit preview",
     });
 
     expect(link.getAttribute("href")).toBe("/api/draft-mode/disable");
   });
 
-  it("stays hidden inside Presentation Tool", () => {
-    mocks.isPresentationTool = true;
-
-    render(<DisableDraftMode />);
+  it("identifies embedded iframes without importing Sanity hooks", () => {
+    const frame = {};
+    const parentWindow = {};
 
     expect(
-      screen.queryByRole("link", {
-        name: "Exit preview",
+      isEmbeddedPreviewWindow({
+        self: frame,
+        top: parentWindow,
+        opener: null,
       }),
-    ).toBeNull();
+    ).toBe(true);
+  });
+
+  it("identifies pop-out windows without importing Sanity hooks", () => {
+    const browserWindow = {};
+
+    expect(
+      isEmbeddedPreviewWindow({
+        self: browserWindow,
+        top: browserWindow,
+        opener: {},
+      }),
+    ).toBe(true);
+  });
+
+  it("allows a standalone browser tab to show the exit link", () => {
+    const browserWindow = {};
+
+    expect(
+      isEmbeddedPreviewWindow({
+        self: browserWindow,
+        top: browserWindow,
+        opener: null,
+      }),
+    ).toBe(false);
   });
 });

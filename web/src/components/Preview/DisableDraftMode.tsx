@@ -1,12 +1,47 @@
 "use client";
 
+import { useSyncExternalStore } from "react";
 import Link from "next/link";
-import { useIsPresentationTool } from "next-sanity/hooks";
+
+/**
+ * A lightweight alternative to next-sanity/hooks for hiding the standalone
+ * Exit Preview link in an embedded preview or a pop-out window.
+ *
+ * This detects the browser context, not Sanity's exact Presentation Tool state.
+ * In particular, it intentionally hides the link in any iframe or pop-out.
+ */
+export function isEmbeddedPreviewWindow(context: {
+  self: unknown;
+  top: unknown;
+  opener: unknown;
+}): boolean {
+  return context.self !== context.top || context.opener != null;
+}
+
+const subscribeToWindowContext = () => () => {};
+
+function getWindowContextSnapshot(): boolean {
+  if (typeof window === "undefined") {
+    return true;
+  }
+
+  try {
+    return isEmbeddedPreviewWindow(window);
+  } catch {
+    return true;
+  }
+}
 
 export function DisableDraftMode() {
-  const isPresentationTool = useIsPresentationTool();
+  // Hidden during SSR/hydration, then shown only for standalone browser tabs.
+  // No state-setting effect or Sanity client hook is needed.
+  const isEmbeddedPreview = useSyncExternalStore(
+    subscribeToWindowContext,
+    getWindowContextSnapshot,
+    () => true,
+  );
 
-  if (isPresentationTool) {
+  if (isEmbeddedPreview) {
     return null;
   }
 

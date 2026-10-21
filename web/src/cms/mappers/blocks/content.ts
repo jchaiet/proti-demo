@@ -4,7 +4,10 @@ import type { CmsContentBlock } from "@/cms/types";
 
 import { mapCtaGroup } from "@/cms/mappers/cta-group";
 import { mapSectionHeading } from "@/cms/mappers/section-heading";
-import { resolveSanityImage } from "@/cms/resolvers/image";
+import {
+  resolveSanityImage,
+  resolveSanityImageSrcSet,
+} from "@/cms/resolvers/image";
 
 const IMAGE_DISPLAY_WIDTH: Record<
   NonNullable<CmsContentBlock["imageSize"]>,
@@ -59,6 +62,22 @@ export async function mapContentBlock(
   const layout = block.layout ?? "default";
 
   const imageSrc = resolveContentImage(block);
+  const imageSize = block.imageSize ?? "full";
+  const maxImageWidth = IMAGE_DISPLAY_WIDTH[imageSize];
+  const imageSrcSet =
+    block.mediaType === "image"
+      ? resolveSanityImageSrcSet(
+          block.image,
+          [160, 240, 320, 480, 640, 800, 960, 1200, 1600].filter(
+            (width) => width <= maxImageWidth * 2,
+          ),
+          block.imageShape === "circle" ? { aspectRatio: 1 } : {},
+        )
+      : undefined;
+  const imageSizes =
+    imageSize === "full"
+      ? "(max-width: 767px) 100vw, (max-width: 1100px) 80vw, 800px"
+      : `${maxImageWidth}px`;
 
   const videoSrc = block.mediaType === "video" ? block.videoUrl : undefined;
 
@@ -85,6 +104,10 @@ export async function mapContentBlock(
     mediaPosition,
 
     imageSrc,
+
+    imageSrcSet,
+
+    imageSizes: imageSrc ? imageSizes : undefined,
 
     imageAlt: block.image?.alt ?? "",
 

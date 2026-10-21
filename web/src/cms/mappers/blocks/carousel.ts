@@ -16,7 +16,10 @@ import {
 
 import { mapSectionHeading } from "@/cms/mappers/section-heading";
 
-import { resolveSanityImage } from "@/cms/resolvers/image";
+import {
+  resolveSanityImage,
+  resolveSanityImageSrcSet,
+} from "@/cms/resolvers/image";
 
 import { resolveLink } from "@/cms/resolvers/link";
 
@@ -39,6 +42,13 @@ async function mapCarouselItem(
         type: "image",
 
         imageSrc,
+
+        imageSrcSet: resolveSanityImageSrcSet(
+          item.image,
+          [320, 480, 640, 800, 960, 1200],
+        ),
+
+        imageSizes: "(max-width: 767px) 90vw, (max-width: 1100px) 50vw, 33vw",
 
         imageAlt: item.image?.alt ?? "",
 

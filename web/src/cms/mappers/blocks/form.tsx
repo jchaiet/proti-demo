@@ -7,7 +7,10 @@ import type {
 import type { CmsFormBlock, CmsFormField, CmsIcon } from "@/cms/types";
 
 import { mapSectionHeading } from "@/cms/mappers/section-heading";
-import { resolveSanityImage } from "@/cms/resolvers/image";
+import {
+  resolveSanityImage,
+  resolveSanityImageSrcSet,
+} from "@/cms/resolvers/image";
 import { CmsRichText } from "@/components/CmsRichText";
 
 export type MappedFormBlockProps = Omit<FormBlockProps, "onSubmit"> & {
@@ -334,7 +337,14 @@ export function mapFormBlock(block: CmsFormBlock): MappedFormBlockProps {
 
     formPosition: block.formPosition ?? "right",
 
-    imageSrc: resolveSanityImage(block.image),
+    imageSrc: resolveSanityImage(block.image, { width: 1200 }),
+
+    imageSrcSet: resolveSanityImageSrcSet(
+      block.image,
+      [320, 480, 640, 800, 960, 1200],
+    ),
+
+    imageSizes: "(max-width: 767px) 100vw, 50vw",
 
     imageAlt: block.image?.alt ?? "",
 
