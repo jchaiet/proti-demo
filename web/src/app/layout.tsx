@@ -1,14 +1,11 @@
 import type { Metadata } from "next";
 import { draftMode, headers } from "next/headers";
-import { VisualEditing } from "next-sanity/visual-editing";
 
 import { HtmlLanguageSync } from "@/components/HtmlLanguageSync";
-import { DisableDraftMode } from "@/components/Preview";
 import {
   resolveLocaleCodeFromPathname,
   siteLocaleToLanguageTag,
 } from "@/lib/routing/locale";
-import { SanityLive } from "@/sanity/live";
 import { resolveSiteByHostCached } from "@/sanity/queries/site";
 
 import "./globals.css";
@@ -83,6 +80,12 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
 
   const htmlLang = localeContext?.htmlLang ?? "en";
 
+  // Load preview-only dependencies on the server exclusively for draft requests.
+  // Published requests should not reference Sanity's editing client bundles.
+  const PreviewTools = isDraftMode
+    ? (await import("@/components/Preview/PreviewTools")).PreviewTools
+    : null;
+
   return (
     <html lang={htmlLang}>
       <body>
@@ -92,16 +95,8 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             locales={localeContext.localeCodes}
           />
         ) : null}
-
         {children}
-
-        {isDraftMode ? (
-          <>
-            <SanityLive includeDrafts />
-            <VisualEditing />
-            <DisableDraftMode />
-          </>
-        ) : null}
+        {PreviewTools ? <PreviewTools /> : null}{" "}
       </body>
     </html>
   );

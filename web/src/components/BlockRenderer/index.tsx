@@ -93,7 +93,13 @@ export async function BlockRenderer({ blocks, context }: Props) {
 
               return (
                 <BlockStyles key={block._key} config={block.styles}>
-                  <Content {...props} />
+                  <Content
+                    {...props}
+                    imageLoading={isLeadingBlock ? "eager" : "lazy"}
+                    imageFetchPriority={
+                      isLeadingBlock && props.imageSrc ? "high" : "auto"
+                    }
+                  />
                 </BlockStyles>
               );
             }

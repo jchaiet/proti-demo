@@ -110,8 +110,25 @@ export function resolveSanityImageSrcSet(
 ): string | undefined {
   if (!image?.asset?._ref) return undefined;
 
-  const candidates = Array.from(new Set(widths))
-    .filter((width) => Number.isSafeInteger(width) && width > 0)
+  // Sanity asset references encode the original pixel dimensions.
+  // Avoid generating responsive candidates wider than the source asset,
+  // which adds bytes without introducing image detail. Unknown references
+  // retain the caller-supplied candidates.
+  const widthMatch = /-(\d+)x\d+-[a-z0-9]+$/i.exec(image.asset._ref);
+  const sourceWidth = widthMatch ? Number(widthMatch[1]) : undefined;
+
+  const boundedWidths =
+    sourceWidth && !widths.some((width) => width > 0 && width <= sourceWidth)
+      ? [...widths, sourceWidth]
+      : widths;
+
+  const candidates = Array.from(new Set(boundedWidths))
+    .filter(
+      (width) =>
+        Number.isSafeInteger(width) &&
+        width > 0 &&
+        (!sourceWidth || width <= sourceWidth),
+    )
     .sort((a, b) => a - b)
     .map((width) => {
       const height =

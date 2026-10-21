@@ -8,7 +8,10 @@ import { mapCtaGroup } from "@/cms/mappers/cta-group";
 
 import { mapSectionHeading } from "@/cms/mappers/section-heading";
 
-import { resolveSanityImage } from "@/cms/resolvers/image";
+import {
+  resolveSanityImage,
+  resolveSanityImageSrcSet,
+} from "@/cms/resolvers/image";
 
 async function mapTabsItem(item: CmsTabsItem): Promise<TabItem> {
   const ctaGroup = await mapCtaGroup(item.ctaGroup, {
@@ -19,7 +22,13 @@ async function mapTabsItem(item: CmsTabsItem): Promise<TabItem> {
   });
 
   const imageSrc =
-    item.mediaType === "image" ? resolveSanityImage(item.image) : undefined;
+    item.mediaType === "image"
+      ? resolveSanityImage(item.image, { width: 1200 })
+      : undefined;
+  const imageSrcSet =
+    item.mediaType === "image"
+      ? resolveSanityImageSrcSet(item.image, [320, 480, 640, 800, 960, 1200])
+      : undefined;
 
   const videoSrc = item.mediaType === "video" ? item.videoUrl : undefined;
 
@@ -35,6 +44,10 @@ async function mapTabsItem(item: CmsTabsItem): Promise<TabItem> {
     ) : undefined,
 
     imageSrc,
+
+    imageSrcSet,
+
+    imageSizes: imageSrc ? "(max-width: 767px) 100vw, 50vw" : undefined,
 
     imageAlt: item.image?.alt ?? "",
 

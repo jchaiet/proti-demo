@@ -14,12 +14,16 @@ import {
   mapTestimonialCard,
 } from "@/cms/mappers/cards";
 
-import { resolveSanityImage } from "@/cms/resolvers/image";
+import {
+  resolveSanityImage,
+  resolveSanityImageSrcSet,
+} from "@/cms/resolvers/image";
 
 import { resolveLink } from "@/cms/resolvers/link";
 
 async function mapGridItem(
   item: CmsGridItem,
+  imageSizes: string,
 ): Promise<GridBlockItemConfig | null> {
   switch (item._type) {
     case "gridImageItem": {
@@ -37,6 +41,13 @@ async function mapGridItem(
         type: "image",
 
         imageSrc,
+
+        imageSrcSet: resolveSanityImageSrcSet(
+          item.image,
+          [320, 480, 640, 800, 960, 1200],
+        ),
+
+        imageSizes,
 
         imageAlt: item.image?.alt ?? "",
 
@@ -119,12 +130,15 @@ async function mapGridItem(
 
 async function mapGridItems(
   items: CmsGridItem[] | undefined,
+  imageSizes: string,
 ): Promise<GridBlockItemConfig[]> {
   if (!items?.length) {
     return [];
   }
 
-  const mapped = await Promise.all(items.map(mapGridItem));
+  const mapped = await Promise.all(
+    items.map((item) => mapGridItem(item, imageSizes)),
+  );
 
   return mapped.filter((item): item is GridBlockItemConfig => item !== null);
 }
@@ -135,6 +149,10 @@ export async function mapGridBlock(
   const heading = mapSectionHeading(block.heading);
 
   const cols = (block.cols ?? 3) as GridBlockProps["cols"];
+  const desktopCols = typeof cols === "number" ? cols : 3;
+  const itemSize =
+    desktopCols <= 1 ? "100vw" : desktopCols === 2 ? "50vw" : "33vw";
+  const imageSizes = `(max-width: 767px) 100vw, (max-width: 1100px) 50vw, ${itemSize}`;
 
   return {
     ...heading,
@@ -147,11 +165,18 @@ export async function mapGridBlock(
 
     cols,
 
-    items: await mapGridItems(block.items),
+    items: await mapGridItems(block.items, imageSizes),
 
     grayscaleImages: block.grayscaleImages ?? false,
 
     imageSrc: resolveSanityImage(block.sideImage, { width: 1200 }),
+
+    imageSrcSet: resolveSanityImageSrcSet(
+      block.sideImage,
+      [320, 480, 640, 800, 960, 1200],
+    ),
+
+    imageSizes: "(max-width: 767px) 100vw, 50vw",
 
     imageAlt: block.sideImage?.alt ?? "",
   };

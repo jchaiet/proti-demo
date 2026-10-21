@@ -2,7 +2,10 @@ import type { FullBleedCardProps } from "mino-ui/cards/FullBleedCard";
 
 import type { CmsFullBleedCard } from "@/cms/types";
 
-import { resolveSanityImage } from "@/cms/resolvers/image";
+import {
+  resolveSanityImage,
+  resolveSanityImageSrcSet,
+} from "@/cms/resolvers/image";
 
 import { resolveLink } from "@/cms/resolvers/link";
 
@@ -19,6 +22,13 @@ export async function mapFullBleedCard(
 
   return {
     imageSrc,
+
+    imageSrcSet: resolveSanityImageSrcSet(
+      card.image,
+      [320, 480, 640, 768, 960, 1200, 1600],
+    ),
+
+    imageSizes: "(max-width: 767px) 100vw, 60vw",
 
     imageAlt: card.image?.alt ?? "",
 
