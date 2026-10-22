@@ -6,6 +6,7 @@ import { mapCtaGroup } from "@/cms/mappers/cta-group";
 import { mapSectionHeading } from "@/cms/mappers/section-heading";
 import {
   resolveSanityImage,
+  resolveSanityImageDimensions,
   resolveSanityImageSrcSet,
 } from "@/cms/resolvers/image";
 
@@ -62,6 +63,12 @@ export async function mapContentBlock(
   const layout = block.layout ?? "default";
 
   const imageSrc = resolveContentImage(block);
+  const imageDimensions = imageSrc
+    ? resolveSanityImageDimensions(
+        block.image,
+        block.imageShape === "circle" ? { aspectRatio: 1 } : {},
+      )
+    : undefined;
   const imageSize = block.imageSize ?? "full";
   const maxImageWidth = IMAGE_DISPLAY_WIDTH[imageSize];
   const imageSrcSet =
@@ -108,6 +115,9 @@ export async function mapContentBlock(
     imageSrcSet,
 
     imageSizes: imageSrc ? imageSizes : undefined,
+
+    imageWidth: imageDimensions?.width,
+    imageHeight: imageDimensions?.height,
 
     imageAlt: block.image?.alt ?? "",
 

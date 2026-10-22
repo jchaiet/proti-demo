@@ -2595,8 +2595,8 @@ packages:
       react-dom: ^19.2
       styled-components: ^6.1
 
-  '@sanity/ui@5.0.0-alpha.16':
-    resolution: {integrity: sha512-q+PPs+rM9vraDb3Ez7sPOEiM87i1yyVLGbL03hrSxAQNgooeCfKQHBs9Z/jX0jv5DAY89jGA7oDbFlUndrkrQg==}
+  '@sanity/ui@5.0.0-alpha.17':
+    resolution: {integrity: sha512-2p93/slbx1oYfakV5ysbxCQ5iGogOmNXq8MySbpldXLdxxQrqHbXyiJOgGoTTFjelPqZuW9RlhT838NkHPZbyA==}
     engines: {node: '>=20.19 <22 || >=22.12'}
     hasBin: true
     peerDependencies:
@@ -5003,7 +5003,7 @@ packages:
     engines: {node: '>= 18'}
 
   mino-ui@file:mino-ui-0.0.3.tgz:
-    resolution: {integrity: sha512-cNY1uO63159euqHT32Hg0rj+CoPhgmro7j2txz4XWisCFsqdalAZgpYcjR+9WAc1vSf8vTiaxFN2VVxFBZwvpA==, tarball: file:mino-ui-0.0.3.tgz}
+    resolution: {integrity: sha512-2vUn2Kef3nk4l6BgLft8PiFxtdLlabpnSHes0VvOPJvwKRRSCzOPrCv9VBMiBLv+dbKbEokukYfDnH03hsHbRw==, tarball: file:mino-ui-0.0.3.tgz}
     version: 0.0.3
     peerDependencies:
       react: '>=18.0.0'
@@ -9356,7 +9356,7 @@ snapshots:
       styled-components: 6.5.3(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       use-effect-event: 2.0.3(react@19.2.8)
 
-  '@sanity/ui@5.0.0-alpha.16(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
+  '@sanity/ui@5.0.0-alpha.17(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
     dependencies:
       '@sanity-labs/design-tokens': 0.0.2-alpha.7
       '@sanity/icons': 5.2.1(react@19.2.8)
@@ -12947,7 +12947,7 @@ snapshots:
       speakingurl: 14.0.1
       styled-components: 6.5.3(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       swr: 2.5.1(react@19.2.8)
-      ui5: '@sanity/ui@5.0.0-alpha.16(react-dom@19.2.8(react@19.2.8))(react@19.2.8)'
+      ui5: '@sanity/ui@5.0.0-alpha.17(react-dom@19.2.8(react@19.2.8))(react@19.2.8)'
       urlpattern-polyfill: 10.1.0
       use-device-pixel-ratio: 1.1.2(react@19.2.8)
       use-effect-event: 2.0.3(react@19.2.8)

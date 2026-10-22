@@ -16,6 +16,21 @@ const mocks = vi.hoisted(() => ({
       ? `https://cdn.example.test/image?w=${options.width}`
       : undefined,
   ),
+  resolveSanityImageDimensions: vi.fn(
+    (
+      image: { asset?: { _ref?: string } } | null | undefined,
+      options?: { aspectRatio?: number },
+    ) => {
+      if (!image?.asset?._ref) return undefined;
+      const width = 1000;
+      return {
+        width,
+        height: options?.aspectRatio
+          ? Math.round(width / options.aspectRatio)
+          : 750,
+      };
+    },
+  ),
   resolveSanityImageSrcSet: vi.fn(
     () =>
       "https://cdn.example.test/image?w=480 480w, https://cdn.example.test/image?w=1920 1920w",
@@ -28,6 +43,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/cms/resolvers/image", () => ({
   resolveSanityImage: mocks.resolveSanityImage,
   resolveSanityImageSrcSet: mocks.resolveSanityImageSrcSet,
+  resolveSanityImageDimensions: mocks.resolveSanityImageDimensions,
 }));
 vi.mock("@/cms/resolvers/link", () => ({ resolveLink: mocks.resolveLink }));
 vi.mock("@/cms/mappers/cta-group", () => ({ mapCtaGroup: mocks.mapCtaGroup }));
