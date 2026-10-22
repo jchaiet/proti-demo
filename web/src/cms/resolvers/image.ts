@@ -58,6 +58,63 @@ const IMAGE_PRESETS: Record<SanityImagePreset, ResolveSanityImageOptions> = {
   },
 };
 
+/**
+ * Read intrinsic dimensions from the Sanity asset reference, accounting for
+ * editor-authored crop percentages. These attributes let the browser reserve
+ * image layout space before loading; they do not control responsive selection.
+ *
+ * An explicit aspectRatio should be used when the image URL builder generates
+ * a different aspect ratio (for example, circle/1:1 crops).
+ */
+export function resolveSanityImageDimensions(
+  image: CmsImage | null | undefined,
+  options: { aspectRatio?: number } = {},
+): { width: number; height: number } | undefined {
+  const ref = image?.asset?._ref;
+  if (!ref) return undefined;
+
+  const match = /-(\d+)x(\d+)-[a-z0-9]+$/i.exec(ref);
+  if (!match) return undefined;
+
+  const sourceWidth = Number(match[1]);
+  const sourceHeight = Number(match[2]);
+  if (
+    !Number.isSafeInteger(sourceWidth) ||
+    !Number.isSafeInteger(sourceHeight) ||
+    sourceWidth <= 0 ||
+    sourceHeight <= 0
+  ) {
+    return undefined;
+  }
+
+  const crop = image?.crop;
+  const left = crop?.left ?? 0;
+  const right = crop?.right ?? 0;
+  const top = crop?.top ?? 0;
+  const bottom = crop?.bottom ?? 0;
+
+  if (
+    [left, right, top, bottom].some(
+      (fraction) => !Number.isFinite(fraction) || fraction < 0 || fraction >= 1,
+    ) ||
+    left + right >= 1 ||
+    top + bottom >= 1
+  ) {
+    return undefined;
+  }
+
+  const width = Math.max(1, Math.round(sourceWidth * (1 - left - right)));
+  const height = Math.max(1, Math.round(sourceHeight * (1 - top - bottom)));
+
+  if (options.aspectRatio !== undefined) {
+    const ratio = options.aspectRatio;
+    if (!Number.isFinite(ratio) || ratio <= 0) return undefined;
+    return { width, height: Math.max(1, Math.round(width / ratio)) };
+  }
+
+  return { width, height };
+}
+
 export function resolveSanityImage(
   image: CmsImage | null | undefined,
 

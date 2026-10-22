@@ -16,6 +16,7 @@ import {
 
 import {
   resolveSanityImage,
+  resolveSanityImageDimensions,
   resolveSanityImageSrcSet,
 } from "@/cms/resolvers/image";
 
@@ -34,6 +35,7 @@ async function mapGridItem(
       }
 
       const link = item.link ? await resolveLink(item.link) : undefined;
+      const imageDimensions = resolveSanityImageDimensions(item.image);
 
       return {
         id: item._key,
@@ -48,6 +50,9 @@ async function mapGridItem(
         ),
 
         imageSizes,
+
+        imageWidth: imageDimensions?.width,
+        imageHeight: imageDimensions?.height,
 
         imageAlt: item.image?.alt ?? "",
 
@@ -153,6 +158,7 @@ export async function mapGridBlock(
   const itemSize =
     desktopCols <= 1 ? "100vw" : desktopCols === 2 ? "50vw" : "33vw";
   const imageSizes = `(max-width: 767px) 100vw, (max-width: 1100px) 50vw, ${itemSize}`;
+  const sideDimensions = resolveSanityImageDimensions(block.sideImage);
 
   return {
     ...heading,
@@ -177,6 +183,9 @@ export async function mapGridBlock(
     ),
 
     imageSizes: "(max-width: 767px) 100vw, 50vw",
+
+    imageWidth: sideDimensions?.width,
+    imageHeight: sideDimensions?.height,
 
     imageAlt: block.sideImage?.alt ?? "",
   };
