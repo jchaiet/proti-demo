@@ -126,6 +126,10 @@ describe("responsive image requests from CMS", () => {
     expect(grid.items?.[0].imageSizes).toContain("50vw");
     expect(grid.items?.[0].imageSrcSet).toContain("480w");
     expect(grid.imageSrcSet).toContain("480w");
+    expect(grid.imageWidth).toBe(1000);
+    expect(grid.imageHeight).toBe(750);
+    expect(grid.items?.[0].imageWidth).toBe(1000);
+    expect(grid.items?.[0].imageHeight).toBe(750);
   });
 
   it("passes responsive sources to Carousel image items", async () => {
@@ -136,6 +140,9 @@ describe("responsive image requests from CMS", () => {
     );
     expect(carousel.items?.[0].imageSrcSet).toContain("480w");
     expect(carousel.items?.[0].imageSizes).toContain("90vw");
+    expect(carousel.items?.[0].imageWidth).toBe(1000);
+    expect(carousel.items?.[0].imageHeight).toBe(750);
+    expect(mocks.resolveSanityImageDimensions).toHaveBeenCalledWith(image);
   });
 
   it("adds image srcSet to the three card families", async () => {
