@@ -113,6 +113,7 @@ describe("CMS image request sizes", () => {
     expect(mocks.resolveSanityImage).toHaveBeenCalledWith(image, {
       width: 1200,
     });
+    expect(mocks.resolveSanityImageDimensions).toHaveBeenCalledWith(image);
   });
 
   it("requests 960px article images and 240px author avatars", async () => {
