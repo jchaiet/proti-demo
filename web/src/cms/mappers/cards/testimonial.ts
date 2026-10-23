@@ -2,7 +2,10 @@ import type { TestimonialCardProps } from "mino-ui/cards/TestimonialCard";
 
 import type { CmsTestimonialCard } from "@/cms/types";
 
-import { resolveSanityImage } from "@/cms/resolvers/image";
+import {
+  resolveSanityImage,
+  resolveSanityImageDimensions,
+} from "@/cms/resolvers/image";
 
 export function mapTestimonialCard(
   card: CmsTestimonialCard,
@@ -10,6 +13,8 @@ export function mapTestimonialCard(
   if (!card.quote || !card.author?.name) {
     return null;
   }
+
+  const logoDimensions = resolveSanityImageDimensions(card.companyLogo);
 
   return {
     quote: card.quote,
@@ -27,5 +32,7 @@ export function mapTestimonialCard(
     rating: card.rating,
 
     companyLogoUrl: resolveSanityImage(card.companyLogo, { width: 320 }),
+    companyLogoWidth: logoDimensions?.width,
+    companyLogoHeight: logoDimensions?.height,
   };
 }

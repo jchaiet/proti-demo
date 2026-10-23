@@ -81,7 +81,13 @@ vi.mock("./Tabs", () => {
   return { Tabs: () => null };
 });
 
-import { mapContentBlock, mapHeroBlock } from "@/cms/mappers/blocks";
+import {
+  mapCarouselBlock,
+  mapContentBlock,
+  mapDocumentListBlock,
+  mapGridBlock,
+  mapHeroBlock,
+} from "@/cms/mappers/blocks";
 import { BlockRenderer } from "./index";
 
 const context = {
@@ -112,8 +118,8 @@ describe("BlockRenderer empty content", () => {
   });
 });
 
-describe("BlockRenderer conditional component loading", () => {
-  it("keeps hero rendering ready without importing unused block components", async () => {
+describe("BlockRenderer block selection and order", () => {
+  it("renders the hero and only maps selected blocks", async () => {
     vi.mocked(mapHeroBlock).mockResolvedValue({
       title: "Page hero",
     } as Awaited<ReturnType<typeof mapHeroBlock>>);
@@ -124,13 +130,13 @@ describe("BlockRenderer conditional component loading", () => {
     });
 
     expect(renderToStaticMarkup(tree)).toContain("Page hero");
-    expect(loaded.content).not.toHaveBeenCalled();
-    expect(loaded.grid).not.toHaveBeenCalled();
-    expect(loaded.documentList).not.toHaveBeenCalled();
-    expect(loaded.carousel).not.toHaveBeenCalled();
+    expect(mapContentBlock).not.toHaveBeenCalled();
+    expect(mapGridBlock).not.toHaveBeenCalled();
+    expect(mapDocumentListBlock).not.toHaveBeenCalled();
+    expect(mapCarouselBlock).not.toHaveBeenCalled();
   });
 
-  it("loads the selected block and preserves the source block order", async () => {
+  it("maps the selected blocks and preserves source order", async () => {
     vi.mocked(mapHeroBlock).mockResolvedValue({
       title: "Before",
     } as Awaited<ReturnType<typeof mapHeroBlock>>);
@@ -157,7 +163,7 @@ describe("BlockRenderer conditional component loading", () => {
     expect(html.lastIndexOf('data-block="hero"')).toBeGreaterThan(
       html.indexOf('data-block="content"'),
     );
-    expect(loaded.content).toHaveBeenCalled();
-    expect(loaded.grid).not.toHaveBeenCalled();
+    expect(mapContentBlock).toHaveBeenCalledOnce();
+    expect(mapGridBlock).not.toHaveBeenCalled();
   });
 });

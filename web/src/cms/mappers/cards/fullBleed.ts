@@ -4,6 +4,7 @@ import type { CmsFullBleedCard } from "@/cms/types";
 
 import {
   resolveSanityImage,
+  resolveSanityImageDimensions,
   resolveSanityImageSrcSet,
 } from "@/cms/resolvers/image";
 
@@ -19,6 +20,7 @@ export async function mapFullBleedCard(
   }
 
   const link = card.link ? await resolveLink(card.link) : undefined;
+  const imageDimensions = resolveSanityImageDimensions(card.image);
 
   return {
     imageSrc,
@@ -31,6 +33,8 @@ export async function mapFullBleedCard(
     imageSizes: "(max-width: 767px) 100vw, 60vw",
 
     imageAlt: card.image?.alt ?? "",
+    imageWidth: imageDimensions?.width,
+    imageHeight: imageDimensions?.height,
 
     title: card.title,
 

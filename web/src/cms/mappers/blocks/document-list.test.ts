@@ -1147,3 +1147,30 @@ it("maps standard sort presets before safe custom sort options", async () => {
     { label: "File Type Z–A", value: "custom:file-type:desc" },
   ]);
 });
+
+it("forwards manual ArticleCard image dimensions into DocumentList", async () => {
+  mocks.mapArticleCard.mockResolvedValue({
+    title: "Portrait",
+    imageUrl: "portrait.jpg",
+    imageAlt: "Portrait of a person",
+    imageWidth: 1300,
+    imageHeight: 867,
+  });
+
+  const mapped = await mapDocumentListBlock(
+    asBlock({
+      _key: "dimension-list",
+      _type: "documentListBlock",
+      sourceMode: "manual",
+      documents: [{ _key: "a", _type: "articleCard" }],
+    }),
+    { siteId: "site-proti", locale: "en-us" },
+  );
+
+  expect(mapped.props.documents[0]).toMatchObject({
+    thumbnail: "portrait.jpg",
+    thumbnailWidth: 1300,
+    thumbnailHeight: 867,
+    thumbnailAlt: "Portrait of a person",
+  });
+});

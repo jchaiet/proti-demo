@@ -2,6 +2,7 @@ import type { CmsHeroBlock } from "@/cms/types";
 import { mapCtaGroup } from "../cta-group";
 import {
   resolveSanityImage,
+  resolveSanityImageDimensions,
   resolveSanityImageSrcSet,
 } from "../../resolvers/image";
 import type { HeroProps } from "mino-ui/blocks/HeroBlock";
@@ -39,6 +40,10 @@ export async function mapHeroBlock(block: CmsHeroBlock): Promise<HeroProps> {
       ? resolveSanityImageSrcSet(block.image)
       : undefined;
 
+  const imageDimensions = imageSrc
+    ? resolveSanityImageDimensions(block.image)
+    : undefined;
+
   // Keep sizes aligned with the component's responsive layout.
   const imageSizes =
     block.layout === "full-bleed"
@@ -69,6 +74,10 @@ export async function mapHeroBlock(block: CmsHeroBlock): Promise<HeroProps> {
     imageSrcSet,
 
     imageSizes: imageSrc ? imageSizes : undefined,
+
+    imageWidth: imageDimensions?.width,
+
+    imageHeight: imageDimensions?.height,
 
     imageAlt: block.image?.alt ?? "",
 

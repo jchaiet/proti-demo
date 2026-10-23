@@ -181,6 +181,8 @@ it("maps dynamic Blog/Article/News items to Article cards and Resources to Resou
       url: "/blog/nutrition-blog",
       date: "2026-08-31T14:17:00.000Z",
       thumbnail: "resolved-card.jpg",
+      thumbnailWidth: 960,
+      thumbnailHeight: 540,
       tags: ["Nutrition"],
       fileType: undefined,
       fileSize: undefined,

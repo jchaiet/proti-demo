@@ -126,6 +126,15 @@ async function mapManualDocumentListItem(
         tags: article.category ? [article.category] : [],
 
         thumbnail: article.imageUrl,
+        ...(article.imageUrl && article.imageWidth && article.imageHeight
+          ? {
+              thumbnailWidth: article.imageWidth,
+              thumbnailHeight: article.imageHeight,
+            }
+          : {}),
+        ...(article.imageUrl && article.imageAlt
+          ? { thumbnailAlt: article.imageAlt }
+          : {}),
 
         author: article.author
           ? {
@@ -160,6 +169,15 @@ async function mapManualDocumentListItem(
         url: resource.href ?? "",
 
         thumbnail: resource.imageUrl,
+        ...(resource.imageUrl && resource.imageWidth && resource.imageHeight
+          ? {
+              thumbnailWidth: resource.imageWidth,
+              thumbnailHeight: resource.imageHeight,
+            }
+          : {}),
+        ...(resource.imageUrl && resource.imageAlt
+          ? { thumbnailAlt: resource.imageAlt }
+          : {}),
 
         tags: resource.tags ?? [],
 
@@ -196,6 +214,14 @@ async function mapManualDocumentListItem(
         rating: testimonial.rating,
 
         companyLogoUrl: testimonial.companyLogoUrl,
+        ...(testimonial.companyLogoUrl &&
+        testimonial.companyLogoWidth &&
+        testimonial.companyLogoHeight
+          ? {
+              companyLogoWidth: testimonial.companyLogoWidth,
+              companyLogoHeight: testimonial.companyLogoHeight,
+            }
+          : {}),
 
         author: {
           name: testimonial.author.name,
@@ -738,6 +764,15 @@ function mapSearchResult(
     date: result.date,
 
     thumbnail: result.imageUrl,
+    ...(result.imageUrl && result.imageWidth && result.imageHeight
+      ? {
+          thumbnailWidth: result.imageWidth,
+          thumbnailHeight: result.imageHeight,
+        }
+      : {}),
+    ...(result.imageUrl && result.imageAlt
+      ? { thumbnailAlt: result.imageAlt }
+      : {}),
 
     tags: result.taxonomy?.map((item) => item.title),
 

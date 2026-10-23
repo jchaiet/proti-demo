@@ -177,6 +177,8 @@ export async function BlogTemplate({
         publishedDate={publishedDate}
         publishedDateTime={blog.publishedAt}
         imageUrl={blog.imageUrl}
+        imageWidth={blog.imageWidth}
+        imageHeight={blog.imageHeight}
         imageSrcSet={blog.imageSrcSet}
         imageAlt={blog.imageAlt}
       />

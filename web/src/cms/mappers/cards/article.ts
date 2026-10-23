@@ -4,6 +4,7 @@ import type { CmsArticleCard } from "@/cms/types";
 
 import {
   resolveSanityImage,
+  resolveSanityImageDimensions,
   resolveSanityImageSrcSet,
 } from "@/cms/resolvers/image";
 
@@ -15,6 +16,9 @@ export async function mapArticleCard(
   const resolvedLink = card.link ? await resolveLink(card.link) : undefined;
 
   const imageUrl = resolveSanityImage(card.image, { width: 960 });
+  const imageDimensions = imageUrl
+    ? resolveSanityImageDimensions(card.image)
+    : undefined;
 
   const avatarUrl = resolveSanityImage(card.author?.avatar, { width: 240 });
 
@@ -33,6 +37,10 @@ export async function mapArticleCard(
     ),
 
     imageSizes: "(max-width: 767px) 100vw, (max-width: 1100px) 50vw, 33vw",
+
+    imageWidth: imageDimensions?.width,
+
+    imageHeight: imageDimensions?.height,
 
     imageAlt: card.image?.alt ?? "",
 

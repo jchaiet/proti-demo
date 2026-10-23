@@ -1,3 +1,4 @@
+import { CARD_IMAGE_PRESET_SIZE } from "@/cms/resolvers/image-presets";
 import type {
   DocumentItem,
   FilterOption,
@@ -54,6 +55,13 @@ function mapBlogDocument(
     date: blog.publishedAt,
 
     thumbnail: blog.imageUrl,
+    ...(blog.imageUrl
+      ? {
+          thumbnailWidth: CARD_IMAGE_PRESET_SIZE.width,
+          thumbnailHeight: CARD_IMAGE_PRESET_SIZE.height,
+        }
+      : {}),
+    ...(blog.imageUrl && blog.imageAlt ? { thumbnailAlt: blog.imageAlt } : {}),
 
     tags: blog.taxonomy?.map((term) => term.title).filter(Boolean) ?? [],
   };
