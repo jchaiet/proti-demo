@@ -1,7 +1,19 @@
-import { describe, expect, it, vi } from "vitest";
-import type { ReactElement } from "react";
-import { mapHeroBlock } from "@/cms/mappers/blocks";
+import { renderToStaticMarkup } from "react-dom/server";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
 import type { CmsBlock } from "@/cms/types";
+
+const loaded = vi.hoisted(() => ({
+  accordion: vi.fn(),
+  carousel: vi.fn(),
+  content: vi.fn(),
+  documentList: vi.fn(),
+  form: vi.fn(),
+  grid: vi.fn(),
+  poll: vi.fn(),
+  richText: vi.fn(),
+  tabs: vi.fn(),
+}));
 
 vi.mock("@/cms/mappers/blocks", () => ({
   mapAccordionBlock: vi.fn(),
@@ -16,46 +28,60 @@ vi.mock("@/cms/mappers/blocks", () => ({
   mapTabsBlock: vi.fn(),
 }));
 
-vi.mock("./Accordion", () => ({
-  Accordion: () => null,
-}));
+vi.mock("./Accordion", () => {
+  loaded.accordion();
+  return { Accordion: () => null };
+});
 
-vi.mock("./Carousel", () => ({
-  Carousel: () => null,
-}));
+vi.mock("./Carousel", () => {
+  loaded.carousel();
+  return { Carousel: () => null };
+});
 
-vi.mock("./Content", () => ({
-  Content: () => null,
-}));
+vi.mock("./Content", () => {
+  loaded.content();
+  return {
+    Content: ({ title }: { title?: string }) => (
+      <div data-block="content">{title}</div>
+    ),
+  };
+});
 
-vi.mock("./DocumentList", () => ({
-  DocumentList: () => null,
-}));
+vi.mock("./DocumentList", () => {
+  loaded.documentList();
+  return { DocumentList: () => null };
+});
 
-vi.mock("./Form", () => ({
-  Form: () => null,
-}));
+vi.mock("./Form", () => {
+  loaded.form();
+  return { Form: () => null };
+});
 
-vi.mock("./Grid", () => ({
-  Grid: () => null,
-}));
+vi.mock("./Grid", () => {
+  loaded.grid();
+  return { Grid: () => null };
+});
 
 vi.mock("./Hero", () => ({
-  Hero: () => null,
+  Hero: ({ title }: { title?: string }) => <div data-block="hero">{title}</div>,
 }));
 
-vi.mock("./Poll", () => ({
-  Poll: () => null,
-}));
+vi.mock("./Poll", () => {
+  loaded.poll();
+  return { Poll: () => null };
+});
 
-vi.mock("./RichText", () => ({
-  RichText: () => null,
-}));
+vi.mock("./RichText", () => {
+  loaded.richText();
+  return { RichText: () => null };
+});
 
-vi.mock("./Tabs", () => ({
-  Tabs: () => null,
-}));
+vi.mock("./Tabs", () => {
+  loaded.tabs();
+  return { Tabs: () => null };
+});
 
+import { mapContentBlock, mapHeroBlock } from "@/cms/mappers/blocks";
 import { BlockRenderer } from "./index";
 
 const context = {
@@ -63,77 +89,75 @@ const context = {
   locale: "en-us",
 };
 
-type HeroPriorityElement = ReactElement<{
-  imageFetchPriority?: "high" | "low" | "auto";
-  imageLoading?: "eager" | "lazy";
-}>;
+const cmsBlock = (type: string, key: string): CmsBlock =>
+  ({ _type: type, _key: key }) as CmsBlock;
 
-type HeroWrapperElement = ReactElement<{ children: HeroPriorityElement }>;
-type BlockRendererElement = ReactElement<{ children: HeroWrapperElement[] }>;
+beforeEach(() => {
+  vi.clearAllMocks();
+});
 
 describe("BlockRenderer empty content", () => {
   it("renders nothing when blocks are undefined", async () => {
     await expect(
-      BlockRenderer({
-        blocks: undefined,
-        context,
-      }),
+      BlockRenderer({ blocks: undefined, context }),
     ).resolves.toBeNull();
   });
 
   it("renders nothing when Sanity returns null for an unset sections array", async () => {
-    await expect(
-      BlockRenderer({
-        blocks: null,
-        context,
-      }),
-    ).resolves.toBeNull();
+    await expect(BlockRenderer({ blocks: null, context })).resolves.toBeNull();
   });
 
   it("renders nothing when the sections array is empty", async () => {
-    await expect(
-      BlockRenderer({
-        blocks: [],
-        context,
-      }),
-    ).resolves.toBeNull();
+    await expect(BlockRenderer({ blocks: [], context })).resolves.toBeNull();
   });
 });
 
-describe("BlockRenderer LCP priority", () => {
-  it("prioritizes the first CMS Hero only", async () => {
+describe("BlockRenderer conditional component loading", () => {
+  it("keeps hero rendering ready without importing unused block components", async () => {
     vi.mocked(mapHeroBlock).mockResolvedValue({
-      title: "Demo",
-      imageSrc: "https://example.test/hero.jpg",
-    });
-    const result = await BlockRenderer({
-      blocks: [
-        { _type: "heroBlock", _key: "first" },
-        { _type: "heroBlock", _key: "second" },
-      ] as CmsBlock[],
+      title: "Page hero",
+    } as Awaited<ReturnType<typeof mapHeroBlock>>);
+
+    const tree = await BlockRenderer({
+      blocks: [cmsBlock("heroBlock", "hero-1")],
       context,
     });
 
-    const children = (result as BlockRendererElement).props.children;
-    const firstHero = children[0].props.children;
-    const secondHero = children[1].props.children;
-    expect(firstHero.props.imageFetchPriority).toBe("high");
-    expect(firstHero.props.imageLoading).toBe("eager");
-    expect(secondHero.props.imageFetchPriority).toBe("auto");
-    expect(secondHero.props.imageLoading).toBe("lazy");
+    expect(renderToStaticMarkup(tree)).toContain("Page hero");
+    expect(loaded.content).not.toHaveBeenCalled();
+    expect(loaded.grid).not.toHaveBeenCalled();
+    expect(loaded.documentList).not.toHaveBeenCalled();
+    expect(loaded.carousel).not.toHaveBeenCalled();
   });
 
-  it("does not prioritize CMS Hero content after a BlogHero", async () => {
+  it("loads the selected block and preserves the source block order", async () => {
     vi.mocked(mapHeroBlock).mockResolvedValue({
-      title: "Related",
-      imageSrc: "https://example.test/related.jpg",
+      title: "Before",
+    } as Awaited<ReturnType<typeof mapHeroBlock>>);
+
+    vi.mocked(mapContentBlock).mockResolvedValue({
+      title: "Between",
+    } as Awaited<ReturnType<typeof mapContentBlock>>);
+
+    const tree = await BlockRenderer({
+      blocks: [
+        cmsBlock("heroBlock", "hero-1"),
+        cmsBlock("contentBlock", "content-1"),
+        cmsBlock("heroBlock", "hero-2"),
+      ],
+      context,
     });
-    const result = await BlockRenderer({
-      blocks: [{ _type: "heroBlock", _key: "related" }] as CmsBlock[],
-      context: { ...context, priorityHeroImage: false },
-    });
-    const children = (result as BlockRendererElement).props.children;
-    const hero = children[0].props.children;
-    expect(hero.props.imageFetchPriority).toBe("auto");
+
+    const html = renderToStaticMarkup(tree);
+    expect(html.match(/data-block="hero"/g)).toHaveLength(2);
+    expect(html).toContain('data-block="content"');
+    expect(html.indexOf('data-block="hero"')).toBeLessThan(
+      html.indexOf('data-block="content"'),
+    );
+    expect(html.lastIndexOf('data-block="hero"')).toBeGreaterThan(
+      html.indexOf('data-block="content"'),
+    );
+    expect(loaded.content).toHaveBeenCalled();
+    expect(loaded.grid).not.toHaveBeenCalled();
   });
 });
