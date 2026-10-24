@@ -16,11 +16,11 @@ import { Accordion } from "./Accordion";
 import { Carousel } from "./Carousel";
 import { Content } from "./Content";
 import { Tabs } from "./Tabs";
-import { Form } from "./Form";
+import { FormLazy as Form } from "./FormLazy";
 import { Grid } from "./Grid";
-import { DocumentList } from "./DocumentList";
+import { DocumentListLazy as DocumentList } from "./DocumentListLazy";
 import { RichText } from "./RichText";
-import { Poll } from "./Poll";
+import { PollLazy as Poll } from "./PollLazy";
 import { Hero } from "./Hero";
 import { BlockStyles } from "./BlockStyles";
 
