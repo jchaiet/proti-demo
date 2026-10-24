@@ -47,14 +47,14 @@ vi.mock("./Content", () => {
   };
 });
 
-vi.mock("./DocumentList", () => {
+vi.mock("./DocumentListLazy", () => {
   loaded.documentList();
-  return { DocumentList: () => null };
+  return { DocumentListLazy: () => null };
 });
 
-vi.mock("./Form", () => {
+vi.mock("./FormLazy", () => {
   loaded.form();
-  return { Form: () => null };
+  return { FormLazy: () => null };
 });
 
 vi.mock("./Grid", () => {
@@ -66,9 +66,9 @@ vi.mock("./Hero", () => ({
   Hero: ({ title }: { title?: string }) => <div data-block="hero">{title}</div>,
 }));
 
-vi.mock("./Poll", () => {
+vi.mock("./PollLazy", () => {
   loaded.poll();
-  return { Poll: () => null };
+  return { PollLazy: () => null };
 });
 
 vi.mock("./RichText", () => {
@@ -85,8 +85,10 @@ import {
   mapCarouselBlock,
   mapContentBlock,
   mapDocumentListBlock,
+  mapFormBlock,
   mapGridBlock,
   mapHeroBlock,
+  mapPollBlock,
 } from "@/cms/mappers/blocks";
 import { BlockRenderer } from "./index";
 
@@ -164,6 +166,46 @@ describe("BlockRenderer block selection and order", () => {
       html.indexOf('data-block="content"'),
     );
     expect(mapContentBlock).toHaveBeenCalledOnce();
+    expect(mapGridBlock).not.toHaveBeenCalled();
+  });
+});
+
+describe("BlockRenderer optional interactive blocks", () => {
+  it("maps only the requested Form, Poll, and DocumentList blocks", async () => {
+    vi.mocked(mapFormBlock).mockReturnValue({
+      formKey: "contact",
+      blockKey: "form-1",
+    } as ReturnType<typeof mapFormBlock>);
+    vi.mocked(mapPollBlock).mockReturnValue({
+      pollKey: "poll-1",
+      siteId: context.siteId,
+      locale: context.locale,
+      options: [],
+    });
+    vi.mocked(mapDocumentListBlock).mockResolvedValue({
+      sourceMode: "manual",
+      props: { documents: [] },
+      enableSearch: false,
+      enableSorting: false,
+      enablePagination: false,
+      itemsPerPage: 9,
+    });
+
+    const tree = await BlockRenderer({
+      blocks: [
+        cmsBlock("formBlock", "form-1"),
+        cmsBlock("pollBlock", "poll-1"),
+        cmsBlock("documentListBlock", "list-1"),
+      ],
+      context,
+    });
+
+    expect(tree).not.toBeNull();
+    expect(mapFormBlock).toHaveBeenCalledOnce();
+    expect(mapPollBlock).toHaveBeenCalledOnce();
+    expect(mapDocumentListBlock).toHaveBeenCalledOnce();
+    expect(mapHeroBlock).not.toHaveBeenCalled();
+    expect(mapContentBlock).not.toHaveBeenCalled();
     expect(mapGridBlock).not.toHaveBeenCalled();
   });
 });
