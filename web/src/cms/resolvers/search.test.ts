@@ -554,6 +554,8 @@ it("returns localized Author job title, localized Taxonomy, and hotspot-aware Bl
     href: "/es-us/blog/nutricion-para-todos",
     imageUrl: "resolved-card-image",
     imageAlt: "Healthy food",
+    imageWidth: 960,
+    imageHeight: 540,
     author: {
       id: "author-1",
       name: "María López",

@@ -3,6 +3,10 @@ import { createImageUrlBuilder } from "@sanity/image-url";
 import type { CmsImage } from "@/cms/types";
 
 import { sanityClient } from "@/sanity/client";
+import {
+  CARD_IMAGE_PRESET_SIZE,
+  HERO_IMAGE_PRESET_SIZE,
+} from "./image-presets";
 
 const imageBuilder = createImageUrlBuilder(sanityClient);
 
@@ -30,8 +34,7 @@ const IMAGE_PRESETS: Record<SanityImagePreset, ResolveSanityImageOptions> = {
   },
 
   card: {
-    width: 960,
-    height: 540,
+    ...CARD_IMAGE_PRESET_SIZE,
     quality: 85,
   },
 
@@ -41,8 +44,7 @@ const IMAGE_PRESETS: Record<SanityImagePreset, ResolveSanityImageOptions> = {
   },
 
   hero: {
-    width: 1600,
-    height: 900,
+    ...HERO_IMAGE_PRESET_SIZE,
     quality: 88,
   },
 

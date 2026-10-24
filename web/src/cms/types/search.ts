@@ -55,6 +55,8 @@ export interface SearchResult {
 
   imageUrl?: string;
   imageAlt?: string;
+  imageWidth?: number;
+  imageHeight?: number;
 
   date?: string;
 

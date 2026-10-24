@@ -11,6 +11,7 @@ import type {
 
 import { portableTextToPlainText } from "@/cms/resolvers/portable-text-markdown";
 
+import { HERO_IMAGE_PRESET_SIZE } from "@/cms/resolvers/image-presets";
 import {
   resolveSanityImagePreset,
   resolveSanityImageSrcSet,
@@ -162,6 +163,12 @@ export async function getBlogBySlug({
     ...blog,
 
     imageUrl: resolveSanityImagePreset(mainImage, "hero"),
+    ...(mainImage?.asset?._ref
+      ? {
+          imageWidth: HERO_IMAGE_PRESET_SIZE.width,
+          imageHeight: HERO_IMAGE_PRESET_SIZE.height,
+        }
+      : {}),
 
     imageSrcSet: resolveSanityImageSrcSet(mainImage, undefined, {
       aspectRatio: 16 / 9,

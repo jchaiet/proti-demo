@@ -9,6 +9,7 @@ import type { CmsFormBlock, CmsFormField, CmsIcon } from "@/cms/types";
 import { mapSectionHeading } from "@/cms/mappers/section-heading";
 import {
   resolveSanityImage,
+  resolveSanityImageDimensions,
   resolveSanityImageSrcSet,
 } from "@/cms/resolvers/image";
 import { CmsRichText } from "@/components/CmsRichText";
@@ -321,6 +322,10 @@ function mapFormFields(fields: CmsFormField[] | undefined): FormFieldConfig[] {
 
 export function mapFormBlock(block: CmsFormBlock): MappedFormBlockProps {
   const heading = mapSectionHeading(block.heading);
+  const imageSrc = resolveSanityImage(block.image, { width: 1200 });
+  const imageDimensions = imageSrc
+    ? resolveSanityImageDimensions(block.image)
+    : undefined;
 
   const isStepped = block.formMode === "stepped";
 
@@ -337,7 +342,7 @@ export function mapFormBlock(block: CmsFormBlock): MappedFormBlockProps {
 
     formPosition: block.formPosition ?? "right",
 
-    imageSrc: resolveSanityImage(block.image, { width: 1200 }),
+    imageSrc,
 
     imageSrcSet: resolveSanityImageSrcSet(
       block.image,
@@ -345,6 +350,10 @@ export function mapFormBlock(block: CmsFormBlock): MappedFormBlockProps {
     ),
 
     imageSizes: "(max-width: 767px) 100vw, 50vw",
+
+    imageWidth: imageDimensions?.width,
+
+    imageHeight: imageDimensions?.height,
 
     imageAlt: block.image?.alt ?? "",
 

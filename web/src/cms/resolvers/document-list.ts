@@ -8,6 +8,7 @@ import type {
 } from "@/cms/types";
 
 import { resolveSanityImagePreset } from "@/cms/resolvers/image";
+import { CARD_IMAGE_PRESET_SIZE } from "@/cms/resolvers/image-presets";
 
 import { sanityFetch } from "@/sanity/fetch";
 
@@ -235,6 +236,7 @@ function mapDynamicItem(
   if (item._type === "page" && !url) return null;
 
   const isResource = item._type === "resource";
+  const thumbnail = resolveSanityImagePreset(item.thumbnailImage, "card");
 
   return {
     id: item._id,
@@ -251,7 +253,16 @@ function mapDynamicItem(
 
     date: item.date,
 
-    thumbnail: resolveSanityImagePreset(item.thumbnailImage, "card"),
+    thumbnail,
+    ...(item.thumbnailImage?.asset?._ref && thumbnail
+      ? {
+          thumbnailWidth: CARD_IMAGE_PRESET_SIZE.width,
+          thumbnailHeight: CARD_IMAGE_PRESET_SIZE.height,
+          ...(item.thumbnailImage.alt
+            ? { thumbnailAlt: item.thumbnailImage.alt }
+            : {}),
+        }
+      : {}),
 
     tags: item.taxonomy?.map((term) => term.title).filter(Boolean),
 

@@ -5561,7 +5561,7 @@ packages:
     engines: {node: '>= 18'}
 
   mino-ui@file:web/mino-ui-0.0.3.tgz:
-    resolution: {integrity: sha512-oDcqD4BbPySHt9cBym0afQ4J0oAVDMP25PIES7Ogy6PyONQhhqdVihrZbQ5UvbbP58YDdjCoHPNHOeQ2cQJllQ==, tarball: file:web/mino-ui-0.0.3.tgz}
+    resolution: {integrity: sha512-c69ue9KM4xfLjniC88fjJuOmvaCeJjM+1YvTmffRZh/zj3/VC3mNzoJo1N8ldeD1FqLPt1fdPu4LiczR1Hll6Q==, tarball: file:web/mino-ui-0.0.3.tgz}
     version: 0.0.3
     peerDependencies:
       react: '>=18.0.0'

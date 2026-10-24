@@ -49,6 +49,8 @@ export interface CmsBlog {
 
   imageUrl?: string;
   imageSrcSet?: string;
+  imageWidth?: number;
+  imageHeight?: number;
   socialImageUrl?: string;
   imageAlt?: string;
 

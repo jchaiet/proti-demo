@@ -1,5 +1,7 @@
 "use client";
 
+import { CARD_IMAGE_PRESET_SIZE } from "@/cms/resolvers/image-presets";
+
 import Image from "next/image";
 
 import {
@@ -281,6 +283,15 @@ function mapArticle(
     date: formatPublishedDate(article.publishedAt, locale),
 
     thumbnail: article.imageUrl,
+    ...(article.imageUrl
+      ? {
+          thumbnailWidth: CARD_IMAGE_PRESET_SIZE.width,
+          thumbnailHeight: CARD_IMAGE_PRESET_SIZE.height,
+        }
+      : {}),
+    ...(article.imageUrl && article.imageAlt
+      ? { thumbnailAlt: article.imageAlt }
+      : {}),
 
     tags: article.taxonomy?.map((term) => term.title).filter(Boolean),
 

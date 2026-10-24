@@ -12,6 +12,15 @@ import {
 } from "@/cms/mappers/blocks";
 
 import type { CmsBlock } from "@/cms/types";
+import { Accordion } from "./Accordion";
+import { Carousel } from "./Carousel";
+import { Content } from "./Content";
+import { Tabs } from "./Tabs";
+import { Form } from "./Form";
+import { Grid } from "./Grid";
+import { DocumentList } from "./DocumentList";
+import { RichText } from "./RichText";
+import { Poll } from "./Poll";
 import { Hero } from "./Hero";
 import { BlockStyles } from "./BlockStyles";
 
@@ -60,10 +69,7 @@ export async function BlockRenderer({ blocks, context }: Props) {
             }
 
             case "carouselBlock": {
-              const [{ Carousel }, props] = await Promise.all([
-                import("./Carousel"),
-                mapCarouselBlock(block),
-              ]);
+              const props = await mapCarouselBlock(block);
 
               return (
                 <BlockStyles key={block._key} config={block.styles}>
@@ -73,10 +79,7 @@ export async function BlockRenderer({ blocks, context }: Props) {
             }
 
             case "accordionBlock": {
-              const [{ Accordion }, props] = await Promise.all([
-                import("./Accordion"),
-                mapAccordionBlock(block),
-              ]);
+              const props = await mapAccordionBlock(block);
 
               return (
                 <BlockStyles key={block._key} config={block.styles}>
@@ -86,10 +89,7 @@ export async function BlockRenderer({ blocks, context }: Props) {
             }
 
             case "contentBlock": {
-              const [{ Content }, props] = await Promise.all([
-                import("./Content"),
-                mapContentBlock(block),
-              ]);
+              const props = await mapContentBlock(block);
 
               return (
                 <BlockStyles key={block._key} config={block.styles}>
@@ -105,10 +105,7 @@ export async function BlockRenderer({ blocks, context }: Props) {
             }
 
             case "tabsBlock": {
-              const [{ Tabs }, props] = await Promise.all([
-                import("./Tabs"),
-                mapTabsBlock(block),
-              ]);
+              const props = await mapTabsBlock(block);
 
               return (
                 <BlockStyles key={block._key} config={block.styles}>
@@ -118,10 +115,7 @@ export async function BlockRenderer({ blocks, context }: Props) {
             }
 
             case "formBlock": {
-              const [{ Form }, props] = await Promise.all([
-                import("./Form"),
-                mapFormBlock(block),
-              ]);
+              const props = await mapFormBlock(block);
 
               return (
                 <BlockStyles key={block._key} config={block.styles}>
@@ -135,10 +129,7 @@ export async function BlockRenderer({ blocks, context }: Props) {
             }
 
             case "gridBlock": {
-              const [{ Grid }, props] = await Promise.all([
-                import("./Grid"),
-                mapGridBlock(block),
-              ]);
+              const props = await mapGridBlock(block);
 
               return (
                 <BlockStyles key={block._key} config={block.styles}>
@@ -148,10 +139,7 @@ export async function BlockRenderer({ blocks, context }: Props) {
             }
 
             case "documentListBlock": {
-              const [{ DocumentList }, mapped] = await Promise.all([
-                import("./DocumentList"),
-                mapDocumentListBlock(block, context),
-              ]);
+              const mapped = await mapDocumentListBlock(block, context);
 
               return (
                 <BlockStyles key={block._key} config={block.styles}>
@@ -161,10 +149,7 @@ export async function BlockRenderer({ blocks, context }: Props) {
             }
 
             case "richTextBlock": {
-              const [{ RichText }, props] = await Promise.all([
-                import("./RichText"),
-                Promise.resolve(mapRichTextBlock(block)),
-              ]);
+              const props = mapRichTextBlock(block);
 
               return (
                 <BlockStyles key={block._key} config={block.styles}>
@@ -174,10 +159,7 @@ export async function BlockRenderer({ blocks, context }: Props) {
             }
 
             case "pollBlock": {
-              const [{ Poll }, props] = await Promise.all([
-                import("./Poll"),
-                Promise.resolve(mapPollBlock(block, context)),
-              ]);
+              const props = mapPollBlock(block, context);
 
               return (
                 <BlockStyles key={block._key} config={block.styles}>

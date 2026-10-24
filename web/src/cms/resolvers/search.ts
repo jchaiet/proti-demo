@@ -11,6 +11,7 @@ import type {
 } from "@/cms/types/search";
 
 import { resolveSanityImagePreset } from "@/cms/resolvers/image";
+import { CARD_IMAGE_PRESET_SIZE } from "@/cms/resolvers/image-presets";
 import { extractVisibleText } from "@/cms/search/visible-text";
 
 import { sanityFetch } from "@/sanity/fetch";
@@ -871,6 +872,8 @@ export async function searchContent(
 
     const description = document.summary?.trim() || getSnippet(bodyText, query);
 
+    const imageUrl = resolveSanityImagePreset(document.image, "card");
+
     const result: SearchResult = {
       id: cleanId(document._id),
 
@@ -882,7 +885,13 @@ export async function searchContent(
 
       href,
 
-      imageUrl: resolveSanityImagePreset(document.image, "card"),
+      imageUrl,
+      ...(document.image?.asset?._ref && imageUrl
+        ? {
+            imageWidth: CARD_IMAGE_PRESET_SIZE.width,
+            imageHeight: CARD_IMAGE_PRESET_SIZE.height,
+          }
+        : {}),
 
       imageAlt: document.image?.alt ?? "",
 
