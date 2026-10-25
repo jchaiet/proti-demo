@@ -22,6 +22,8 @@ import {
   resolveSanityImageSrcSet,
 } from "@/cms/resolvers/image";
 
+import { SANITY_RESPONSIVE_WIDTHS } from "@/cms/resolvers/image-widths";
+
 import { resolveLink } from "@/cms/resolvers/link";
 
 async function mapCarouselItem(
@@ -47,7 +49,7 @@ async function mapCarouselItem(
 
         imageSrcSet: resolveSanityImageSrcSet(
           item.image,
-          [320, 480, 640, 800, 960, 1200],
+          SANITY_RESPONSIVE_WIDTHS.standard,
         ),
 
         imageSizes: "(max-width: 767px) 90vw, (max-width: 1100px) 50vw, 33vw",

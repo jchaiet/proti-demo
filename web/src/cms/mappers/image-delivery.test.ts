@@ -87,7 +87,7 @@ describe("responsive image requests from CMS", () => {
     expect(tabs.items?.[0].imageSrcSet).toContain("480w");
     expect(mocks.resolveSanityImageSrcSet).toHaveBeenCalledWith(
       image,
-      [320, 480, 640, 800, 960, 1200],
+      [320, 480, 640, 768, 960, 1200],
     );
     const form = mapFormBlock(asCms<CmsFormBlock>({ _key: "f", image }));
     expect(form.imageSrc).toContain("w=1200");
@@ -95,6 +95,20 @@ describe("responsive image requests from CMS", () => {
     expect(mocks.resolveSanityImage).toHaveBeenCalledWith(image, {
       width: 1200,
     });
+  });
+
+  it("uses the shared 768px candidate for full-width Content images", async () => {
+    const content = await mapContentBlock(
+      asCms<CmsContentBlock>({ mediaType: "image", image, imageSize: "full" }),
+    );
+    expect(content.imageSizes).toBe(
+      "(max-width: 767px) 100vw, (max-width: 1100px) 80vw, 800px",
+    );
+    expect(mocks.resolveSanityImageSrcSet).toHaveBeenCalledWith(
+      image,
+      [160, 240, 320, 480, 640, 768, 960, 1200, 1600],
+      {},
+    );
   });
 
   it("retains a square hotspot crop for circular Content images", async () => {
@@ -123,6 +137,10 @@ describe("responsive image requests from CMS", () => {
         items: [{ _key: "g", _type: "gridImageItem", image }],
       }),
     );
+    expect(mocks.resolveSanityImageSrcSet).toHaveBeenCalledWith(
+      image,
+      [320, 480, 640, 768, 960, 1200],
+    );
     expect(grid.items?.[0].imageSizes).toContain("50vw");
     expect(grid.items?.[0].imageSrcSet).toContain("480w");
     expect(grid.imageSrcSet).toContain("480w");
@@ -137,6 +155,10 @@ describe("responsive image requests from CMS", () => {
       asCms<CmsCarouselBlock>({
         items: [{ _key: "c", _type: "carouselImageItem", image }],
       }),
+    );
+    expect(mocks.resolveSanityImageSrcSet).toHaveBeenCalledWith(
+      image,
+      [320, 480, 640, 768, 960, 1200],
     );
     expect(carousel.items?.[0].imageSrcSet).toContain("480w");
     expect(carousel.items?.[0].imageSizes).toContain("90vw");

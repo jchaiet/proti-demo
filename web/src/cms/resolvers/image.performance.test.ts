@@ -9,6 +9,7 @@ vi.mock("@/sanity/client", () => ({
 // This test is source focused: it checks that responsive sizes never upscale
 // a known Sanity asset while leaving editor crop/hotspot on the image object.
 import { resolveSanityImageSrcSet } from "./image";
+import { SANITY_RESPONSIVE_WIDTHS } from "./image-widths";
 
 const demo = {
   _type: "image" as const,
@@ -26,6 +27,29 @@ describe("Sanity image srcset sizing", () => {
     expect(srcSet).not.toContain("1920w");
     expect(srcSet).toContain("1300x865");
   });
+  it("reuses the exact 768px CDN URL across Hero and Content image candidates", () => {
+    const heroSrcSet = resolveSanityImageSrcSet(demo);
+    const contentSrcSet = resolveSanityImageSrcSet(
+      demo,
+      SANITY_RESPONSIVE_WIDTHS.content,
+    );
+
+    const candidate = (srcSet: string | undefined, width: number) =>
+      srcSet
+        ?.split(", ")
+        .find((entry) => entry.endsWith(` ${width}w`))
+        ?.slice(0, -` ${width}w`.length);
+
+    const hero768 = candidate(heroSrcSet, 768);
+    const content768 = candidate(contentSrcSet, 768);
+
+    expect(hero768).toBeDefined();
+    expect(content768).toBe(hero768);
+    expect(hero768).toContain("1300x865");
+    expect(heroSrcSet).not.toContain(" 800w");
+    expect(contentSrcSet).not.toContain(" 800w");
+  });
+
   it("emits a candidate for sources smaller than all requested widths", () => {
     const tiny = {
       ...demo,
