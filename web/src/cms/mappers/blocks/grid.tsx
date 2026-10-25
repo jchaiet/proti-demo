@@ -20,6 +20,8 @@ import {
   resolveSanityImageSrcSet,
 } from "@/cms/resolvers/image";
 
+import { SANITY_RESPONSIVE_WIDTHS } from "@/cms/resolvers/image-widths";
+
 import { resolveLink } from "@/cms/resolvers/link";
 
 async function mapGridItem(
@@ -46,7 +48,7 @@ async function mapGridItem(
 
         imageSrcSet: resolveSanityImageSrcSet(
           item.image,
-          [320, 480, 640, 800, 960, 1200],
+          SANITY_RESPONSIVE_WIDTHS.standard,
         ),
 
         imageSizes,
@@ -179,7 +181,7 @@ export async function mapGridBlock(
 
     imageSrcSet: resolveSanityImageSrcSet(
       block.sideImage,
-      [320, 480, 640, 800, 960, 1200],
+      SANITY_RESPONSIVE_WIDTHS.standard,
     ),
 
     imageSizes: "(max-width: 767px) 100vw, 50vw",

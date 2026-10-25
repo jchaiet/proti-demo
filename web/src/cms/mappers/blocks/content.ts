@@ -9,6 +9,7 @@ import {
   resolveSanityImageDimensions,
   resolveSanityImageSrcSet,
 } from "@/cms/resolvers/image";
+import { SANITY_RESPONSIVE_WIDTHS } from "@/cms/resolvers/image-widths";
 
 const IMAGE_DISPLAY_WIDTH: Record<
   NonNullable<CmsContentBlock["imageSize"]>,
@@ -75,7 +76,7 @@ export async function mapContentBlock(
     block.mediaType === "image"
       ? resolveSanityImageSrcSet(
           block.image,
-          [160, 240, 320, 480, 640, 800, 960, 1200, 1600].filter(
+          SANITY_RESPONSIVE_WIDTHS.content.filter(
             (width) => width <= maxImageWidth * 2,
           ),
           block.imageShape === "circle" ? { aspectRatio: 1 } : {},

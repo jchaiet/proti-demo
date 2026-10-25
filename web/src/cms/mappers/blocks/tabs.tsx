@@ -13,6 +13,8 @@ import {
   resolveSanityImageSrcSet,
 } from "@/cms/resolvers/image";
 
+import { SANITY_RESPONSIVE_WIDTHS } from "@/cms/resolvers/image-widths";
+
 async function mapTabsItem(item: CmsTabsItem): Promise<TabItem> {
   const ctaGroup = await mapCtaGroup(item.ctaGroup, {
     legacyItems: item.ctas,
@@ -27,7 +29,7 @@ async function mapTabsItem(item: CmsTabsItem): Promise<TabItem> {
       : undefined;
   const imageSrcSet =
     item.mediaType === "image"
-      ? resolveSanityImageSrcSet(item.image, [320, 480, 640, 800, 960, 1200])
+      ? resolveSanityImageSrcSet(item.image, SANITY_RESPONSIVE_WIDTHS.standard)
       : undefined;
 
   const videoSrc = item.mediaType === "video" ? item.videoUrl : undefined;

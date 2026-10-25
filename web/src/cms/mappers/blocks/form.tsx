@@ -12,6 +12,8 @@ import {
   resolveSanityImageDimensions,
   resolveSanityImageSrcSet,
 } from "@/cms/resolvers/image";
+
+import { SANITY_RESPONSIVE_WIDTHS } from "@/cms/resolvers/image-widths";
 import { CmsRichText } from "@/components/CmsRichText";
 
 export type MappedFormBlockProps = Omit<FormBlockProps, "onSubmit"> & {
@@ -346,7 +348,7 @@ export function mapFormBlock(block: CmsFormBlock): MappedFormBlockProps {
 
     imageSrcSet: resolveSanityImageSrcSet(
       block.image,
-      [320, 480, 640, 800, 960, 1200],
+      SANITY_RESPONSIVE_WIDTHS.standard,
     ),
 
     imageSizes: "(max-width: 767px) 100vw, 50vw",
