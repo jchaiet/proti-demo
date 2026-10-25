@@ -25,6 +25,7 @@ import {
   getBlogTaxonomySegments,
   resolveRoute,
 } from "@/cms/resolvers/route";
+import { getPageContentDescription } from "@/cms/resolvers/page-description";
 import { buildSeoMetadata } from "@/cms/resolvers/seo";
 import { resolveDocumentTranslations } from "@/cms/resolvers/translation";
 import {
@@ -321,6 +322,8 @@ export async function generateMetadata({
     publicPath,
 
     title: page.title,
+
+    description: getPageContentDescription(page.sections),
 
     seo: page.seo,
 

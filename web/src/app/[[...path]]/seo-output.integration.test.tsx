@@ -394,6 +394,58 @@ describe("rendered SEO metadata output", () => {
     });
   });
 
+  it("uses localized page copy when both page SEO and Site defaults lack a description", async () => {
+    const defaultRecord = createSiteSeoRecord("en-us");
+
+    mocks.sanityFetch.mockResolvedValueOnce({
+      ...defaultRecord,
+      defaults: {
+        ...defaultRecord.defaults,
+        metaDescription: undefined,
+      },
+    });
+
+    mocks.resolvePageBySegments.mockResolvedValue({
+      _id: "page-widget",
+      title: "Widget",
+      locale: "en-us",
+      sections: [
+        {
+          _key: "hero",
+          _type: "heroBlock",
+          heading: {
+            description: [
+              {
+                _key: "copy",
+                _type: "block",
+                style: "normal",
+                markDefs: [],
+                children: [
+                  {
+                    _key: "text",
+                    _type: "span",
+                    text: "Explore the widget and its features.",
+                    marks: [],
+                  },
+                ],
+              },
+            ],
+          },
+        },
+      ],
+    });
+
+    const metadata = await generateMetadata(pageProps(["products", "widget"]));
+
+    expect(metadata.description).toBe("Explore the widget and its features.");
+    expect(metadata.openGraph).toMatchObject({
+      description: "Explore the widget and its features.",
+    });
+    expect(metadata.twitter).toMatchObject({
+      description: "Explore the widget and its features.",
+    });
+  });
+
   it("emits localized canonical, hreflang, robots, Open Graph, and Twitter metadata for a translated Page", async () => {
     mocks.resolvePageBySegments.mockResolvedValue({
       _id: "page-widget-es",
