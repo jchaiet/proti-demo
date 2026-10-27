@@ -1,17 +1,15 @@
-"use client";
-
 import type { ReactNode } from "react";
 
 import { PortableText } from "@portabletext/react";
 
 import type { PortableTextBlock } from "@portabletext/types";
 
-import { Button } from "mino-ui/core/Button";
 import { Heading } from "mino-ui/core/Heading";
 import { Text } from "mino-ui/core/Text";
 
 import { RichTextBlock } from "mino-ui/blocks/RichTextBlock";
 import { isSafeContentHref } from "@/lib/security/urls";
+import { RichTextLink } from "./RichTextLink";
 
 import type { RichTextBlockProps } from "mino-ui/blocks/RichTextBlock";
 
@@ -173,15 +171,9 @@ const portableTextComponents = {
       const newTab = value?.openInNewTab === true;
 
       return (
-        <Button
-          as="a"
-          href={href}
-          variant="link"
-          target={newTab ? "_blank" : undefined}
-          rel={newTab ? "noopener noreferrer" : undefined}
-        >
+        <RichTextLink href={href} openInNewTab={newTab}>
           {children}
-        </Button>
+        </RichTextLink>
       );
     },
   },
