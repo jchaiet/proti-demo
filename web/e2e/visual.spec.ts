@@ -5,7 +5,7 @@ import { getE2ERoutes } from "./helpers/routes";
 const routes = getE2ERoutes();
 
 for (const route of routes) {
-  test(`${route.name} visual baseline`, async ({ page }) => {
+  test(`${route.name} visual baseline`, async ({ page }, testInfo) => {
     const response = await page.goto(route.path, {
       waitUntil: "load",
     });
@@ -21,6 +21,11 @@ for (const route of routes) {
     ).toBeLessThan(400);
 
     await expect(page.locator("main")).toBeVisible();
+
+    await expect(
+      page.locator("nextjs-portal"),
+      "Visual baselines must not include the Next.js development overlay",
+    ).toHaveCount(0);
 
     await expect(page).toHaveScreenshot(`${route.name}.png`, {
       fullPage: true,
