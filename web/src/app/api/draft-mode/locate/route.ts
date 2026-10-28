@@ -5,6 +5,41 @@ import { buildLocalePublicPath } from "@/lib/routing/public-url";
 import { sanityFetch } from "@/sanity/fetch";
 import { resolvePageSegmentsById } from "@/sanity/queries/page";
 
+// A preview locale is a single URL path segment, never a URL or a path.
+// Accept hyphenated locale codes used by Proti (e.g. en-us, us-es).
+function isSafePreviewLocale(locale: string): boolean {
+  return locale.length <= 64 && /^[a-z0-9]+(?:-[a-z0-9]+)*$/i.test(locale);
+}
+
+// CMS-provided slugs also need a final same-origin check. A path that begins
+// with // (or /\ on some URL parsers) is a network-path reference, not a
+// local route; new URL(path, request.url) could otherwise leave the site.
+function resolveSafePreviewRedirect(
+  path: string,
+  request: NextRequest,
+): URL | null {
+  if (
+    !path.startsWith("/") ||
+    path.startsWith("//") ||
+    path.includes("\\") ||
+    /[\u0000-\u001f\u007f]/.test(path)
+  ) {
+    return null;
+  }
+
+  try {
+    const destination = new URL(path, request.url);
+    return destination.origin === request.nextUrl.origin ? destination : null;
+  } catch {
+    return null;
+  }
+}
+
+function noStore(response: NextResponse): NextResponse {
+  response.headers.set("Cache-Control", "private, no-store");
+  return response;
+}
+
 interface LocatedDocument {
   _id: string;
   _type: string;
@@ -266,7 +301,9 @@ async function resolvePreviewPath(
 
 export async function GET(request: NextRequest) {
   if (!(await draftMode()).isEnabled) {
-    return new NextResponse("Draft Mode is required.", { status: 401 });
+    return noStore(
+      new NextResponse("Draft Mode is required.", { status: 401 }),
+    );
   }
 
   const type = request.nextUrl.searchParams.get("type")?.trim();
@@ -274,16 +311,27 @@ export async function GET(request: NextRequest) {
   const locale = request.nextUrl.searchParams.get("locale")?.trim();
 
   if (!type || !id) {
-    return new NextResponse("Missing preview document type or id.", {
-      status: 400,
-    });
+    return noStore(
+      new NextResponse("Missing preview document type or id.", {
+        status: 400,
+      }),
+    );
+  }
+
+  if (locale && !isSafePreviewLocale(locale)) {
+    return noStore(
+      new NextResponse("Invalid preview locale.", { status: 400 }),
+    );
   }
 
   const path = await resolvePreviewPath(type, id, locale || undefined);
+  const destination = resolveSafePreviewRedirect(path ?? "/", request);
 
-  if (!path) {
-    return NextResponse.redirect(new URL("/", request.url));
+  if (!destination) {
+    return noStore(
+      new NextResponse("Invalid preview destination.", { status: 400 }),
+    );
   }
 
-  return NextResponse.redirect(new URL(path, request.url));
+  return noStore(NextResponse.redirect(destination));
 }

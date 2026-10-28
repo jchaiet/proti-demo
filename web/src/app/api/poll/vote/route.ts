@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 
 import { NextResponse } from "next/server";
 
+import { checkPollRateLimit } from "@/lib/polls/rate-limit";
 import {
   parsePollVote,
   pollOriginAllowed,
@@ -88,6 +89,15 @@ export async function POST(request: Request) {
   const writeToken = process.env.SANITY_API_WRITE_TOKEN?.trim();
   if (!secret || !writeToken)
     return reply("Poll voting is not configured.", 503);
+
+  // Apply the shared, server-side IP limit BEFORE any Sanity reads or writes.
+  // Fail closed when Redis/proxy configuration is missing or unavailable in
+  // production; local development without Redis remains cookie-only.
+  const gate = await checkPollRateLimit(request);
+  if (gate === "limited")
+    return reply("Too many vote requests. Try again later.", 429);
+  if (gate !== "allowed")
+    return reply("Poll voting is temporarily unavailable.", 503);
 
   const history = readPollHistory(getPollCookie(request), secret);
   const fingerprint = pollFingerprint(vote.siteId, vote.locale, vote.pollKey);

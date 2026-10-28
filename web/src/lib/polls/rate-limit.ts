@@ -74,6 +74,18 @@ function getClientIp(request: Request): string | null {
 export async function checkPollRateLimit(
   request: Request,
 ): Promise<PollGateStatus> {
+  // Keep local development usable without provisioning Redis. A partially
+  // configured Redis setup, an untrusted proxy or any Redis outage must still
+  // fail closed. Production always requires a valid configuration.
+  if (
+    process.env.NODE_ENV !== "production" &&
+    !process.env.POLL_UPSTASH_REDIS_REST_URL?.trim() &&
+    !process.env.POLL_UPSTASH_REDIS_REST_TOKEN?.trim() &&
+    !process.env.POLL_RATE_LIMIT_SALT?.trim()
+  ) {
+    return "allowed";
+  }
+
   const config = getRedisConfig();
   const ip = getClientIp(request);
   if (!config || !ip) return "unavailable";
