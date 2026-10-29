@@ -1,9 +1,8 @@
 # Proti Playwright E2E tests
 
-For the v0.3 production-release workflow, see [Testing](../../docs/TESTING.md). Screenshot updates are an intentional approval action, not a mandatory step before every run.
+For the v0.3 production-release workflow, see [Testing](../../docs/TESTING.md). For intentional screenshot changes, failure investigation, and Sanity content considerations, see [Visual regression testing](./VISUAL_REGRESSION.md).
 
-This setup belongs in the **web app root**, next to that app's `package.json`.
-It does not belong in the Sanity Studio package.
+Run the commands below from the **`web/` app root**, alongside its `package.json`, not from the Sanity Studio package.
 
 ## 1. Install Playwright browsers
 
@@ -71,39 +70,25 @@ The Chromium mobile project uses Playwright's full device descriptor rather
 than only shrinking the viewport. That also emulates relevant mobile browser
 properties such as touch, screen size and user agent.
 
-## 5. Establish or intentionally refresh the visual baseline
+## 5. Visual regression testing
 
-**Only** when no approved baseline exists or a visual change has been reviewed and accepted (and smoke tests are green):
+Playwright checks Chromium desktop and mobile screenshots against the approved
+images in `e2e/__screenshots__/`. Firefox is covered by functional smoke tests,
+not screenshot baselines.
 
-```bash
-pnpm test:e2e:update
-```
-
-Visual regression runs only in the Chromium projects. Expected screenshots are
-written to:
-
-```text
-e2e/__screenshots__/
-  chromium-desktop/
-  chromium-mobile/
-```
-
-Review those images and commit them.
-
-Firefox is intentionally excluded from `visual.spec.ts`. It still runs the
-functional smoke tests, giving Proti cross-browser coverage without requiring a
-second browser-specific screenshot baseline.
-
-For an existing approved baseline, **skip the update command**. Refreshing snapshots automatically can hide an actual regression. See [Testing](../../docs/TESTING.md).
-
-## 6. Normal visual regression run
+Run the visual checks without modifying approved screenshots:
 
 ```bash
 pnpm test:e2e:visual
 ```
 
-Playwright will compare the Chromium desktop and mobile renders against the
-committed baseline.
+**Only after reviewing and approving an intentional visual change**, refresh
+the relevant snapshots and commit the PNGs. Do not automatically update them
+in normal CI runs.
+
+The complete production-server workflow (including the Sanity Navigation
+**Floating → Glass** example, snapshot commands, CI troubleshooting, and
+future regression-dataset strategy) is in **[VISUAL_REGRESSION.md](./VISUAL_REGRESSION.md)**.
 
 ## Useful commands
 
@@ -137,5 +122,5 @@ pnpm exec playwright test --project=firefox-desktop
 
 Browser screenshots can differ across operating systems, fonts, hardware and
 headless/headed environments. Generate and compare baselines in the same
-environment whenever possible. If CI becomes the source of truth later, keep
-its OS and Playwright/browser version pinned.
+environment whenever possible. See [VISUAL_REGRESSION.md](./VISUAL_REGRESSION.md)
+for detailed troubleshooting and snapshot-approval steps.
