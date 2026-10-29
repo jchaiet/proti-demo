@@ -121,6 +121,60 @@ for (const route of routes) {
       }
     }
 
+    // Compare outer and inner header geometry between local and CI.
+    // A difference in the wrapper can move the hero heading even when fonts match.
+    const headerStyles = await page
+      .locator("header")
+      .first()
+      .evaluate((header) => {
+        const inspect = (element: Element | null) => {
+          if (!(element instanceof HTMLElement)) return null;
+
+          const styles = getComputedStyle(element);
+          const rect = element.getBoundingClientRect();
+
+          return {
+            tagName: element.tagName.toLowerCase(),
+            className: element.getAttribute("class"),
+            top: rect.top,
+            left: rect.left,
+            height: rect.height,
+            width: rect.width,
+            paddingTop: styles.paddingTop,
+            paddingRight: styles.paddingRight,
+            paddingBottom: styles.paddingBottom,
+            paddingLeft: styles.paddingLeft,
+            marginTop: styles.marginTop,
+            marginBottom: styles.marginBottom,
+            borderTopWidth: styles.borderTopWidth,
+            borderBottomWidth: styles.borderBottomWidth,
+            minHeight: styles.minHeight,
+            cssHeight: styles.height,
+            boxSizing: styles.boxSizing,
+            position: styles.position,
+            display: styles.display,
+            alignItems: styles.alignItems,
+            gap: styles.gap,
+            fontFamily: styles.fontFamily,
+            fontSize: styles.fontSize,
+            lineHeight: styles.lineHeight,
+          };
+        };
+
+        return {
+          header: inspect(header),
+          firstChild: inspect(header.firstElementChild),
+          navigation: inspect(header.querySelector("nav")),
+          firstLink: inspect(header.querySelector("a")),
+          firstButton: inspect(header.querySelector("button")),
+        };
+      });
+
+    console.log(
+      `[Header Styles][${testInfo.project.name}]`,
+      JSON.stringify(headerStyles, null, 2),
+    );
+
     await expect(page).toHaveScreenshot(`${route.name}.png`, {
       fullPage: true,
     });

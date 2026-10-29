@@ -195,6 +195,33 @@ jobs:
         working-directory: web
         run: pnpm install --frozen-lockfile
 
+      - name: Debug Mino UI package
+        working-directory: web
+        run: |
+          echo "Mino UI archive checksum:"
+          if [ -f mino-ui-0.0.3.tgz ]; then
+            sha256sum mino-ui-0.0.3.tgz
+          else
+            echo "Mino UI archive not found at web/mino-ui-0.0.3.tgz"
+          fi
+
+          echo ""
+          echo "Mino UI dependency resolution:"
+          pnpm why mino-ui
+
+          echo ""
+          echo "Installed Mino UI package:"
+          if [ -d node_modules/mino-ui ]; then
+            readlink -f node_modules/mino-ui
+            node -p "require('./node_modules/mino-ui/package.json').version"
+
+            echo ""
+            echo "Installed Mino UI CSS checksums:"
+            find -L node_modules/mino-ui -type f -name '*.css' -print0 | sort -z | xargs -0 -r sha256sum
+          else
+            echo "node_modules/mino-ui is missing"
+          fi
+
       - name: Install Chromium
         working-directory: web
         run: pnpm exec playwright install --with-deps chromium
