@@ -203,6 +203,13 @@ jobs:
         working-directory: web
         run: pnpm build
 
+      - name: Debug font environment
+        run: |
+          pnpm exec playwright --version
+          fc-match sans-serif
+          fc-match system-ui
+          fc-match Arial
+
       - name: Run visual regression tests
         working-directory: web
         run: >
