@@ -204,11 +204,42 @@ jobs:
         run: pnpm build
 
       - name: Debug font environment
+        working-directory: web
         run: |
+          echo "===================================="
+          echo "Operating System"
+          echo "===================================="
+          lsb_release -ds
+
+          echo ""
+          echo "===================================="
+          echo "Playwright Version"
+          echo "===================================="
           pnpm exec playwright --version
+
+          echo ""
+          echo "===================================="
+          echo "Sans-serif Font"
+          echo "===================================="
           fc-match sans-serif
+
+          echo ""
+          echo "===================================="
+          echo "System UI Font"
+          echo "===================================="
           fc-match system-ui
+
+          echo ""
+          echo "===================================="
+          echo "Arial Font"
+          echo "===================================="
           fc-match Arial
+
+          echo ""
+          echo "===================================="
+          echo "Available Font Families"
+          echo "===================================="
+          fc-list : family | sort -u
 
       - name: Run visual regression tests
         working-directory: web
