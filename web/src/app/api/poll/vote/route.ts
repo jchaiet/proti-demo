@@ -2,7 +2,6 @@ import { createHash } from "node:crypto";
 
 import { NextResponse } from "next/server";
 
-import { checkPollRateLimit } from "@/lib/polls/rate-limit";
 import {
   parsePollVote,
   pollOriginAllowed,
@@ -90,15 +89,9 @@ export async function POST(request: Request) {
   if (!secret || !writeToken)
     return reply("Poll voting is not configured.", 503);
 
-  // Apply the shared, server-side IP limit BEFORE any Sanity reads or writes.
-  // Fail closed when Redis/proxy configuration is missing or unavailable in
-  // production; local development without Redis remains cookie-only.
-  const gate = await checkPollRateLimit(request);
-  if (gate === "limited")
-    return reply("Too many vote requests. Try again later.", 429);
-  if (gate !== "allowed")
-    return reply("Poll voting is temporarily unavailable.", 503);
-
+  // No external rate-limit database is required. The signed, HttpOnly cookie
+  // below records a browser's previous votes; it is a convenience guard,
+  // not a guarantee of one vote per person or protection against abuse.
   const history = readPollHistory(getPollCookie(request), secret);
   const fingerprint = pollFingerprint(vote.siteId, vote.locale, vote.pollKey);
   const readClient = sanityClient.withConfig({
@@ -171,8 +164,8 @@ export async function POST(request: Request) {
     );
     return response;
   } catch {
-    // In cookie-only mode we cannot know whether a timed-out Sanity write
-    // committed. A retry could count twice. Do not assert otherwise.
+    // The Sanity mutation might have committed before a network timeout.
+    // Without a server-side dedupe store, retrying may count another vote.
     return reply("Poll voting is temporarily unavailable.", 503);
   }
 }

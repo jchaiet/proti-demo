@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { readFetch, createIfNotExists, commit, patch, setIfMissing, inc, gate } =
+const { readFetch, createIfNotExists, commit, patch, setIfMissing, inc } =
   vi.hoisted(() => ({
     readFetch: vi.fn(),
     createIfNotExists: vi.fn(),
@@ -8,12 +8,7 @@ const { readFetch, createIfNotExists, commit, patch, setIfMissing, inc, gate } =
     patch: vi.fn(),
     setIfMissing: vi.fn(),
     inc: vi.fn(),
-    gate: vi.fn(),
   }));
-
-vi.mock("@/lib/polls/rate-limit", () => ({
-  checkPollRateLimit: gate,
-}));
 
 vi.mock("@/sanity/client", () => ({
   sanityClient: {
@@ -55,12 +50,11 @@ function responseCookie(response: Response): string {
   return cookie;
 }
 
-describe("poll voting API with shared rate limiting", () => {
+describe("poll voting API with signed cookie history", () => {
   beforeEach(() => {
     vi.stubEnv("POLL_VISITOR_SECRET", secret);
     vi.stubEnv("SANITY_API_WRITE_TOKEN", "test-write-token");
     vi.stubEnv("POLL_ALLOWED_ORIGINS", "https://example.com");
-    gate.mockReset().mockResolvedValue("allowed");
     readFetch.mockReset().mockResolvedValue(true);
     createIfNotExists.mockReset().mockResolvedValue({});
     commit.mockReset().mockResolvedValue({ votes: { yes: 1 } });
@@ -70,10 +64,9 @@ describe("poll voting API with shared rate limiting", () => {
   });
   afterEach(() => vi.unstubAllEnvs());
 
-  it("allows the first vote after the shared rate-limit gate accepts it", async () => {
+  it("allows the first vote and signs the visitor's history cookie", async () => {
     const response = await POST(post());
     expect(response.status).toBe(200);
-    expect(gate).toHaveBeenCalledTimes(1);
     expect(await response.json()).toEqual({
       votes: { yes: 1 },
       alreadyVoted: false,
@@ -96,30 +89,26 @@ describe("poll voting API with shared rate limiting", () => {
     expect(inc).toHaveBeenCalledWith({ "votes.yes": 1 });
   });
 
-  it("rejects rate-limited requests before querying Sanity", async () => {
-    gate.mockResolvedValueOnce("limited");
-    const response = await POST(post());
-    expect(response.status).toBe(429);
-    expect(response.headers.get("cache-control")).toBe("no-store");
-    expect(readFetch).not.toHaveBeenCalled();
-    expect(createIfNotExists).not.toHaveBeenCalled();
-    expect(commit).not.toHaveBeenCalled();
-  });
+  it("works in production without Redis, IP headers, or proxy configuration", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("POLL_UPSTASH_REDIS_REST_URL", "");
+    vi.stubEnv("POLL_UPSTASH_REDIS_REST_TOKEN", "");
+    vi.stubEnv("POLL_RATE_LIMIT_SALT", "");
+    vi.stubEnv("POLL_TRUST_PROXY_HEADERS", "");
 
-  it("fails closed when the rate-limit gate is unavailable", async () => {
-    gate.mockResolvedValueOnce("unavailable");
-    const response = await POST(post());
-    expect(response.status).toBe(503);
-    expect(readFetch).not.toHaveBeenCalled();
-    expect(commit).not.toHaveBeenCalled();
-  });
-
-  it("checks the shared rate limit even for previously-voted browsers", async () => {
     const first = await POST(post());
-    gate.mockResolvedValueOnce("limited");
-    const second = await POST(post(data, responseCookie(first)));
-    expect(second.status).toBe(429);
-    expect(gate).toHaveBeenCalledTimes(2);
+    expect(first.status).toBe(200);
+    const cookie = responseCookie(first);
+
+    readFetch
+      .mockResolvedValueOnce(true)
+      .mockResolvedValueOnce({ votes: { yes: 1 } });
+    const repeat = await POST(post(data, cookie));
+    expect(repeat.status).toBe(200);
+    expect(await repeat.json()).toEqual({
+      votes: { yes: 1 },
+      alreadyVoted: true,
+    });
     expect(commit).toHaveBeenCalledTimes(1);
   });
 
