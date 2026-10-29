@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { draftMode, headers } from "next/headers";
 
 import { HtmlLanguageSync } from "@/components/HtmlLanguageSync";
-import { SanityImagePreconnect } from "@/components/ResourceHints/SanityImagePreconnect";
 import {
   resolveLocaleCodeFromPathname,
   siteLocaleToLanguageTag,
@@ -90,7 +89,6 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang={htmlLang}>
       <body>
-        {localeContext ? <SanityImagePreconnect /> : null}
         {localeContext ? (
           <HtmlLanguageSync
             defaultLocale={localeContext.defaultLocale}

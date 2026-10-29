@@ -64,6 +64,22 @@ describe("shared poll voting gate", () => {
     );
   });
 
+  it("permits local development without Redis, but not production", async () => {
+    vi.stubEnv("POLL_UPSTASH_REDIS_REST_URL", "");
+    vi.stubEnv("POLL_UPSTASH_REDIS_REST_TOKEN", "");
+    vi.stubEnv("POLL_RATE_LIMIT_SALT", "");
+    vi.stubEnv("NODE_ENV", "development");
+    expect(await checkPollRateLimit(request())).toBe("allowed");
+    vi.stubEnv("NODE_ENV", "production");
+    expect(await checkPollRateLimit(request())).toBe("unavailable");
+  });
+
+  it("does not silently bypass a partially configured Redis setup", async () => {
+    vi.stubEnv("POLL_UPSTASH_REDIS_REST_TOKEN", "");
+    vi.stubEnv("NODE_ENV", "development");
+    expect(await checkPollRateLimit(request())).toBe("unavailable");
+  });
+
   it("fails closed when proxy trust or Redis is missing", async () => {
     vi.stubEnv("POLL_TRUST_PROXY_HEADERS", "false");
     expect(await checkPollRateLimit(request())).toBe("unavailable");
