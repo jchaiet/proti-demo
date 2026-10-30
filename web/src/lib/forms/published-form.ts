@@ -18,7 +18,7 @@ const FIELD_PROJECTION = `
 `;
 
 const FORM_PROJECTION = `
-  _key, formMode,
+  _key, formMode, webhookDestination,
   fields[]{${FIELD_PROJECTION}},
   steps[]{fields[]{${FIELD_PROJECTION}}}
 `;

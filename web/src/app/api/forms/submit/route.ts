@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { findPublishedForm } from "@/lib/forms/published-form";
 import { formOriginAllowed } from "@/lib/forms/origin";
+import { resolveFormWebhookDestination } from "@/lib/forms/destinations";
 import { validateFormValues } from "@/lib/forms/validation";
 import { forwardFormSubmission } from "@/lib/forms/webhook";
 
@@ -79,10 +80,6 @@ export async function POST(request: Request) {
   const siteId = body.siteId as string;
   const locale = body.locale as string;
 
-  if (!process.env.FORM_WEBHOOK_URL || !process.env.FORM_WEBHOOK_SECRET) {
-    return reply("Form submissions are not configured.", 503);
-  }
-
   // The visually-hidden browser field is deliberately outside the CMS fields
   // object; CMS-submitted field names continue to be validated strictly.
   // Older clients may omit the honeypot during rollout.
@@ -101,17 +98,28 @@ export async function POST(request: Request) {
     const form = await findPublishedForm({ formKey, blockKey, siteId, locale });
     if (!form) return reply("This form is not available.", 404);
 
+    // The destination comes only from the verified, published Sanity block.
+    // Ignore any webhookDestination/URL sent in the browser request body.
+    const destination = resolveFormWebhookDestination(
+      form.webhookDestination,
+      siteId,
+    );
+    if (!destination) return reply("Form submissions are not configured.", 503);
+
     const validated = validateFormValues(form, body.fields);
     if (!validated.ok) return reply(validated.error, 400);
 
-    const result = await forwardFormSubmission({
-      formKey,
-      blockKey,
-      siteId,
-      locale,
-      fields: validated.values,
-      submittedAt: new Date().toISOString(),
-    });
+    const result = await forwardFormSubmission(
+      {
+        formKey,
+        blockKey,
+        siteId,
+        locale,
+        fields: validated.values,
+        submittedAt: new Date().toISOString(),
+      },
+      destination,
+    );
     if (result !== "ok")
       return reply("Unable to submit your form. Please try again.", 502);
     return NextResponse.json(

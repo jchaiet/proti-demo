@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { FormBlock, type FormBlockProps } from "mino-ui/blocks/FormBlock";
 import type { CmsIcon } from "@/cms/types";
 import { resolveIcon } from "@/cms/resolvers/icon";
@@ -11,12 +12,20 @@ export interface FormRendererProps extends Omit<FormBlockProps, "onSubmit"> {
   siteId: string;
   locale: string;
   submitButtonIconName?: CmsIcon;
+  completionAction?: "message" | "redirect";
+  successRedirectPath?: string;
 }
 
 // Not a CMS-authored field: it is a simple spam trap and is never forwarded.
 const HONEYPOT_FIELD = "__proti_company_website";
 
-type FormStatus = { kind: "success" | "error"; message: string } | null;
+/** Internal redirects only: never trust authorable content as an arbitrary URL. */
+function getSafeRedirectPath(value?: string): string | null {
+  const path = value?.trim();
+  if (!path || !path.startsWith("/") || path.startsWith("//")) return null;
+  if (/[\\\x00-\x1f\x7f]/.test(path)) return null;
+  return path;
+}
 
 export function Form({
   formKey,
@@ -25,9 +34,16 @@ export function Form({
   locale,
   submitButtonIconName,
   submitButtonProps,
+  completionAction = "message",
+  successRedirectPath,
+  successTitle,
+  successMessage,
   ...props
 }: FormRendererProps) {
-  const [status, setStatus] = useState<FormStatus>(null);
+  const router = useRouter();
+  const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const submissionInFlight = useRef(false);
   const formContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -60,6 +76,18 @@ export function Form({
   const normalizedLocale = locale.toLowerCase();
   const isSpanish =
     normalizedLocale.startsWith("es") || normalizedLocale.endsWith("-es");
+  const fallbackTitle = isSpanish ? "¡Gracias!" : "Thank you!";
+  const fallbackMessage = isSpanish
+    ? "Hemos recibido tu formulario correctamente."
+    : "We've received your submission.";
+  const confirmationTitle =
+    typeof successTitle === "string"
+      ? successTitle.trim() || fallbackTitle
+      : (successTitle ?? fallbackTitle);
+  const confirmationMessage =
+    typeof successMessage === "string"
+      ? successMessage.trim() || fallbackMessage
+      : (successMessage ?? fallbackMessage);
 
   const handleSubmit: NonNullable<FormBlockProps["onSubmit"]> = async (
     _values,
@@ -67,7 +95,9 @@ export function Form({
   ) => {
     // Mino's flattened values omit repeated FormData keys (multi-select).
     void _values;
-    setStatus(null);
+    if (submissionInFlight.current || submitted) return;
+    submissionInFlight.current = true;
+    setError(null);
 
     // Collect synchronously while React still exposes event.currentTarget.
     // FormData preserves multi-select values that FormBlock's flat object loses.
@@ -79,12 +109,12 @@ export function Form({
       if (name === HONEYPOT_FIELD) continue;
       if (entry instanceof File) {
         if (entry.size === 0) continue;
-        setStatus({
-          kind: "error",
-          message: isSpanish
+        setError(
+          isSpanish
             ? "Este formulario aún no admite archivos adjuntos."
             : "This form does not support file attachments yet.",
-        });
+        );
+        submissionInFlight.current = false;
         return;
       }
       const current = fields[name];
@@ -109,20 +139,21 @@ export function Form({
       if (!response.ok) {
         throw new Error(`Submission rejected (${response.status})`);
       }
-      setStatus({
-        kind: "success",
-        message: isSpanish
-          ? "Tu formulario se envió correctamente."
-          : "Your form was submitted successfully.",
-      });
+      // Remove the form immediately to prevent another submission in this view.
+      setSubmitted(true);
+      if (completionAction === "redirect") {
+        const redirectPath = getSafeRedirectPath(successRedirectPath);
+        if (redirectPath) router.replace(redirectPath);
+        // Invalid/empty configured paths safely fall back to confirmation.
+      }
     } catch {
       // Don't display server implementation details or record visitor values.
-      setStatus({
-        kind: "error",
-        message: isSpanish
+      setError(
+        isSpanish
           ? "No pudimos enviar el formulario. Inténtalo de nuevo."
           : "We couldn't submit your form. Please try again.",
-      });
+      );
+      submissionInFlight.current = false;
     }
   };
 
@@ -130,28 +161,16 @@ export function Form({
     <div ref={formContainerRef}>
       <FormBlock
         {...props}
+        isSubmitted={submitted}
+        successTitle={confirmationTitle}
+        successMessage={confirmationMessage}
+        submissionError={error}
         submitButtonProps={{
           ...submitButtonProps,
           ...(icon ? { icon } : {}),
         }}
         onSubmit={handleSubmit}
       />
-      {status?.kind === "error" && (
-        <p
-          role="alert"
-          style={{
-            marginBlock: "0.75rem",
-            color: "var(--mino-color-text-danger, #b42318)",
-          }}
-        >
-          {status.message}
-        </p>
-      )}
-      {status?.kind === "success" && (
-        <p role="status" style={{ marginBlock: "0.75rem" }}>
-          {status.message}
-        </p>
-      )}
     </div>
   );
 }

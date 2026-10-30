@@ -19,6 +19,8 @@ export interface PublishedFormField {
 
 export interface PublishedFormDefinition {
   _key: string;
+  /** Trusted published CMS selection, never taken from the browser. */
+  webhookDestination?: string;
   formMode?: string;
   fields?: PublishedFormField[];
   steps?: { fields?: PublishedFormField[] }[];

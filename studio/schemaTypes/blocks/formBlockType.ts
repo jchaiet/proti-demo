@@ -2,6 +2,7 @@ import {defineArrayMember, defineField, defineType} from 'sanity'
 import {portableTextToPlainText} from '../../lib/portableText'
 import {createAccessibleImageFields} from '../objects/accessibleImageFields'
 import {validateSingleFormFields, validateSteppedFormSteps} from '../forms/validation'
+import {getFormWebhookDestinationOptions} from '../forms/webhookDestinations'
 
 export const formBlockType = defineType({
   name: 'formBlock',
@@ -433,6 +434,81 @@ export const formBlockType = defineType({
 
           return validateSingleFormFields(value)
         }),
+    }),
+
+    defineField({
+      name: 'completionAction',
+      title: 'After Successful Submission',
+      group: 'behavior',
+      type: 'string',
+      description:
+        'Replace the form with a confirmation, or redirect to a dedicated thank-you page.',
+      initialValue: 'message',
+      options: {
+        list: [
+          {title: 'Show Confirmation (Hide Form)', value: 'message'},
+          {title: 'Redirect to Page', value: 'redirect'},
+        ],
+        layout: 'radio',
+      },
+      validation: (Rule) => Rule.required(),
+    }),
+
+    defineField({
+      name: 'successTitle',
+      title: 'Confirmation Heading',
+      group: 'behavior',
+      type: 'string',
+      description: 'Optional. Defaults to "Thank you!" (localized by the website).',
+      hidden: ({parent}) => parent?.completionAction === 'redirect',
+    }),
+
+    defineField({
+      name: 'successMessage',
+      title: 'Confirmation Message',
+      group: 'behavior',
+      type: 'text',
+      rows: 3,
+      description: 'Optional. Displayed instead of the form after a successful submission.',
+      hidden: ({parent}) => parent?.completionAction === 'redirect',
+    }),
+
+    defineField({
+      name: 'successRedirectPath',
+      title: 'Thank-you Page Path',
+      group: 'behavior',
+      type: 'string',
+      description:
+        'Internal, published page URL path, e.g. /thank-you or /us-es/gracias. Do not enter a full URL.',
+      hidden: ({parent}) => parent?.completionAction !== 'redirect',
+      validation: (Rule) =>
+        Rule.custom((value, context) => {
+          const parent = context.parent as {completionAction?: string} | undefined
+          if (parent?.completionAction !== 'redirect') return true
+          if (typeof value !== 'string' || !value.trim()) {
+            return 'A thank-you page path is required for redirects.'
+          }
+          const path = value.trim()
+          if (!path.startsWith('/') || path.startsWith('//') || /[\\\x00-\x1f\x7f]/.test(path)) {
+            return 'Enter a same-site path beginning with one slash, such as /thank-you.'
+          }
+          return true
+        }),
+    }),
+
+    defineField({
+      name: 'webhookDestination',
+      group: 'behavior',
+      title: 'Webhook Destination',
+      type: 'string',
+      description:
+        'Where this form is delivered. Destinations are approved by the website configuration; webhook URLs and secrets are never stored in Sanity.',
+      initialValue: 'default',
+      options: {
+        list: getFormWebhookDestinationOptions(
+          process.env.SANITY_STUDIO_FORM_WEBHOOK_DESTINATIONS ?? '',
+        ),
+      },
     }),
 
     /*
