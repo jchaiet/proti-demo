@@ -40,6 +40,7 @@ beforeEach(() => {
   vi.stubEnv("VERCEL_ENV", "");
   vi.stubEnv("FORM_WEBHOOK_URL", "https://forms.example.test/receive");
   vi.stubEnv("FORM_WEBHOOK_SECRET", "test-secret");
+  vi.stubEnv("FORM_WEBHOOK_DESTINATIONS", "");
   find.mockResolvedValue({
     _key: "key-123",
     fields: [
@@ -67,6 +68,7 @@ describe("POST /api/forms/submit", () => {
     });
     expect(forward).toHaveBeenCalledWith(
       expect.objectContaining({ fields: payload.fields, formKey: "contact" }),
+      { url: "https://forms.example.test/receive", secret: "test-secret" },
     );
     expect(JSON.stringify(forward.mock.calls[0][0])).not.toContain("honeypot");
   });
@@ -160,6 +162,88 @@ describe("POST /api/forms/submit", () => {
       400,
     );
     expect(forward).not.toHaveBeenCalled();
+  });
+
+  it("routes to a named destination selected in the published Sanity block", async () => {
+    vi.stubEnv(
+      "FORM_WEBHOOK_DESTINATIONS",
+      JSON.stringify({
+        contact: {
+          url: "https://contact.example.test/receive",
+          secret: "contact-secret",
+          siteIds: ["site-1"],
+        },
+      }),
+    );
+    find.mockResolvedValue({
+      _key: "key-123",
+      webhookDestination: "contact",
+      fields: [
+        {
+          _type: "formInputField",
+          name: "email",
+          type: "email",
+          required: true,
+        },
+      ],
+    });
+
+    expect(
+      (await POST(request({ ...payload, webhookDestination: "default" })))
+        .status,
+    ).toBe(200);
+    expect(forward).toHaveBeenCalledWith(
+      expect.objectContaining({ formKey: "contact", fields: payload.fields }),
+      { url: "https://contact.example.test/receive", secret: "contact-secret" },
+    );
+  });
+
+  it("rejects missing or unauthorized named destinations without falling back to default", async () => {
+    find.mockResolvedValue({
+      _key: "key-123",
+      webhookDestination: "quotes",
+      fields: [
+        {
+          _type: "formInputField",
+          name: "email",
+          type: "email",
+          required: true,
+        },
+      ],
+    });
+    expect((await POST(request())).status).toBe(503);
+    expect(forward).not.toHaveBeenCalled();
+
+    vi.stubEnv(
+      "FORM_WEBHOOK_DESTINATIONS",
+      JSON.stringify({
+        quotes: {
+          url: "https://quotes.example.test/receive",
+          secret: "quotes-secret",
+          siteIds: ["another-site"],
+        },
+      }),
+    );
+    expect((await POST(request())).status).toBe(503);
+    expect(forward).not.toHaveBeenCalled();
+  });
+
+  it("ignores a destination or URL forged in the browser request", async () => {
+    expect(
+      (
+        await POST(
+          request({
+            ...payload,
+            webhookDestination: "steal-data",
+            webhookUrl: "https://attacker.test/collect",
+          }),
+        )
+      ).status,
+    ).toBe(200);
+    expect(forward).toHaveBeenCalledWith(expect.any(Object), {
+      url: "https://forms.example.test/receive",
+      secret: "test-secret",
+    });
   });
 
   it("supports older clients that do not send a honeypot", async () => {

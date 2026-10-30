@@ -8,6 +8,7 @@ import {formRadioGroupFieldType} from '../formRadioGroupFieldType'
 import {formRangeFieldType} from '../formRangeFieldType'
 import {formSelectFieldType} from '../formSelectFieldType'
 import {formStepType} from '../formStepType'
+import {getFormWebhookDestinationOptions} from '../webhookDestinations'
 import {formTextareaFieldType} from '../formTextareaFieldType'
 
 interface SchemaFieldLike {
@@ -85,5 +86,40 @@ describe('typed Form schema contract', () => {
     expect(getField(formRangeFieldType, 'min')?.validation).toBeTypeOf('function')
     expect(getField(formRangeFieldType, 'max')?.validation).toBeTypeOf('function')
     expect(getField(formRangeFieldType, 'defaultValue')?.validation).toBeTypeOf('function')
+  })
+})
+
+describe('Form submission completion schema', () => {
+  it('exposes the confirmation and redirect behavior fields', () => {
+    for (const field of [
+      'completionAction',
+      'successTitle',
+      'successMessage',
+      'successRedirectPath',
+    ]) {
+      expect(getField(formBlockType, field)).toBeDefined()
+    }
+    expect(getField(formBlockType, 'successRedirectPath')?.validation).toBeTypeOf('function')
+  })
+})
+
+describe('Form webhook destination schema', () => {
+  it('exposes an editor-visible destination selector with the default', () => {
+    const field = getField(formBlockType, 'webhookDestination') as
+      (SchemaFieldLike & {options?: {list?: Array<{value: string}>}}) | undefined
+    expect(field).toBeDefined()
+    expect(field?.options?.list?.[0]?.value).toBe('default')
+  })
+
+  it('parses and deduplicates approved public Studio destination keys', () => {
+    expect(
+      getFormWebhookDestinationOptions(
+        'contact:Contact,newsletter:Newsletter,contact:Duplicate,malformed,evil.key:Evil',
+      ),
+    ).toEqual([
+      {title: 'Default Webhook', value: 'default'},
+      {title: 'Contact', value: 'contact'},
+      {title: 'Newsletter', value: 'newsletter'},
+    ])
   })
 })

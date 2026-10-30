@@ -20,6 +20,8 @@ export type MappedFormBlockProps = Omit<FormBlockProps, "onSubmit"> & {
   formKey: string;
   blockKey: string;
   submitButtonIconName?: CmsIcon;
+  completionAction?: "message" | "redirect";
+  successRedirectPath?: string;
 };
 
 function mapFormSteps(steps: CmsFormBlock["steps"] | undefined): FormStep[] {
@@ -380,5 +382,10 @@ export function mapFormBlock(block: CmsFormBlock): MappedFormBlockProps {
     },
 
     submitButtonIconName: block.submitButtonIcon,
+
+    completionAction: block.completionAction ?? "message",
+    successTitle: block.successTitle,
+    successMessage: block.successMessage,
+    successRedirectPath: block.successRedirectPath,
   };
 }

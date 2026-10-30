@@ -353,4 +353,11 @@ export interface CmsFormBlock {
   formKey?: {
     current?: string;
   };
+
+  /** What happens after the API confirms that the form was submitted. */
+  completionAction?: "message" | "redirect";
+  successTitle?: string;
+  successMessage?: string;
+  /** Absolute path on the current site; never an external URL. */
+  successRedirectPath?: string;
 }
