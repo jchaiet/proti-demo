@@ -1,16 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/forms/published-form", () => ({ findPublishedForm: vi.fn() }));
-vi.mock("@/lib/forms/rate-limit", () => ({ checkFormRateLimit: vi.fn() }));
 vi.mock("@/lib/forms/webhook", () => ({ forwardFormSubmission: vi.fn() }));
 
 import { findPublishedForm } from "@/lib/forms/published-form";
-import { checkFormRateLimit } from "@/lib/forms/rate-limit";
 import { forwardFormSubmission } from "@/lib/forms/webhook";
 import { POST } from "./route";
 
 const find = vi.mocked(findPublishedForm);
-const limit = vi.mocked(checkFormRateLimit);
 const forward = vi.mocked(forwardFormSubmission);
 const payload = {
   formKey: "contact",
@@ -18,10 +15,15 @@ const payload = {
   siteId: "site-1",
   locale: "en-us",
   fields: { email: "person@example.com" },
+  honeypot: "",
 };
 
-function request(body: unknown = payload, origin = "https://proti.test") {
-  return new Request("https://proti.test/api/forms/submit", {
+function request(
+  body: unknown = payload,
+  origin = "https://proti.test",
+  target = "https://proti.test/api/forms/submit",
+) {
+  return new Request(target, {
     method: "POST",
     headers: { "Content-Type": "application/json", Origin: origin },
     body: JSON.stringify(body),
@@ -29,6 +31,13 @@ function request(body: unknown = payload, origin = "https://proti.test") {
 }
 
 beforeEach(() => {
+  vi.stubEnv("NODE_ENV", "test");
+  vi.stubEnv("FORM_ALLOWED_ORIGINS", "");
+  vi.stubEnv("VERCEL", "");
+  vi.stubEnv("VERCEL_URL", "");
+  vi.stubEnv("VERCEL_BRANCH_URL", "");
+  vi.stubEnv("VERCEL_PROJECT_PRODUCTION_URL", "");
+  vi.stubEnv("VERCEL_ENV", "");
   vi.stubEnv("FORM_WEBHOOK_URL", "https://forms.example.test/receive");
   vi.stubEnv("FORM_WEBHOOK_SECRET", "test-secret");
   find.mockResolvedValue({
@@ -37,7 +46,6 @@ beforeEach(() => {
       { _type: "formInputField", name: "email", required: true, type: "email" },
     ],
   });
-  limit.mockResolvedValue("allowed");
   forward.mockResolvedValue("ok");
 });
 
@@ -60,16 +68,47 @@ describe("POST /api/forms/submit", () => {
     expect(forward).toHaveBeenCalledWith(
       expect.objectContaining({ fields: payload.fields, formKey: "contact" }),
     );
+    expect(JSON.stringify(forward.mock.calls[0][0])).not.toContain("honeypot");
   });
 
-  it("requires an explicit production origin allowlist", async () => {
+  it("allows explicit production origins and fails closed without configuration", async () => {
     vi.stubEnv("NODE_ENV", "production");
-    vi.stubEnv("FORM_ALLOWED_ORIGINS", "");
     expect((await POST(request())).status).toBe(403);
     expect(find).not.toHaveBeenCalled();
 
     vi.stubEnv("FORM_ALLOWED_ORIGINS", "https://proti.test");
     expect((await POST(request())).status).toBe(200);
+  });
+
+  it("accepts the production deployment domain supplied by Vercel", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("VERCEL", "1");
+    vi.stubEnv("VERCEL_ENV", "production");
+    vi.stubEnv("VERCEL_PROJECT_PRODUCTION_URL", "proti-demo-web.vercel.app");
+
+    expect(
+      (await POST(request(payload, "https://proti-demo-web.vercel.app")))
+        .status,
+    ).toBe(200);
+  });
+
+  it("accepts an exact Vercel preview URL but not an unrelated preview", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("VERCEL", "1");
+    vi.stubEnv("VERCEL_ENV", "preview");
+    vi.stubEnv("VERCEL_URL", "proti-git-feature-team.vercel.app");
+
+    expect(
+      (
+        await POST(
+          request(payload, "https://proti-git-feature-team.vercel.app"),
+        )
+      ).status,
+    ).toBe(200);
+    expect(
+      (await POST(request(payload, "https://some-other-team.vercel.app")))
+        .status,
+    ).toBe(403);
   });
 
   it("rejects misleading JSON content types", async () => {
@@ -106,16 +145,32 @@ describe("POST /api/forms/submit", () => {
     expect(forward).not.toHaveBeenCalled();
   });
 
-  it("limits repeated submissions", async () => {
-    limit.mockResolvedValue("limited");
-    expect((await POST(request())).status).toBe(429);
+  it("silently discards honeypot submissions without calling Sanity or the webhook", async () => {
+    const response = await POST(
+      request({ ...payload, honeypot: "spam.example" }),
+    );
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ success: true });
     expect(find).not.toHaveBeenCalled();
+    expect(forward).not.toHaveBeenCalled();
   });
 
-  it("fails closed when the limiter is unavailable", async () => {
-    limit.mockResolvedValue("unavailable");
-    expect((await POST(request())).status).toBe(503);
+  it("rejects a malformed honeypot", async () => {
+    expect((await POST(request({ ...payload, honeypot: ["x"] }))).status).toBe(
+      400,
+    );
     expect(forward).not.toHaveBeenCalled();
+  });
+
+  it("supports older clients that do not send a honeypot", async () => {
+    const legacyPayload = {
+      formKey: payload.formKey,
+      blockKey: payload.blockKey,
+      siteId: payload.siteId,
+      locale: payload.locale,
+      fields: payload.fields,
+    };
+    expect((await POST(request(legacyPayload))).status).toBe(200);
   });
 
   it("does not accept a form without a webhook configuration", async () => {
