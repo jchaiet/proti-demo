@@ -5029,7 +5029,7 @@ packages:
     engines: {node: '>= 18'}
 
   mino-ui@file:mino-ui-0.0.3.tgz:
-    resolution: {integrity: sha512-2YloE4CBICoinvx4cKAW1md5hsOIP/T/NshUVAAUUBfUKQFFjApgPJjnnGbjTcdHTGk+uW83+KqCZpZqP2fg4Q==, tarball: file:mino-ui-0.0.3.tgz}
+    resolution: {integrity: sha512-nbvX2U+4HWnRNqpT/2tCU0viu1Nhk2asqO3zBPhhTOL/UMef8LI6hUsZsVfpTfjWo6M9XNokjAvsFlIwlG4jhA==, tarball: file:mino-ui-0.0.3.tgz}
     version: 0.0.3
     peerDependencies:
       react: '>=18.0.0'

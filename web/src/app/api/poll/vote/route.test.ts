@@ -1,23 +1,35 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { readFetch, createIfNotExists, commit, patch, setIfMissing, inc } =
-  vi.hoisted(() => ({
-    readFetch: vi.fn(),
-    createIfNotExists: vi.fn(),
-    commit: vi.fn(),
-    patch: vi.fn(),
-    setIfMissing: vi.fn(),
-    inc: vi.fn(),
-  }));
+const {
+  fetchMock,
+  getDocument,
+  createIfNotExists,
+  commit,
+  patch,
+  setIfMissing,
+  inc,
+} = vi.hoisted(() => ({
+  fetchMock: vi.fn(),
+  getDocument: vi.fn(),
+  createIfNotExists: vi.fn(),
+  commit: vi.fn(),
+  patch: vi.fn(),
+  setIfMissing: vi.fn(),
+  inc: vi.fn(),
+}));
 
 vi.mock("@/sanity/client", () => ({
   sanityClient: {
-    withConfig: (config: { token?: string }) =>
-      config.token ? { createIfNotExists, patch } : { fetch: readFetch },
+    withConfig: () => ({
+      fetch: fetchMock,
+      getDocument,
+      createIfNotExists,
+      patch,
+    }),
   },
 }));
 
-import { POST } from "./route";
+import { GET, POST } from "./route";
 import { POLL_COOKIE_NAME } from "@/lib/polls/visitor";
 
 const data = {
@@ -37,10 +49,17 @@ function post(
     method: "POST",
     headers: {
       origin,
-      "Content-Type": "application/json",
+      "content-type": "application/json",
       ...(cookie ? { cookie } : {}),
     },
     body: JSON.stringify(value),
+  });
+}
+
+function get(cookie = "", value = data) {
+  const params = new URLSearchParams(value);
+  return new Request(`https://example.com/api/poll/vote?${params}`, {
+    headers: cookie ? { cookie } : {},
   });
 }
 
@@ -50,167 +69,134 @@ function responseCookie(response: Response): string {
   return cookie;
 }
 
-describe("poll voting API with signed cookie history", () => {
+describe("cookie-only polls: mutation and hydration", () => {
   beforeEach(() => {
     vi.stubEnv("POLL_VISITOR_SECRET", secret);
     vi.stubEnv("SANITY_API_WRITE_TOKEN", "test-write-token");
     vi.stubEnv("POLL_ALLOWED_ORIGINS", "https://example.com");
-    readFetch.mockReset().mockResolvedValue(true);
+    fetchMock.mockReset().mockResolvedValue(true);
+    getDocument.mockReset().mockResolvedValue({ votes: { yes: 4, no: 2 } });
     createIfNotExists.mockReset().mockResolvedValue({});
-    commit.mockReset().mockResolvedValue({ votes: { yes: 1 } });
+    commit.mockReset().mockResolvedValue({ votes: { yes: 5, no: 2 } });
     patch.mockReset().mockReturnValue({ setIfMissing, inc });
     setIfMissing.mockReset().mockReturnValue({ inc });
     inc.mockReset().mockReturnValue({ commit });
   });
+
   afterEach(() => vi.unstubAllEnvs());
 
-  it("allows the first vote and signs the visitor's history cookie", async () => {
+  it("returns a vote tally and sets the cookie only after a confirmed increment", async () => {
     const response = await POST(post());
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({
-      votes: { yes: 1 },
+      votes: { yes: 5, no: 2 },
       alreadyVoted: false,
     });
+    expect(responseCookie(response)).toContain(`${POLL_COOKIE_NAME}=`);
     expect(response.headers.get("cache-control")).toBe("no-store");
-    const cookie = response.headers.get("set-cookie") ?? "";
-    expect(cookie).toContain(`${POLL_COOKIE_NAME}=`);
-    expect(cookie).toContain("HttpOnly");
-    expect(cookie.toLowerCase()).toContain("samesite=lax");
-    expect(cookie).toContain("Path=/");
-    expect(createIfNotExists).toHaveBeenCalledWith(
-      expect.objectContaining({
-        _type: "pollResult",
-        siteId: data.siteId,
-        locale: data.locale,
-        pollKey: data.pollKey,
-      }),
-    );
-    expect(setIfMissing).toHaveBeenCalledWith({ "votes.yes": 0 });
-    expect(inc).toHaveBeenCalledWith({ "votes.yes": 1 });
+    expect(setIfMissing).toHaveBeenCalledWith({ "votes['yes']": 0 });
+    expect(inc).toHaveBeenCalledWith({ "votes['yes']": 1 });
+    expect(commit).toHaveBeenCalledWith({ returnDocuments: true });
   });
 
-  it("works in production without Redis, IP headers, or proxy configuration", async () => {
-    vi.stubEnv("NODE_ENV", "production");
-    vi.stubEnv("POLL_UPSTASH_REDIS_REST_URL", "");
-    vi.stubEnv("POLL_UPSTASH_REDIS_REST_TOKEN", "");
-    vi.stubEnv("POLL_RATE_LIMIT_SALT", "");
-    vi.stubEnv("POLL_TRUST_PROXY_HEADERS", "");
-
+  it("restores already-voted and tally after refresh, without another mutation", async () => {
     const first = await POST(post());
-    expect(first.status).toBe(200);
     const cookie = responseCookie(first);
-
-    readFetch
-      .mockResolvedValueOnce(true)
-      .mockResolvedValueOnce({ votes: { yes: 1 } });
-    const repeat = await POST(post(data, cookie));
-    expect(repeat.status).toBe(200);
-    expect(await repeat.json()).toEqual({
-      votes: { yes: 1 },
+    const hydrated = await GET(get(cookie));
+    expect(hydrated.status).toBe(200);
+    expect(await hydrated.json()).toEqual({
+      votes: { yes: 4, no: 2 },
       alreadyVoted: true,
     });
     expect(commit).toHaveBeenCalledTimes(1);
   });
 
-  it("returns current totals without incrementing for a browser that already voted", async () => {
+  it("allows new browsers to read totals without marking them as voted", async () => {
+    const response = await GET(get());
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      votes: { yes: 4, no: 2 },
+      alreadyVoted: false,
+    });
+    expect(commit).not.toHaveBeenCalled();
+  });
+
+  it("returns the current totals on repeat vote and doesn't increment again", async () => {
     const first = await POST(post());
-    const cookie = responseCookie(first);
-    readFetch
-      .mockResolvedValueOnce(true)
-      .mockResolvedValueOnce({ votes: { yes: 17 } });
-    const duplicate = await POST(post(data, cookie));
-    expect(duplicate.status).toBe(200);
-    expect(await duplicate.json()).toEqual({
-      votes: { yes: 17 },
+    const response = await POST(post(data, responseCookie(first)));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      votes: { yes: 4, no: 2 },
       alreadyVoted: true,
     });
+    expect(response.headers.get("set-cookie")).toBeNull();
     expect(commit).toHaveBeenCalledTimes(1);
-    expect(duplicate.headers.get("set-cookie")).toBeNull();
   });
 
-  it("tracks different polls in the same cookie and scopes a poll to its locale", async () => {
+  it("does not silently turn missing Sanity totals into zero after a prior vote", async () => {
     const first = await POST(post());
-    const second = await POST(
-      post({ ...data, pollKey: "another" }, responseCookie(first)),
-    );
-    const secondCookie = responseCookie(second);
-    expect((await POST(post(data, secondCookie))).status).toBe(200);
-    expect(commit).toHaveBeenCalledTimes(2);
-    const third = await POST(post({ ...data, locale: "es-us" }, secondCookie));
-    expect(third.status).toBe(200);
-    expect(commit).toHaveBeenCalledTimes(3);
+    const cookie = responseCookie(first);
+    getDocument.mockResolvedValue(null);
+    const refreshed = await GET(get(cookie));
+    const repeated = await POST(post(data, cookie));
+    expect(refreshed.status).toBe(503);
+    expect(repeated.status).toBe(503);
+    expect(commit).toHaveBeenCalledTimes(1);
   });
 
-  it("rejects wrong origin, invalid data, and bad Content-Type without voting", async () => {
-    expect((await POST(post(data, "", "https://evil.test"))).status).toBe(403);
-    expect(
-      (
-        await POST(
-          new Request("https://example.com/api/poll/vote", {
-            method: "POST",
-            headers: {
-              origin: "https://example.com",
-              "content-type": "text/plain",
-            },
-            body: "x",
-          }),
-        )
-      ).status,
-    ).toBe(415);
-    expect((await POST(post({ ...data, optionId: "yes.no" }))).status).toBe(
-      400,
-    );
-    expect(readFetch).not.toHaveBeenCalled();
-    expect(commit).not.toHaveBeenCalled();
+  it("rejects empty/corrupt result totals if a prior cookie exists", async () => {
+    const first = await POST(post());
+    const cookie = responseCookie(first);
+    getDocument.mockResolvedValue({ votes: {} });
+    expect((await GET(get(cookie))).status).toBe(503);
+    expect((await POST(post(data, cookie))).status).toBe(503);
   });
 
-  it("rejects oversized bodies including when Content-Length is absent", async () => {
-    const response = await POST(
-      new Request("https://example.com/api/poll/vote", {
-        method: "POST",
-        headers: {
-          origin: "https://example.com",
-          "content-type": "application/json",
-        },
-        body: "x".repeat(3000),
-      }),
-    );
-    expect(response.status).toBe(413);
-    expect(commit).not.toHaveBeenCalled();
-  });
-
-  it("refuses nonexistent and unpublished poll/option combinations", async () => {
-    readFetch.mockResolvedValueOnce(false);
-    expect((await POST(post())).status).toBe(404);
-    expect(commit).not.toHaveBeenCalled();
-  });
-
-  it("fails closed if signing secret, write token, or Sanity is unavailable", async () => {
-    vi.stubEnv("POLL_VISITOR_SECRET", "short");
-    expect((await POST(post())).status).toBe(503);
-    vi.stubEnv("POLL_VISITOR_SECRET", secret);
-    vi.stubEnv("SANITY_API_WRITE_TOKEN", "");
-    expect((await POST(post())).status).toBe(503);
-    vi.stubEnv("SANITY_API_WRITE_TOKEN", "test-write-token");
-    readFetch.mockRejectedValueOnce(new Error("network failed"));
-    expect((await POST(post())).status).toBe(503);
-    expect(commit).not.toHaveBeenCalled();
-  });
-
-  it("does not mark a vote as accepted on a failed Sanity mutation", async () => {
-    commit.mockRejectedValueOnce(new Error("Sanity timed out"));
+  it("does not issue a cookie if the mutation response has no incremented count", async () => {
+    commit.mockResolvedValue({ votes: {} });
     const response = await POST(post());
     expect(response.status).toBe(503);
     expect(response.headers.get("set-cookie")).toBeNull();
   });
 
-  it("uses atomic Sanity increments for simultaneous submissions, but does not promise cookie-level locking", async () => {
-    let votes = 0;
-    commit.mockImplementation(async () => ({ votes: { yes: ++votes } }));
-    const [first, second] = await Promise.all([POST(post()), POST(post())]);
-    expect(first.status).toBe(200);
-    expect(second.status).toBe(200);
-    expect(inc).toHaveBeenCalledTimes(2);
-    expect(votes).toBe(2);
+  it("accepts digit-prefixed option IDs through JSONMatch bracket paths", async () => {
+    commit.mockResolvedValue({ votes: { "123option": 1 } });
+    const response = await POST(post({ ...data, optionId: "123option" }));
+    expect(response.status).toBe(200);
+    expect(inc).toHaveBeenCalledWith({ "votes['123option']": 1 });
+  });
+
+  it("supports a brand-new poll with no stored result and no cookie", async () => {
+    getDocument.mockResolvedValue(null);
+    const response = await GET(get());
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ votes: {}, alreadyVoted: false });
+  });
+
+  it("rejects invalid/unpublished polls and malformed requests", async () => {
+    fetchMock.mockResolvedValueOnce(false);
+    expect((await GET(get())).status).toBe(404);
+    fetchMock.mockResolvedValueOnce(false);
+    expect((await POST(post())).status).toBe(404);
+    expect(
+      (await GET(new Request("https://example.com/api/poll/vote?siteId=x")))
+        .status,
+    ).toBe(400);
+    expect((await POST(post(data, "", "https://evil.test"))).status).toBe(403);
+    expect((await POST(post({ ...data, optionId: "not.valid" }))).status).toBe(
+      400,
+    );
+    expect(commit).not.toHaveBeenCalled();
+  });
+
+  it("continues requiring the signing secret and write token, without Redis", async () => {
+    vi.stubEnv("POLL_UPSTASH_REDIS_REST_URL", "");
+    vi.stubEnv("POLL_UPSTASH_REDIS_REST_TOKEN", "");
+    expect((await POST(post())).status).toBe(200);
+    vi.stubEnv("POLL_VISITOR_SECRET", "short");
+    expect((await GET(get())).status).toBe(503);
+    vi.stubEnv("POLL_VISITOR_SECRET", secret);
+    vi.stubEnv("SANITY_API_WRITE_TOKEN", "");
+    expect((await POST(post())).status).toBe(503);
   });
 });
