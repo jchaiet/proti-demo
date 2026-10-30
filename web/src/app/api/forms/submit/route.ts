@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { findPublishedForm } from "@/lib/forms/published-form";
-import { checkFormRateLimit } from "@/lib/forms/rate-limit";
+import { formOriginAllowed } from "@/lib/forms/origin";
 import { validateFormValues } from "@/lib/forms/validation";
 import { forwardFormSubmission } from "@/lib/forms/webhook";
 
@@ -17,6 +17,7 @@ type SubmissionBody = {
   siteId?: unknown;
   locale?: unknown;
   fields?: unknown;
+  honeypot?: unknown;
 };
 
 function reply(message: string, status: number) {
@@ -26,24 +27,8 @@ function reply(message: string, status: number) {
   );
 }
 
-function sameOrigin(request: Request): boolean {
-  const origin = request.headers.get("origin");
-  if (!origin) return false;
-  const configuredOrigins = process.env.FORM_ALLOWED_ORIGINS?.split(",")
-    .map((part) => part.trim())
-    .filter(Boolean);
-  // Production origin policy must not derive its allowlist from request headers.
-  if (process.env.NODE_ENV === "production" && !configuredOrigins?.length) {
-    return false;
-  }
-  const allowed = configuredOrigins?.length
-    ? configuredOrigins
-    : [new URL(request.url).origin];
-  return allowed.includes(origin);
-}
-
 export async function POST(request: Request) {
-  if (!sameOrigin(request))
+  if (!formOriginAllowed(request))
     return reply("Submission origin is not allowed.", 403);
   if (
     !/^application\/json(?:\s*;|\s*$)/i.test(
@@ -98,11 +83,19 @@ export async function POST(request: Request) {
     return reply("Form submissions are not configured.", 503);
   }
 
-  const rateLimit = await checkFormRateLimit(request, "submit");
-  if (rateLimit === "limited")
-    return reply("Too many submissions. Try again later.", 429);
-  if (rateLimit === "unavailable")
-    return reply("Form submissions are temporarily unavailable.", 503);
+  // The visually-hidden browser field is deliberately outside the CMS fields
+  // object; CMS-submitted field names continue to be validated strictly.
+  // Older clients may omit the honeypot during rollout.
+  if (body.honeypot !== undefined && typeof body.honeypot !== "string") {
+    return reply("Invalid request body.", 400);
+  }
+  if (typeof body.honeypot === "string" && body.honeypot.length > 0) {
+    // Avoid confirming the trap to automated submitters. Nothing is forwarded.
+    return NextResponse.json(
+      { success: true },
+      { headers: { "Cache-Control": "no-store" } },
+    );
+  }
 
   try {
     const form = await findPublishedForm({ formKey, blockKey, siteId, locale });

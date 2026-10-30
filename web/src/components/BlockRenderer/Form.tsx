@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FormBlock, type FormBlockProps } from "mino-ui/blocks/FormBlock";
 import type { CmsIcon } from "@/cms/types";
 import { resolveIcon } from "@/cms/resolvers/icon";
@@ -12,6 +12,9 @@ export interface FormRendererProps extends Omit<FormBlockProps, "onSubmit"> {
   locale: string;
   submitButtonIconName?: CmsIcon;
 }
+
+// Not a CMS-authored field: it is a simple spam trap and is never forwarded.
+const HONEYPOT_FIELD = "__proti_company_website";
 
 type FormStatus = { kind: "success" | "error"; message: string } | null;
 
@@ -25,6 +28,34 @@ export function Form({
   ...props
 }: FormRendererProps) {
   const [status, setStatus] = useState<FormStatus>(null);
+  const formContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // Mino's FormBlock owns the <form> markup and has no extra-field slot.
+    // Attach a visually-hidden *text* input after hydration without changing
+    // the library or CMS schema. The field is excluded from accessible focus.
+    const form = formContainerRef.current?.querySelector("form");
+    if (!form) return;
+
+    const trap = document.createElement("div");
+    trap.setAttribute("aria-hidden", "true");
+    trap.style.cssText =
+      "position:absolute;left:-10000px;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none";
+
+    const label = document.createElement("label");
+    label.textContent = "Company website";
+    const input = document.createElement("input");
+    input.type = "text";
+    input.name = HONEYPOT_FIELD;
+    input.autocomplete = "off";
+    input.tabIndex = -1;
+    input.setAttribute("data-proti-honeypot", "");
+    label.appendChild(input);
+    trap.appendChild(label);
+    form.appendChild(trap);
+
+    return () => trap.remove();
+  }, []);
   const icon = resolveIcon(submitButtonIconName);
   const normalizedLocale = locale.toLowerCase();
   const isSpanish =
@@ -41,8 +72,11 @@ export function Form({
     // Collect synchronously while React still exposes event.currentTarget.
     // FormData preserves multi-select values that FormBlock's flat object loses.
     const data = new FormData(event.currentTarget);
+    const honeypotValue = data.get(HONEYPOT_FIELD);
+    const honeypot = typeof honeypotValue === "string" ? honeypotValue : "";
     const fields: Record<string, string | string[]> = Object.create(null);
     for (const [name, entry] of data.entries()) {
+      if (name === HONEYPOT_FIELD) continue;
       if (entry instanceof File) {
         if (entry.size === 0) continue;
         setStatus({
@@ -63,7 +97,14 @@ export function Form({
       const response = await fetch("/api/forms/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ formKey, blockKey, siteId, locale, fields }),
+        body: JSON.stringify({
+          formKey,
+          blockKey,
+          siteId,
+          locale,
+          fields,
+          honeypot,
+        }),
       });
       if (!response.ok) {
         throw new Error(`Submission rejected (${response.status})`);
@@ -86,7 +127,7 @@ export function Form({
   };
 
   return (
-    <div>
+    <div ref={formContainerRef}>
       <FormBlock
         {...props}
         submitButtonProps={{

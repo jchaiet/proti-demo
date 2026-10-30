@@ -40,10 +40,19 @@ const props = {
 };
 
 describe("CMS Form renderer", () => {
-  it("sends the Site, locale and form block ID, and announces successful submission", async () => {
+  it("sends the CMS context, validated fields, and an empty honeypot", async () => {
     const fetchMock = vi.fn().mockResolvedValue({ ok: true });
     vi.stubGlobal("fetch", fetchMock);
-    render(<Form {...props} />);
+    const { container } = render(<Form {...props} />);
+
+    const trap = container.querySelector<HTMLInputElement>(
+      "input[data-proti-honeypot]",
+    );
+    expect(trap).not.toBeNull();
+    expect(trap?.type).toBe("text");
+    expect(trap?.tabIndex).toBe(-1);
+    expect(trap?.closest('[aria-hidden="true"]')).not.toBeNull();
+
     fireEvent.submit(
       screen.getByRole("button", { name: "Submit" }).closest("form")!,
     );
@@ -51,7 +60,31 @@ describe("CMS Form renderer", () => {
       expect(screen.getByRole("status").textContent).toMatch(/successfully/i),
     );
     const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
-    expect(body).toEqual({ ...props, fields: { email: "test@example.com" } });
+    expect(body).toEqual({
+      ...props,
+      fields: { email: "test@example.com" },
+      honeypot: "",
+    });
+    expect(body.fields).not.toHaveProperty("__proti_company_website");
+  });
+
+  it("submits a filled honeypot for server-side discard, never as a CMS field", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true });
+    vi.stubGlobal("fetch", fetchMock);
+    const { container } = render(<Form {...props} />);
+    const trap = container.querySelector<HTMLInputElement>(
+      "input[data-proti-honeypot]",
+    );
+    expect(trap).not.toBeNull();
+    fireEvent.change(trap!, { target: { value: "spam.example" } });
+    fireEvent.submit(
+      screen.getByRole("button", { name: "Submit" }).closest("form")!,
+    );
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+    expect(body.honeypot).toBe("spam.example");
+    expect(body.fields).toEqual({ email: "test@example.com" });
   });
 
   it("announces delivery errors without leaking server details", async () => {
