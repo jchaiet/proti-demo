@@ -119,7 +119,7 @@ export function HeaderUtilities({
 }: HeaderUtilitiesProps) {
   const searchParams = useSearchParams();
 
-  const queryString = searchParams.toString();
+  const queryString = searchParams?.toString() ?? "";
 
   const uiLabels = getAppMessages(locale).headerUtilities;
 
