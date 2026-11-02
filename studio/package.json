@@ -27,15 +27,15 @@
     "rxjs": "^7.8.2",
     "sanity": "^6.21.0",
     "sanity-plugin-media": "^6.1.6",
-    "styled-components": "^6.1.18",
-    "vitest": "3.2.4"
+    "styled-components": "^6.1.18"
   },
   "devDependencies": {
     "@sanity/eslint-config-studio": "^7",
     "@types/react": "^19.2.14",
     "eslint": "^10.8.1",
     "prettier": "^3.5",
-    "typescript": "^5.8"
+    "typescript": "^5.8",
+    "vitest": "4.1.12"
   },
   "prettier": {
     "bracketSpacing": false,
