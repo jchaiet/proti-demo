@@ -45,12 +45,11 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
+      - name: Install workspace dependencies
+        run: pnpm install --frozen-lockfile
+
       - name: Test Proti setup
         run: pnpm test:proti
-
-      - name: Install Studio dependencies
-        working-directory: studio
-        run: pnpm install --frozen-lockfile
 
       - name: Test Studio
         working-directory: studio
@@ -90,7 +89,7 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
 
       - name: Install Web dependencies
-        working-directory: web
+        working-directory: ${{ github.workspace }}
         run: pnpm install --frozen-lockfile
 
       - name: Run Web tests
@@ -143,7 +142,7 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
 
       - name: Install Web dependencies
-        working-directory: web
+        working-directory: ${{ github.workspace }}
         run: pnpm install --frozen-lockfile
 
       - name: Install Playwright browsers
@@ -192,7 +191,7 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
 
       - name: Install Web dependencies
-        working-directory: web
+        working-directory: ${{ github.workspace }}
         run: pnpm install --frozen-lockfile
 
       - name: Install Chromium

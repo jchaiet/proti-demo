@@ -403,8 +403,9 @@ function ServerDocumentList({
 
   const replaceParams = useCallback(
     (update: (params: URLSearchParams) => void) => {
-      const params = new URLSearchParams(searchParams.toString());
+      if (pathname === null) return;
 
+      const params = new URLSearchParams(searchParams?.toString() ?? "");
       update(params);
 
       const queryString = params.toString();

@@ -29,6 +29,8 @@ export function HtmlLanguageSync({
   const pathname = usePathname();
 
   useEffect(() => {
+    if (pathname === null) return;
+
     const locale = resolveLocaleCodeFromPathname({
       pathname,
       defaultLocale,
