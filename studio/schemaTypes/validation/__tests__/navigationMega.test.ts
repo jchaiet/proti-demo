@@ -56,6 +56,29 @@ describe('Mega Menu authoring contract', () => {
     )
   })
 
+  it('does not require Mega Menu settings for a standard link or dropdown', () => {
+    expect(
+      validateNavigationItemDestination({
+        mode: 'link',
+        link: {type: 'external'},
+        megaMenu: {columns: 4},
+      }),
+    ).toBe(true)
+    expect(
+      validateNavigationItemDestination({
+        mode: 'dropdown',
+        children: [{_key: 'item-1'}],
+        megaMenu: {columns: 4, sections: []},
+      }),
+    ).toBe(true)
+    expect(
+      validateNavigationItemDestination({
+        link: {type: 'internal'},
+        megaMenu: {sections: []},
+      }),
+    ).toBe(true)
+  })
+
   it('validates tile and card spans in mixed content against the local grid', () => {
     expect(
       validateNavigationMegaLayout({

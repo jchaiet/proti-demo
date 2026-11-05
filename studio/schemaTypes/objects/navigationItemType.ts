@@ -59,7 +59,7 @@ export const navigationItemType = defineType({
           type: 'navigationSubItem',
         }),
       ],
-      validation: (rule) => rule.max(12),
+      validation: (rule, context) => (context?.hidden ? rule.skip() : rule.max(12)),
     }),
 
     defineField({

@@ -19,7 +19,7 @@ const sectionSpan = () =>
     description: 'Columns occupied by this section in the Mega Menu outer grid (default: 1).',
     initialValue: 1,
     options: {list: spans},
-    validation: (rule) => rule.integer().min(1).max(4),
+    validation: (rule, context) => (context?.hidden ? rule.skip() : rule.integer().min(1).max(4)),
   })
 
 const illustrationField = () =>
@@ -41,20 +41,23 @@ export const navigationMegaTileType = defineType({
       name: 'label',
       title: 'Label',
       type: 'string',
-      validation: (rule) => rule.required().max(120),
+      validation: (rule, context) => (context?.hidden ? rule.skip() : rule.required().max(120)),
     }),
     defineField({
       name: 'description',
       title: 'Description',
       type: 'text',
       rows: 2,
-      validation: (rule) => rule.max(240),
+      validation: (rule, context) => (context?.hidden ? rule.skip() : rule.max(240)),
     }),
     defineField({
       name: 'link',
       title: 'Destination',
       type: 'link',
-      validation: (rule) => rule.required().custom((value) => validateRequiredLink(value)),
+      validation: (rule, context) =>
+        context?.hidden
+          ? rule.skip()
+          : rule.required().custom((value) => validateRequiredLink(value)),
     }),
     defineField({
       name: 'tone',
@@ -70,7 +73,7 @@ export const navigationMegaTileType = defineType({
       initialValue: 1,
       options: {list: spans.slice(0, 3)},
       description: 'Span within this tile section (not the outer grid).',
-      validation: (rule) => rule.integer().min(1).max(3),
+      validation: (rule, context) => (context?.hidden ? rule.skip() : rule.integer().min(1).max(3)),
     }),
     illustrationField(),
   ],
@@ -89,33 +92,36 @@ export const navigationMegaCardType = defineType({
       name: 'eyebrow',
       title: 'Eyebrow',
       type: 'string',
-      validation: (rule) => rule.max(80),
+      validation: (rule, context) => (context?.hidden ? rule.skip() : rule.max(80)),
     }),
     defineField({
       name: 'title',
       title: 'Title',
       type: 'string',
-      validation: (rule) => rule.required().max(120),
+      validation: (rule, context) => (context?.hidden ? rule.skip() : rule.required().max(120)),
     }),
     defineField({
       name: 'description',
       title: 'Description',
       type: 'text',
       rows: 3,
-      validation: (rule) => rule.max(300),
+      validation: (rule, context) => (context?.hidden ? rule.skip() : rule.max(300)),
     }),
     defineField({
       name: 'link',
       title: 'Destination',
       type: 'link',
-      validation: (rule) => rule.required().custom((value) => validateRequiredLink(value)),
+      validation: (rule, context) =>
+        context?.hidden
+          ? rule.skip()
+          : rule.required().custom((value) => validateRequiredLink(value)),
     }),
     defineField({
       name: 'ctaLabel',
       title: 'CTA Label',
       type: 'string',
       initialValue: 'Read more',
-      validation: (rule) => rule.max(70),
+      validation: (rule, context) => (context?.hidden ? rule.skip() : rule.max(70)),
     }),
     defineField({
       name: 'tone',
@@ -130,7 +136,7 @@ export const navigationMegaCardType = defineType({
       type: 'number',
       initialValue: 1,
       options: {list: spans.slice(0, 3)},
-      validation: (rule) => rule.integer().min(1).max(3),
+      validation: (rule, context) => (context?.hidden ? rule.skip() : rule.integer().min(1).max(3)),
     }),
     defineField({
       name: 'image',
@@ -155,14 +161,14 @@ export const navigationMegaCategoryType = defineType({
       name: 'label',
       title: 'Category',
       type: 'string',
-      validation: (rule) => rule.required().max(120),
+      validation: (rule, context) => (context?.hidden ? rule.skip() : rule.required().max(120)),
     }),
     defineField({
       name: 'description',
       title: 'Description',
       type: 'text',
       rows: 2,
-      validation: (rule) => rule.max(240),
+      validation: (rule, context) => (context?.hidden ? rule.skip() : rule.max(240)),
     }),
     defineField({name: 'icon', title: 'Icon', type: 'iconPicker'}),
     defineField({
@@ -170,7 +176,8 @@ export const navigationMegaCategoryType = defineType({
       title: 'Category Links',
       type: 'array',
       of: [defineArrayMember({type: 'navigationSubItem'})],
-      validation: (rule) => rule.required().min(1).max(20),
+      validation: (rule, context) =>
+        context?.hidden ? rule.skip() : rule.required().min(1).max(20),
     }),
   ],
   preview: {
@@ -191,7 +198,7 @@ export const navigationMegaLinksSectionType = defineType({
       name: 'title',
       title: 'Heading',
       type: 'string',
-      validation: (rule) => rule.max(120),
+      validation: (rule, context) => (context?.hidden ? rule.skip() : rule.max(120)),
     }),
     sectionSpan(),
     defineField({
@@ -199,7 +206,8 @@ export const navigationMegaLinksSectionType = defineType({
       title: 'Links',
       type: 'array',
       of: [defineArrayMember({type: 'navigationSubItem'})],
-      validation: (rule) => rule.required().min(1).max(24),
+      validation: (rule, context) =>
+        context?.hidden ? rule.skip() : rule.required().min(1).max(24),
     }),
   ],
   preview: {
@@ -220,7 +228,7 @@ export const navigationMegaTilesSectionType = defineType({
       name: 'title',
       title: 'Heading',
       type: 'string',
-      validation: (rule) => rule.max(120),
+      validation: (rule, context) => (context?.hidden ? rule.skip() : rule.max(120)),
     }),
     sectionSpan(),
     defineField({
@@ -230,14 +238,16 @@ export const navigationMegaTilesSectionType = defineType({
       initialValue: 2,
       options: {list: [1, 2, 3].map((value) => ({title: String(value), value}))},
       description: 'Number of columns INSIDE this section.',
-      validation: (rule) => rule.required().integer().min(1).max(3),
+      validation: (rule, context) =>
+        context?.hidden ? rule.skip() : rule.required().integer().min(1).max(3),
     }),
     defineField({
       name: 'items',
       title: 'Tiles',
       type: 'array',
       of: [defineArrayMember({type: 'navigationMegaTile'})],
-      validation: (rule) => rule.required().min(1).max(16),
+      validation: (rule, context) =>
+        context?.hidden ? rule.skip() : rule.required().min(1).max(16),
     }),
   ],
   preview: {
@@ -258,7 +268,7 @@ export const navigationMegaContentSectionType = defineType({
       name: 'title',
       title: 'Heading',
       type: 'string',
-      validation: (rule) => rule.max(120),
+      validation: (rule, context) => (context?.hidden ? rule.skip() : rule.max(120)),
     }),
     sectionSpan(),
     defineField({
@@ -267,7 +277,8 @@ export const navigationMegaContentSectionType = defineType({
       type: 'number',
       initialValue: 2,
       options: {list: [1, 2, 3].map((value) => ({title: String(value), value}))},
-      validation: (rule) => rule.required().integer().min(1).max(3),
+      validation: (rule, context) =>
+        context?.hidden ? rule.skip() : rule.required().integer().min(1).max(3),
     }),
     defineField({
       name: 'items',
@@ -279,7 +290,8 @@ export const navigationMegaContentSectionType = defineType({
         defineArrayMember({type: 'navigationMegaTile', title: 'Tile'}),
         defineArrayMember({type: 'navigationMegaCard', title: 'Card'}),
       ],
-      validation: (rule) => rule.required().min(1).max(16),
+      validation: (rule, context) =>
+        context?.hidden ? rule.skip() : rule.required().min(1).max(16),
     }),
   ],
   preview: {
@@ -300,7 +312,7 @@ export const navigationMegaExplorerSectionType = defineType({
       name: 'title',
       title: 'Heading',
       type: 'string',
-      validation: (rule) => rule.max(120),
+      validation: (rule, context) => (context?.hidden ? rule.skip() : rule.max(120)),
     }),
     sectionSpan(),
     defineField({
@@ -308,7 +320,8 @@ export const navigationMegaExplorerSectionType = defineType({
       title: 'Categories',
       type: 'array',
       of: [defineArrayMember({type: 'navigationMegaCategory'})],
-      validation: (rule) => rule.required().min(1).max(12),
+      validation: (rule, context) =>
+        context?.hidden ? rule.skip() : rule.required().min(1).max(12),
     }),
   ],
   preview: {
@@ -345,26 +358,26 @@ export const navigationMegaFeatureSectionType = defineType({
       type: 'string',
       initialValue: 'Read more',
       hidden: ({parent}) => parent?.presentation !== 'card',
-      validation: (rule) => rule.max(70),
+      validation: (rule, context) => (context?.hidden ? rule.skip() : rule.max(70)),
     }),
     defineField({
       name: 'eyebrow',
       title: 'Eyebrow',
       type: 'string',
-      validation: (rule) => rule.max(80),
+      validation: (rule, context) => (context?.hidden ? rule.skip() : rule.max(80)),
     }),
     defineField({
       name: 'title',
       title: 'Title',
       type: 'string',
-      validation: (rule) => rule.required().max(120),
+      validation: (rule, context) => (context?.hidden ? rule.skip() : rule.required().max(120)),
     }),
     defineField({
       name: 'description',
       title: 'Description',
       type: 'text',
       rows: 3,
-      validation: (rule) => rule.max(300),
+      validation: (rule, context) => (context?.hidden ? rule.skip() : rule.max(300)),
     }),
     defineField({
       name: 'link',
@@ -399,7 +412,8 @@ export const navigationMegaMenuType = defineType({
       type: 'number',
       initialValue: 4,
       options: {list: [2, 3, 4, 5].map((value) => ({title: String(value), value}))},
-      validation: (rule) => rule.required().integer().min(2).max(5),
+      validation: (rule, context) =>
+        context?.hidden ? rule.skip() : rule.required().integer().min(2).max(5),
     }),
     defineField({
       name: 'sections',
@@ -414,8 +428,10 @@ export const navigationMegaMenuType = defineType({
         defineArrayMember({type: 'navigationMegaExplorerSection'}),
         defineArrayMember({type: 'navigationMegaFeatureSection'}),
       ],
-      validation: (rule) => rule.required().min(1).max(12),
+      validation: (rule, context) =>
+        context?.hidden ? rule.skip() : rule.required().min(1).max(12),
     }),
   ],
-  validation: (rule) => rule.custom((value) => validateNavigationMegaLayout(value)),
+  validation: (rule, context) =>
+    context?.hidden ? rule.skip() : rule.custom((value) => validateNavigationMegaLayout(value)),
 })
