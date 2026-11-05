@@ -1,4 +1,5 @@
 import fs from "node:fs/promises";
+import { execFileSync } from "node:child_process";
 import path from "node:path";
 import process from "node:process";
 import { createInterface } from "node:readline/promises";
@@ -181,6 +182,115 @@ async function updatePackageName(filePath, name) {
   const pkg = JSON.parse(await fs.readFile(filePath, "utf8"));
   pkg.name = name;
   await fs.writeFile(filePath, `${JSON.stringify(pkg, null, 2)}\n`);
+}
+
+// Git settings are stored locally inside .git/config. Unlike a tracked marker,
+// they are not copied by `git clone`, so each new clone can initialize safely.
+function git(args) {
+  return execFileSync("git", args, {
+    cwd: ROOT,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  }).trim();
+}
+
+function tryGit(args) {
+  try {
+    return git(args);
+  } catch {
+    return null;
+  }
+}
+
+function isProtiStarterRemote(url) {
+  if (!url) return false;
+  const normalized = url
+    .trim()
+    .replace(/\/+$/, "")
+    .replace(/\.git$/i, "");
+  return /(?:^|[/:])proti-demo$/i.test(normalized);
+}
+
+async function setupProjectGit() {
+  const gitPath = path.join(ROOT, ".git");
+  const initialized = tryGit([
+    "config",
+    "--local",
+    "--get",
+    "proti.initialized",
+  ]);
+
+  if (initialized === "true") {
+    console.log("✓ Existing project Git repository preserved");
+    return;
+  }
+
+  // Never modify a parent repository when invoked from a nested directory.
+  const gitRoot = tryGit(["rev-parse", "--show-toplevel"]);
+  if (gitRoot && path.resolve(gitRoot) !== path.resolve(ROOT)) {
+    console.warn(
+      "! Git setup skipped: this folder is inside another Git repository.",
+    );
+    return;
+  }
+
+  let gitEntry;
+  try {
+    gitEntry = await fs.lstat(gitPath);
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+  }
+
+  if (!gitEntry) {
+    // Also supports projects created from a downloaded ZIP instead of a clone.
+    try {
+      git(["init", "-b", "main"]);
+      git(["config", "--local", "proti.initialized", "true"]);
+      console.log("✓ Initialized a fresh Git repository (no remotes)");
+    } catch (error) {
+      console.warn(`! Could not initialize Git: ${error.message}`);
+    }
+    return;
+  }
+
+  // A linked worktree/submodule can have a .git file or symlink. Do not detach it.
+  if (!gitEntry.isDirectory() || gitEntry.isSymbolicLink()) {
+    console.warn("! Git setup skipped: .git is not a regular directory.");
+    return;
+  }
+
+  const origin = tryGit(["remote", "get-url", "origin"]);
+  if (!isProtiStarterRemote(origin)) {
+    // Preserve already customized repositories, including their commits/remotes.
+    if (tryGit(["rev-parse", "--is-inside-work-tree"]) === "true") {
+      git(["config", "--local", "proti.initialized", "true"]);
+    }
+    console.log("✓ Existing Git repository preserved (not a proti-demo clone)");
+    return;
+  }
+
+  // Detach only a first-run clone of the known Proti demo starter. Move the
+  // inherited metadata OUTSIDE the project instead of irreversibly deleting it.
+  // New projects get a clean initial branch, no old commits, tags or remotes.
+  const backup = path.join(
+    path.dirname(ROOT),
+    `${path.basename(ROOT)}-git-backup-${Date.now()}-${process.pid}`,
+  );
+  await fs.rename(gitPath, backup);
+  try {
+    git(["init", "-b", "main"]);
+    git(["config", "--local", "proti.initialized", "true"]);
+    console.log(
+      "✓ Initialized independent Git repository (no inherited history or remotes)",
+    );
+    console.log(`  Previous Git metadata backed up at: ${backup}`);
+  } catch (error) {
+    await fs.rm(gitPath, { recursive: true, force: true });
+    await fs.rename(backup, gitPath);
+    throw new Error(
+      `Git initialization failed; original Git metadata restored. ${error.message}`,
+    );
+  }
 }
 
 const existingConfig = (await readJson(CONFIG_PATH, {})) ?? {};
@@ -393,6 +503,8 @@ try {
     path.join(ROOT, "studio", "package.json"),
     `${packageName}-studio`,
   );
+
+  await setupProjectGit();
 
   console.log("\n✓ Wrote proti.config.json");
   console.log("✓ Wrote web/.env.local");

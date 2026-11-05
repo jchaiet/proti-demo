@@ -1,6 +1,6 @@
 {
   "name": "proti-web",
-  "version": "0.3.0",
+  "version": "0.3.1s",
   "private": true,
   "scripts": {
     "dev": "next dev",
