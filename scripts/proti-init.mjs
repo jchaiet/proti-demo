@@ -490,6 +490,7 @@ try {
       SANITY_STUDIO_DATASET: dataset,
       SANITY_STUDIO_TITLE: projectName,
       SANITY_STUDIO_PREVIEW_URL: previewUrl,
+      SANITY_STUDIO_APP_ID: existingStudioEnv.SANITY_STUDIO_APP_ID || "",
     },
     "Proti Studio local environment",
   );
