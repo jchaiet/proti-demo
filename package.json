@@ -1,7 +1,7 @@
 {
   "name": "proti",
   "private": true,
-  "version": "0.3.0",
+  "version": "0.4.0",
   "scripts": {
     "dev:web": "pnpm --dir web dev",
     "dev:studio": "pnpm --dir studio dev",
@@ -9,8 +9,10 @@
     "build:studio": "pnpm --dir studio build",
     "proti:init": "node scripts/proti-init.mjs",
     "proti:visual:init": "node scripts/proti-visual-init.mjs",
+    "proti:configure:production": "node scripts/proti-configure-production.mjs",
     "proti:seed": "node scripts/proti-seed.mjs",
-    "test:proti": "node --test scripts/proti-init.test.mjs scripts/proti-seed.test.mjs scripts/proti-check.test.mjs scripts/proti-visual-init.test.mjs",
-    "proti:check": "node scripts/proti-check.mjs"
+    "test:proti": "node --test scripts/proti-init.test.mjs scripts/proti-seed.test.mjs scripts/proti-check.test.mjs scripts/proti-visual-init.test.mjs scripts/proti-configure-production.test.mjs scripts/proti-acceptance.test.mjs",
+    "proti:check": "node scripts/proti-check.mjs",
+    "test:proti:integration": "node --test scripts/proti-acceptance.test.mjs"
   }
 }
