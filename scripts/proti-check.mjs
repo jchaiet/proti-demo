@@ -506,6 +506,33 @@ async function checkGitRepository() {
   );
 }
 
+async function checkVisualBaselines() {
+  const projects = ["chromium-desktop", "chromium-mobile"];
+  const missing = [];
+
+  for (const project of projects) {
+    const relative = path.join(
+      "web",
+      "e2e",
+      "__screenshots__",
+      project,
+      "home.png",
+    );
+    if (!(await fileExists(path.join(ROOT, relative)))) {
+      missing.push(relative);
+    }
+  }
+
+  if (missing.length > 0) {
+    warn(
+      "Visual baselines",
+      `Missing ${missing.join(", ")}. After seeding, run "pnpm proti:visual:init" and commit the screenshots.`,
+    );
+  } else {
+    pass("Visual baselines", "Desktop and mobile home screenshots exist.");
+  }
+}
+
 function printResults() {
   console.log("\nProti setup check\n");
 
@@ -686,6 +713,8 @@ if (!(await fileExists(configPath))) {
         webEnv,
       });
     }
+
+    await checkVisualBaselines();
 
     printResults();
   }

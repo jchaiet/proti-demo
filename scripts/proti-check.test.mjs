@@ -22,6 +22,7 @@ async function createRepo({
   gitMode = "fresh",
   remoteUrl,
   withCommit = false,
+  visualBaselines = "both",
 } = {}) {
   const tempRoot = await fs.mkdtemp(
     path.join(os.tmpdir(), "proti-check-test-"),
@@ -141,6 +142,26 @@ async function createRepo({
       "",
     ].join("\n"),
   );
+
+  // Healthy generated projects have their own desktop and mobile baselines.
+  // Missing baselines should warn rather than block early project setup.
+  if (visualBaselines !== "none") {
+    const projectNames =
+      visualBaselines === "desktop-only"
+        ? ["chromium-desktop"]
+        : ["chromium-desktop", "chromium-mobile"];
+    for (const project of projectNames) {
+      const directory = path.join(
+        repo,
+        "web",
+        "e2e",
+        "__screenshots__",
+        project,
+      );
+      await fs.mkdir(directory, { recursive: true });
+      await fs.writeFile(path.join(directory, "home.png"), "fixture baseline");
+    }
+  }
 
   // A generated Proti project starts with its own Git repository and no
   // inherited remote. Tests may deliberately select other Git states.
@@ -610,6 +631,40 @@ test("Git repository initialized only in a parent directory fails", async () => 
     assert.match(result.stdout, /✗ Git repository — Repository root is/);
     assert.match(result.stdout, /not the current project/);
     assert.match(result.stdout, /Proti setup has 1 problem/);
+  } finally {
+    await sanity.close();
+    await removeRepo(cleanupRoot);
+  }
+});
+
+test("missing visual baselines warn without failing project setup", async () => {
+  const { repo, cleanupRoot } = await createRepo({ visualBaselines: "none" });
+  const sanity = await startSanity();
+  try {
+    const result = await runCheck({ repo, baseUrl: sanity.baseUrl });
+    assert.equal(result.code, 0, result.stderr);
+    assert.match(result.stdout, /! Visual baselines/);
+    assert.match(result.stdout, /chromium-desktop/);
+    assert.match(result.stdout, /chromium-mobile/);
+    assert.match(result.stdout, /pnpm proti:visual:init/);
+    assert.match(result.stdout, /Proti is ready with 1 warning/);
+  } finally {
+    await sanity.close();
+    await removeRepo(cleanupRoot);
+  }
+});
+
+test("incomplete visual baselines warn and identify the missing project", async () => {
+  const { repo, cleanupRoot } = await createRepo({
+    visualBaselines: "desktop-only",
+  });
+  const sanity = await startSanity();
+  try {
+    const result = await runCheck({ repo, baseUrl: sanity.baseUrl });
+    assert.equal(result.code, 0, result.stderr);
+    assert.match(result.stdout, /! Visual baselines/);
+    assert.match(result.stdout, /chromium-mobile/);
+    assert.match(result.stdout, /Proti is ready with 1 warning/);
   } finally {
     await sanity.close();
     await removeRepo(cleanupRoot);
