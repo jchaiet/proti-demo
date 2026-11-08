@@ -60,6 +60,7 @@ async function createRepo({
       dataset: "production",
       studioUrl: "http://localhost:3333",
       previewUrl: "http://localhost:3000",
+      productionPreviewUrl: "https://example.com",
     },
     site: {
       name: "Acme Health",
@@ -138,9 +139,16 @@ async function createRepo({
       "SANITY_STUDIO_PROJECT_ID=abc123",
       "SANITY_STUDIO_DATASET=production",
       "SANITY_STUDIO_TITLE=Acme Health",
-      "SANITY_STUDIO_PREVIEW_URL=http://localhost:3000",
       "",
     ].join("\n"),
+  );
+  await fs.writeFile(
+    path.join(repo, "studio", ".env.development"),
+    "SANITY_STUDIO_PREVIEW_URL=http://localhost:3000\n",
+  );
+  await fs.writeFile(
+    path.join(repo, "studio", ".env.production"),
+    "SANITY_STUDIO_PREVIEW_URL=https://example.com\n",
   );
 
   // Healthy generated projects have their own desktop and mobile baselines.
@@ -206,15 +214,19 @@ async function removeRepo(repo) {
   });
 }
 
-function runCheck({ repo, baseUrl }) {
+function runCheck({ repo, baseUrl, environmentOverrides = {} }) {
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, ["scripts/proti-check.mjs"], {
       cwd: repo,
       env: {
         ...process.env,
+        // Keep fixture expectations independent of the CI build environment.
+        // Tests that need an override pass it explicitly below.
+        SANITY_STUDIO_PREVIEW_URL: "",
         SANITY_API_READ_TOKEN: "",
         SANITY_API_WRITE_TOKEN: "",
         PROTI_SANITY_API_BASE_URL: baseUrl,
+        ...environmentOverrides,
       },
       stdio: ["ignore", "pipe", "pipe"],
     });
@@ -357,6 +369,39 @@ test("healthy setup passes", async () => {
     assert.equal(sanity.requests.length, 1);
 
     assert.equal(sanity.requests[0].headers.authorization, "Bearer read-token");
+  } finally {
+    await sanity.close();
+    await removeRepo(repo);
+  }
+});
+
+test("warns when localhost is missing from development Site routing", async () => {
+  const { repo } = await createRepo();
+  const sanity = await startSanity({
+    site: {
+      _id: "site-acme",
+      _type: "site",
+      name: "Acme Health",
+      key: "acme",
+      domains: ["example.com"],
+      canonicalDomain: "example.com",
+      defaultLocale: "en-us",
+      locales: [
+        { code: "en-us", label: "English (US)" },
+        { code: "es-us", label: "Spanish (US)" },
+      ],
+    },
+  });
+  try {
+    const configPath = path.join(repo, "proti.config.json");
+    const config = JSON.parse(await fs.readFile(configPath, "utf8"));
+    config.site.domains = ["example.com"];
+    config.site.canonicalDomain = "example.com";
+    await fs.writeFile(configPath, JSON.stringify(config, null, 2) + "\n");
+    const result = await runCheck({ repo, baseUrl: sanity.baseUrl });
+    assert.equal(result.code, 0, result.stderr + "\n" + result.stdout);
+    assert.match(result.stdout, /! Development hostname/);
+    assert.match(result.stdout, /published Sanity Site Routing settings/);
   } finally {
     await sanity.close();
     await removeRepo(repo);
@@ -668,5 +713,100 @@ test("incomplete visual baselines warn and identify the missing project", async 
   } finally {
     await sanity.close();
     await removeRepo(cleanupRoot);
+  }
+});
+
+test("missing production Presentation URL warns but does not fail", async () => {
+  const { repo } = await createRepo();
+  const sanity = await startSanity();
+  try {
+    const pathConfig = path.join(repo, "proti.config.json");
+    const config = JSON.parse(await fs.readFile(pathConfig, "utf8"));
+    config.sanity.productionPreviewUrl = "";
+    await fs.writeFile(pathConfig, JSON.stringify(config));
+    await fs.writeFile(
+      path.join(repo, "studio", ".env.production"),
+      "SANITY_STUDIO_PREVIEW_URL=\n",
+    );
+    const result = await runCheck({ repo, baseUrl: sanity.baseUrl });
+    assert.equal(result.code, 0, result.stderr);
+    assert.match(result.stdout, /! Production preview URL/);
+    assert.match(result.stdout, /pnpm proti:configure:production/);
+  } finally {
+    await sanity.close();
+    await removeRepo(repo);
+  }
+});
+
+test("production preview drift fails check", async () => {
+  const { repo } = await createRepo();
+  const sanity = await startSanity();
+  try {
+    await fs.writeFile(
+      path.join(repo, "studio", ".env.production"),
+      "SANITY_STUDIO_PREVIEW_URL=https://wrong.example.com\n",
+    );
+    const result = await runCheck({ repo, baseUrl: sanity.baseUrl });
+    assert.notEqual(result.code, 0);
+    assert.match(result.stdout, /✗ Production preview URL/);
+  } finally {
+    await sanity.close();
+    await removeRepo(repo);
+  }
+});
+
+test("old Studio .env.local preview value is flagged for migration", async () => {
+  const { repo } = await createRepo();
+  const sanity = await startSanity();
+  try {
+    await fs.appendFile(
+      path.join(repo, "studio", ".env.local"),
+      "SANITY_STUDIO_PREVIEW_URL=http://localhost:3000\n",
+    );
+    const result = await runCheck({ repo, baseUrl: sanity.baseUrl });
+    assert.equal(result.code, 0, result.stderr);
+    assert.match(result.stdout, /! Legacy Studio preview URL/);
+  } finally {
+    await sanity.close();
+    await removeRepo(repo);
+  }
+});
+
+test("warns when mode-specific Studio URL files are ignored by Git", async () => {
+  const { repo } = await createRepo();
+  const sanity = await startSanity();
+  try {
+    await fs.writeFile(
+      path.join(repo, ".gitignore"),
+      "studio/.env.production\n",
+    );
+    const result = await runCheck({ repo, baseUrl: sanity.baseUrl });
+    assert.equal(result.code, 0, result.stderr);
+    assert.match(result.stdout, /Studio mode environment tracking/);
+    assert.match(result.stdout, /studio\/.env.production is ignored by Git/);
+  } finally {
+    await sanity.close();
+    await removeRepo(repo);
+  }
+});
+
+test("warns when CI overrides the production Studio Presentation URL", async () => {
+  const { repo } = await createRepo();
+  const sanity = await startSanity();
+  try {
+    const result = await runCheck({
+      repo,
+      baseUrl: sanity.baseUrl,
+      environmentOverrides: {
+        CI: "true",
+        SANITY_STUDIO_PREVIEW_URL: "http://localhost:3000",
+      },
+    });
+    assert.equal(result.code, 0, result.stderr);
+    assert.match(result.stdout, /! CI Studio preview override/);
+    assert.match(result.stdout, /overrides studio\/.env.production/);
+  } finally {
+    await sanity.close();
+    await removeRepo(repo);
   }
 });
