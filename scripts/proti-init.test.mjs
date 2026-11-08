@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import fs from "node:fs/promises";
+import { execFileSync } from "node:child_process";
 import path from "node:path";
 import test from "node:test";
 
@@ -26,6 +27,7 @@ test("fresh clone uses generic defaults and language-region locales", async () =
         "",
         "",
         "test123",
+        "",
         "",
         "",
         "",
@@ -66,6 +68,28 @@ test("fresh clone uses generic defaults and language-region locales", async () =
 
     assert.equal(config.sanity.projectId, "test123");
 
+    assert.equal(config.sanity.previewUrl, "http://localhost:3000");
+    assert.equal(config.sanity.productionPreviewUrl, "");
+    const studioEnv = await fs.readFile(
+      path.join(repo, "studio", ".env.local"),
+      "utf8",
+    );
+    const developmentEnv = await fs.readFile(
+      path.join(repo, "studio", ".env.development"),
+      "utf8",
+    );
+    const productionEnv = await fs.readFile(
+      path.join(repo, "studio", ".env.production"),
+      "utf8",
+    );
+    assert.doesNotMatch(studioEnv, /SANITY_STUDIO_PREVIEW_URL=/);
+    assert.match(
+      developmentEnv,
+      /SANITY_STUDIO_PREVIEW_URL=http:\/\/localhost:3000/,
+    );
+    assert.match(productionEnv, /^SANITY_STUDIO_PREVIEW_URL=$/m);
+    assert.match(result.stdout, /pnpm proti:configure:production/);
+
     assert.equal(config.site.canonicalDomain, "localhost");
 
     assert.equal(config.site.defaultLocale, "en-us");
@@ -105,6 +129,7 @@ test("initializer normalizes project names, domains, and locale input", async ()
         "",
         "HTTPS://EXAMPLE.COM/, localhost, example.com",
         "",
+        "https://www.example.com",
         "EN-US",
         "EN-US:English, ES-US:Español",
       ]),
@@ -124,12 +149,95 @@ test("initializer normalizes project names, domains, and locale input", async ()
 
     assert.equal(config.site.canonicalDomain, "example.com");
 
+    assert.equal(config.sanity.productionPreviewUrl, "https://www.example.com");
+    assert.match(
+      await fs.readFile(path.join(repo, "studio", ".env.production"), "utf8"),
+      /SANITY_STUDIO_PREVIEW_URL=https:\/\/www.example.com/,
+    );
     assert.equal(config.site.defaultLocale, "en-us");
 
     assert.deepEqual(
       config.site.locales.map(({ code }) => code),
       ["en-us", "es-us"],
     );
+  } finally {
+    await removeTempRepo(repo);
+  }
+});
+
+test("first init includes localhost when only a production domain is supplied", async () => {
+  const repo = await createTempRepo();
+  try {
+    await copyScript(INIT_SCRIPT, repo, "proti-init.mjs");
+    const result = await runNode({
+      cwd: repo,
+      script: "scripts/proti-init.mjs",
+      input: scriptedInput([
+        "Production Only",
+        "production-only",
+        "abc123",
+        "production",
+        "",
+        "",
+        "",
+        "",
+        "new-site.example.com",
+        "",
+        "",
+        "",
+        "",
+      ]),
+    });
+    assert.equal(result.code, 0, result.stderr);
+    const config = JSON.parse(
+      await fs.readFile(path.join(repo, "proti.config.json"), "utf8"),
+    );
+    assert.deepEqual(config.site.domains, [
+      "new-site.example.com",
+      "localhost",
+    ]);
+    assert.equal(config.site.canonicalDomain, "new-site.example.com");
+  } finally {
+    await removeTempRepo(repo);
+  }
+});
+
+test("reinit preserves an intentional localhost removal from initialized Site domains", async () => {
+  const repo = await createTempRepo();
+  try {
+    await copyScript(INIT_SCRIPT, repo, "proti-init.mjs");
+    const first = await runNode({
+      cwd: repo,
+      script: "scripts/proti-init.mjs",
+      input: scriptedInput([
+        "Production Only",
+        "production-only",
+        "abc123",
+        "production",
+        "",
+        "",
+        "",
+        "",
+        "site.example.com",
+        "",
+        "",
+        "",
+        "",
+      ]),
+    });
+    assert.equal(first.code, 0, first.stderr);
+    const configPath = path.join(repo, "proti.config.json");
+    const config = JSON.parse(await fs.readFile(configPath, "utf8"));
+    config.site.domains = ["site.example.com"];
+    await fs.writeFile(configPath, JSON.stringify(config, null, 2) + "\n");
+    const second = await runNode({
+      cwd: repo,
+      script: "scripts/proti-init.mjs",
+      input: scriptedInput(Array(13).fill("")),
+    });
+    assert.equal(second.code, 0, second.stderr);
+    const reinitialized = JSON.parse(await fs.readFile(configPath, "utf8"));
+    assert.deepEqual(reinitialized.site.domains, ["site.example.com"]);
   } finally {
     await removeTempRepo(repo);
   }
@@ -155,6 +263,7 @@ test("initializer rejects a canonical domain outside Site domains", async () => 
         "acme",
         "example.com, www.example.com",
         "canonical.example.com",
+        "",
       ]),
     });
 
@@ -184,6 +293,7 @@ test("initializer accepts three-letter language codes", async () => {
         "",
         "",
         "localhost",
+        "",
         "",
         "fil-ph",
         "fil-ph:Filipino (Philippines), en-us:English (US)",
@@ -225,6 +335,7 @@ test("initializer rejects Site domains with ports", async () => {
         "",
         "",
         "localhost:3000",
+        "",
       ]),
     });
 
@@ -256,6 +367,7 @@ test("rerunning the initializer reuses local values and preserves secrets", asyn
         "acme",
         "localhost",
         "",
+        "",
         "en-us",
         "en-us:English, es-us:Spanish",
       ]),
@@ -280,7 +392,7 @@ test("rerunning the initializer reuses local values and preserves secrets", asyn
     const second = await runNode({
       cwd: repo,
       script: "scripts/proti-init.mjs",
-      input: scriptedInput(new Array(12).fill("")),
+      input: scriptedInput(new Array(13).fill("")),
     });
 
     assert.equal(second.code, 0, second.stderr);
@@ -288,6 +400,22 @@ test("rerunning the initializer reuses local values and preserves secrets", asyn
     assert.match(second.stdout, /Project name \[Acme\]/);
 
     assert.match(second.stdout, /Sanity project ID \[abc123\]/);
+
+    const devAfter = await fs.readFile(
+      path.join(repo, "studio", ".env.development"),
+      "utf8",
+    );
+    const prodAfter = await fs.readFile(
+      path.join(repo, "studio", ".env.production"),
+      "utf8",
+    );
+    assert.match(devAfter, /SANITY_STUDIO_PREVIEW_URL=http:\/\/localhost:3000/);
+    assert.match(prodAfter, /^SANITY_STUDIO_PREVIEW_URL=$/m);
+    const rewrittenStudioEnv = await fs.readFile(
+      path.join(repo, "studio", ".env.local"),
+      "utf8",
+    );
+    assert.doesNotMatch(rewrittenStudioEnv, /SANITY_STUDIO_PREVIEW_URL=/);
 
     const rewrittenEnv = await fs.readFile(webEnvPath, "utf8");
 
@@ -321,6 +449,7 @@ test("initializer rejects malformed locale shapes", async () => {
         "",
         "",
         "",
+        "",
         "en-usa",
         "en-usa:English",
       ]),
@@ -329,6 +458,188 @@ test("initializer rejects malformed locale shapes", async () => {
     assert.notEqual(result.code, 0);
 
     assert.match(result.stderr, /Use language-region format, e\.g\. en-us/);
+  } finally {
+    await removeTempRepo(repo);
+  }
+});
+
+test("first initialization clears inherited visual baselines and rerun preserves new ones", async () => {
+  const repo = await createTempRepo();
+  const snapshots = path.join(
+    repo,
+    "web",
+    "e2e",
+    "__screenshots__",
+    "chromium-desktop",
+  );
+  const screenshot = path.join(snapshots, "home.png");
+  const note = path.join(snapshots, "README.md");
+  const mobileScreenshot = path.join(
+    repo,
+    "web",
+    "e2e",
+    "__screenshots__",
+    "chromium-mobile",
+    "home.png",
+  );
+
+  try {
+    await copyScript(INIT_SCRIPT, repo, "proti-init.mjs");
+    await fs.mkdir(snapshots, { recursive: true });
+    await fs.mkdir(path.dirname(mobileScreenshot), { recursive: true });
+    await fs.writeFile(screenshot, "inherited demo screenshot");
+    await fs.writeFile(mobileScreenshot, "inherited mobile screenshot");
+    await fs.writeFile(note, "Snapshot directory information");
+
+    const first = await runNode({
+      cwd: repo,
+      script: "scripts/proti-init.mjs",
+      input: scriptedInput(["", "", "abc123", ...new Array(10).fill("")]),
+    });
+
+    assert.equal(first.code, 0, first.stderr);
+    assert.match(first.stdout, /Removed inherited demo visual baselines/);
+    assert.match(first.stdout, /pnpm proti:visual:init/);
+    await assert.rejects(fs.access(screenshot), { code: "ENOENT" });
+    await assert.rejects(fs.access(mobileScreenshot), { code: "ENOENT" });
+    assert.equal(
+      await fs.readFile(note, "utf8"),
+      "Snapshot directory information",
+    );
+    assert.ok((await fs.stat(snapshots)).isDirectory());
+    assert.ok((await fs.stat(path.dirname(mobileScreenshot))).isDirectory());
+
+    await fs.mkdir(snapshots, { recursive: true });
+    await fs.writeFile(screenshot, "new project screenshot");
+
+    const second = await runNode({
+      cwd: repo,
+      script: "scripts/proti-init.mjs",
+      input: scriptedInput(new Array(13).fill("")),
+    });
+
+    assert.equal(second.code, 0, second.stderr);
+    assert.doesNotMatch(
+      second.stdout,
+      /Removed inherited demo visual baselines/,
+    );
+    assert.equal(
+      await fs.readFile(screenshot, "utf8"),
+      "new project screenshot",
+    );
+  } finally {
+    await removeTempRepo(repo);
+  }
+});
+
+test("initializing a cloned proti-demo repository clears its origin and demo screenshots", async () => {
+  const repo = await createTempRepo();
+  const screenshot = path.join(
+    repo,
+    "web",
+    "e2e",
+    "__screenshots__",
+    "chromium-mobile",
+    "home.png",
+  );
+
+  try {
+    await copyScript(INIT_SCRIPT, repo, "proti-init.mjs");
+    execFileSync("git", ["init", "-q"], { cwd: repo });
+    execFileSync(
+      "git",
+      ["remote", "add", "origin", "git@github.com:example/proti-demo.git"],
+      { cwd: repo },
+    );
+    await fs.mkdir(path.dirname(screenshot), { recursive: true });
+    await fs.writeFile(screenshot, "demo screenshot");
+
+    const result = await runNode({
+      cwd: repo,
+      script: "scripts/proti-init.mjs",
+      input: scriptedInput(["", "", "abc123", ...new Array(10).fill("")]),
+    });
+
+    assert.equal(result.code, 0, result.stderr);
+    assert.match(result.stdout, /Initialized independent Git repository/);
+    assert.match(result.stdout, /Removed inherited demo visual baselines/);
+    assert.equal(
+      execFileSync("git", ["remote", "-v"], {
+        cwd: repo,
+        encoding: "utf8",
+      }).trim(),
+      "",
+    );
+    await assert.rejects(fs.access(screenshot), { code: "ENOENT" });
+  } finally {
+    await removeTempRepo(repo);
+  }
+});
+
+test("reinitialization migrates old Studio preview URL out of .env.local and preserves App ID", async () => {
+  const repo = await createTempRepo();
+  try {
+    await copyScript(INIT_SCRIPT, repo, "proti-init.mjs");
+    await fs.writeFile(
+      path.join(repo, "studio", ".env.local"),
+      [
+        "SANITY_STUDIO_PROJECT_ID=abc123",
+        "SANITY_STUDIO_DATASET=production",
+        "SANITY_STUDIO_APP_ID=existing-app-id",
+        "SANITY_STUDIO_PREVIEW_URL=http://localhost:3000",
+        "",
+      ].join("\n"),
+    );
+    const result = await runNode({
+      cwd: repo,
+      script: "scripts/proti-init.mjs",
+      input: scriptedInput(["", "", "", ...Array(10).fill("")]),
+    });
+    assert.equal(result.code, 0, result.stderr);
+    assert.match(
+      await fs.readFile(path.join(repo, "studio", ".env.local"), "utf8"),
+      /SANITY_STUDIO_APP_ID=existing-app-id/,
+    );
+    assert.doesNotMatch(
+      await fs.readFile(path.join(repo, "studio", ".env.local"), "utf8"),
+      /SANITY_STUDIO_PREVIEW_URL=/,
+    );
+    assert.match(
+      await fs.readFile(path.join(repo, "studio", ".env.development"), "utf8"),
+      /SANITY_STUDIO_PREVIEW_URL=http:\/\/localhost:3000/,
+    );
+  } finally {
+    await removeTempRepo(repo);
+  }
+});
+
+test("initializer rejects localhost as production Presentation URL", async () => {
+  const repo = await createTempRepo();
+  try {
+    await copyScript(INIT_SCRIPT, repo, "proti-init.mjs");
+    const input = [
+      "",
+      "",
+      "abc123",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "localhost",
+      "",
+      "http://localhost:3000",
+    ];
+    const result = await runNode({
+      cwd: repo,
+      script: "scripts/proti-init.mjs",
+      input: scriptedInput(input),
+    });
+    assert.notEqual(result.code, 0);
+    assert.match(
+      result.stderr,
+      /Production preview URL must be a public HTTPS origin/,
+    );
   } finally {
     await removeTempRepo(repo);
   }

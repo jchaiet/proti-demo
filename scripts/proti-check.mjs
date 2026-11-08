@@ -506,6 +506,61 @@ async function checkGitRepository() {
   );
 }
 
+// The two mode-specific files contain public URLs, not credentials. They must
+// reach CI/Studio hosting; many templates accidentally ignore all .env* files.
+async function checkStudioModeFilesTracked() {
+  for (const relative of [
+    "studio/.env.development",
+    "studio/.env.production",
+  ]) {
+    if (!(await fileExists(path.join(ROOT, relative)))) continue;
+    let ignored = false;
+    try {
+      execFileSync("git", ["check-ignore", "-q", "--", relative], {
+        cwd: ROOT,
+        stdio: "ignore",
+        timeout: 10_000,
+      });
+      ignored = true;
+    } catch {
+      // Exit 1 normally means not ignored; Git may also be unavailable.
+    }
+    if (ignored) {
+      warn(
+        "Studio mode environment tracking",
+        `${relative} is ignored by Git. Explicitly allow this non-secret URL file so it reaches CI and deployed Studio builds.`,
+      );
+    }
+  }
+}
+
+async function checkVisualBaselines() {
+  const projects = ["chromium-desktop", "chromium-mobile"];
+  const missing = [];
+
+  for (const project of projects) {
+    const relative = path.join(
+      "web",
+      "e2e",
+      "__screenshots__",
+      project,
+      "home.png",
+    );
+    if (!(await fileExists(path.join(ROOT, relative)))) {
+      missing.push(relative);
+    }
+  }
+
+  if (missing.length > 0) {
+    warn(
+      "Visual baselines",
+      `Missing ${missing.join(", ")}. After seeding, run "pnpm proti:visual:init" and commit the screenshots.`,
+    );
+  } else {
+    pass("Visual baselines", "Desktop and mobile home screenshots exist.");
+  }
+}
+
 function printResults() {
   console.log("\nProti setup check\n");
 
@@ -663,11 +718,112 @@ if (!(await fileExists(configPath))) {
         expected: config.projectName,
       });
 
-      checkEnvValue({
-        label: "Preview URL",
-        actual: studioEnv.SANITY_STUDIO_PREVIEW_URL,
-        expected: config.sanity.previewUrl,
-      });
+      if (studioEnv.SANITY_STUDIO_PREVIEW_URL) {
+        warn(
+          "Legacy Studio preview URL",
+          "Remove SANITY_STUDIO_PREVIEW_URL from studio/.env.local; use .env.development and .env.production instead.",
+        );
+      }
+    }
+
+    if (configValid) {
+      const devPath = path.join(ROOT, "studio", ".env.development");
+      const prodPath = path.join(ROOT, "studio", ".env.production");
+      const devResult = await readEnv(devPath);
+      const prodResult = await readEnv(prodPath);
+      const expectedDev = config.sanity.previewUrl;
+      const expectedProd = config.sanity.productionPreviewUrl || "";
+      // This is a common cause of Playwright 404s: CI connects to
+      // localhost, but Site routing only knows the production hostname.
+      try {
+        const developmentHost = new URL(expectedDev).hostname.toLowerCase();
+        if (
+          developmentHost === "localhost" &&
+          !config.site.domains.some(
+            (domain) => normalizeDomain(domain) === "localhost",
+          )
+        ) {
+          warn(
+            "Development hostname",
+            'Site domains do not include "localhost". Add it in proti.config.json and your published Sanity Site Routing settings so local Web and CI can resolve pages.',
+          );
+        }
+      } catch {
+        // Existing development URL validation reports invalid or absent URLs.
+      }
+      if (
+        process.env.CI &&
+        process.env.SANITY_STUDIO_PREVIEW_URL &&
+        expectedProd &&
+        process.env.SANITY_STUDIO_PREVIEW_URL !== expectedProd
+      ) {
+        warn(
+          "CI Studio preview override",
+          `SANITY_STUDIO_PREVIEW_URL is set to "${process.env.SANITY_STUDIO_PREVIEW_URL}" in CI and overrides studio/.env.production. Remove the hardcoded value from the Studio CI job.`,
+        );
+      }
+
+      if (!devResult.ok) {
+        warn(
+          "Development preview URL",
+          'studio/.env.development is missing. Rerun "pnpm proti:init".',
+        );
+      } else if (devResult.value.SANITY_STUDIO_PREVIEW_URL === expectedDev) {
+        pass("Development preview URL", expectedDev);
+      } else {
+        fail(
+          "Development preview URL",
+          `Expected "${expectedDev}", found "${devResult.value.SANITY_STUDIO_PREVIEW_URL ?? ""}".`,
+        );
+      }
+
+      if (!prodResult.ok) {
+        warn(
+          "Production preview URL",
+          'studio/.env.production is missing. Run "pnpm proti:configure:production".',
+        );
+      } else if (!expectedProd) {
+        warn(
+          "Production preview URL",
+          'Not configured. After deploying Web, run "pnpm proti:configure:production".',
+        );
+      } else if (prodResult.value.SANITY_STUDIO_PREVIEW_URL !== expectedProd) {
+        fail(
+          "Production preview URL",
+          `Expected "${expectedProd}", found "${prodResult.value.SANITY_STUDIO_PREVIEW_URL ?? ""}".`,
+        );
+      } else {
+        try {
+          const url = new URL(expectedProd);
+          if (
+            url.protocol !== "https:" ||
+            ["localhost", "127.0.0.1"].includes(url.hostname)
+          ) {
+            fail(
+              "Production preview URL",
+              "Production URL must be a public HTTPS origin.",
+            );
+          } else {
+            pass("Production preview URL", expectedProd);
+          }
+          const domain = url.hostname.toLowerCase();
+          if (
+            !config.site.domains.some(
+              (item) => normalizeDomain(item) === domain,
+            )
+          ) {
+            warn(
+              "Production domain",
+              `"${domain}" is not listed in site.domains. Update config and the published Sanity Site document.`,
+            );
+          }
+        } catch {
+          fail(
+            "Production preview URL",
+            "Invalid production URL in proti.config.json.",
+          );
+        }
+      }
     }
 
     if (configValid) {
@@ -686,6 +842,9 @@ if (!(await fileExists(configPath))) {
         webEnv,
       });
     }
+
+    await checkVisualBaselines();
+    await checkStudioModeFilesTracked();
 
     printResults();
   }
