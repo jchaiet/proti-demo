@@ -2,6 +2,8 @@
 
 Proti supports Site-configured locales with public URL prefixes for non-default locales. The authoritative routing code lives in `web/src/lib/routing/` and `web/src/cms/resolvers/translation.ts`; the Studio translation action is `studio/actions/ShowTranslationsAction.tsx`.
 
+**v0.4.0 setup note:** The v0.4 independent-project initializer collects default/supported locales. Local/CI and production must use the matching **published Site** Routing domains; the production host is the canonical origin for translation SEO/hreflang. See [Configuration](CONFIGURATION.md).
+
 ## URL contract
 
 | Example locale setup | URL                      |

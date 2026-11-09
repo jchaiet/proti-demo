@@ -2,6 +2,8 @@
 
 Editors author sections in Sanity; the Web app queries content, maps it to component props, and renders using Mino UI where applicable. This separates CMS storage from presentational component behavior.
 
+**v0.4.0 setup note:** For a new independent website, create site-owned visual baselines with `pnpm proti:visual:init` after seeding a published homepage. Current v0.4 visual tests capture real CMS content; deterministic component fixtures are planned for v0.5.0. See [Visual CI](VISUAL_CI.md).
+
 ## Current block catalogue
 
 | Block               | Editorial purpose                                               | Web mapping/rendering                                        |

@@ -79,6 +79,12 @@ Shared secret used to verify signed Sanity revalidation webhook requests.
 
 The deployed webhook and Web environment must use the same secret.
 
+For Form Blocks routed to external systems, configure `FORM_WEBHOOK_DESTINATIONS` and any default `FORM_WEBHOOK_URL`, `FORM_WEBHOOK_SECRET`, and `FORM_ALLOWED_ORIGINS` as **server-side** environment variables for the target deployment; never put webhook destination secrets in Studio. See [Form webhook routing](../docs/FORMS_WEBOOK_ROUTING.md).
+
+## Independent-project setup
+
+Do not run `proti:init` inside the maintained `proti-demo` repository. In a **clean, separate clone**, use `pnpm proti:init --new-project` with exact typed Git-history confirmation, then seed and verify the published Site. See [Project Initialization](../docs/PROJECT_INITIALIZATION.md). The Web package name and Sanity connection are project-specific, and demo screenshot baselines are removed on first independent initialization.
+
 ## Development
 
 ```bash
@@ -91,7 +97,7 @@ The local site normally runs at:
 http://localhost:3000
 ```
 
-Proti resolves the active Site from the request host/domain. If the Site document contains `localhost:3000`, browse and test with `localhost:3000`; `127.0.0.1:3000` is a different host.
+Proti resolves the active Site from the **request hostname**. The **published** Sanity Site → Routing `domains` should contain `localhost` (no port) and the production hostname; `127.0.0.1` does not match `localhost` unless added separately. New-project initialization includes `localhost` automatically, but the Site document must still be published.
 
 ### Development caching
 
@@ -391,13 +397,7 @@ pnpm build
 
 ## Playwright
 
-Playwright covers:
-
-- Chromium desktop
-- Chromium mobile emulation
-- Firefox desktop
-
-Visual regression screenshots use Chromium desktop/mobile. Firefox is used for functional cross-browser coverage.
+Playwright covers Chromium desktop, Chromium mobile (Pixel 7 emulation), Firefox desktop, and Firefox mobile-width testing (a narrow **desktop** Firefox viewport, not Android emulation). Optional WebKit mobile is enabled with `PLAYWRIGHT_INCLUDE_WEBKIT=1` after installing WebKit. Visual regression baselines are Chromium desktop/mobile only.
 
 Install the managed browsers after installing dependencies:
 
@@ -405,101 +405,59 @@ Install the managed browsers after installing dependencies:
 pnpm exec playwright install chromium firefox
 ```
 
-### E2E environment
+### E2E environment and server readiness
 
-Copy:
+Copy the committed example and enable only routes that exist as published Sanity content:
 
 ```bash
 cp e2e/.env.e2e.example e2e/.env.e2e
 ```
 
-A typical local configuration is:
+Typical configuration:
 
-```bash
+```dotenv
 PLAYWRIGHT_BASE_URL=http://localhost:3000
-PLAYWRIGHT_SKIP_WEBSERVER=1
-
+PLAYWRIGHT_WEB_SERVER_COMMAND=pnpm exec next start -p 3000
+PLAYWRIGHT_SKIP_WEBSERVER=0
 E2E_HOME_PATH=/
 ```
 
-Add additional real routes for Pages, Blogs, Authors, Search, Taxonomy, and secondary locales as available in the current Sanity dataset.
+`e2e/.env.e2e` is **ignored**; the example is committed. The default Playwright config starts the **production** Next.js server, with `reuseExistingServer: false`, and waits for `/api/health` rather than the CMS-backed homepage. That endpoint checks server readiness only: smoke tests still require a published Site and Home whose Routing domains include `localhost`. Port 3000 must be free.
 
-`e2e/.env.e2e` should not be committed. `e2e/.env.e2e.example` should be committed.
+If you explicitly start a **production** server yourself in a separate terminal (`pnpm build && pnpm start`), set `PLAYWRIGHT_SKIP_WEBSERVER=1`. Avoid combining a manually started server with `PLAYWRIGHT_SKIP_WEBSERVER=0`.
 
 ### Smoke tests
 
 ```bash
-pnpm test:e2e:smoke
-```
-
-Smoke tests validate configured routes across Chromium desktop, Chromium mobile, and Firefox desktop.
-
-### Canonical visual baseline
-
-Visual baselines should be created and compared using the production Next.js build.
-
-Terminal 1:
-
-```bash
 pnpm build
-pnpm start
-```
-
-With `PLAYWRIGHT_SKIP_WEBSERVER=1`, use Terminal 2:
-
-```bash
 pnpm test:e2e:smoke
-pnpm test:e2e:visual
 ```
 
-### First-time visual baseline
+Smoke tests run on Chromium desktop/mobile and Firefox desktop/mobile-width projects. A homepage HTTP 404 often indicates a missing published Sanity Site/domain/homepage rather than a Playwright startup failure.
 
-With the production build running:
+### First-time visual baselines for an independent project
+
+From the **repository root**, after seeding/publishing the Home page:
 
 ```bash
-pnpm test:e2e:smoke
-pnpm test:e2e:update
+pnpm --dir web exec playwright install chromium
+pnpm proti:visual:init
 ```
 
-Review every generated screenshot before committing it.
-
-Then:
-
-```bash
-pnpm test:e2e:visual
-```
+This checks port availability, builds the Web app, creates `chromium-desktop/home.png` and `chromium-mobile/home.png`, and confirms they were written. Set `PROTI_VISUAL_PORT` to an available alternate port if needed. It refuses to overwrite existing screenshots unless run as `pnpm proti:visual:init --force`. Review and commit the new PNGs; CI **never** regenerates them.
 
 ### Normal visual-regression workflow
 
-Start from a clean passing baseline:
+From `web/` after the production build, run:
 
 ```bash
 pnpm test:e2e:smoke
-pnpm test:e2e:visual
+pnpm test:e2e:visual --project=chromium-desktop --project=chromium-mobile
 ```
 
-Make the component/style change, then run:
+If a visual test fails, inspect its actual/diff screenshots. Fix unintentional regressions; for an **approved** visual/content change run `pnpm test:e2e:update`, review/commit the updated PNGs, then rerun `pnpm test:e2e:visual` without updating snapshots. Do not automatically increase screenshot tolerance to hide differences.
 
-```bash
-pnpm test:e2e:smoke
-pnpm test:e2e:visual
-```
-
-If a visual test fails:
-
-1. Inspect the actual/diff screenshots.
-2. If the change is unintended, fix the code and rerun.
-3. If the visual change is intentional, run:
-
-```bash
-pnpm test:e2e:update
-```
-
-4. Review the updated baselines.
-5. Commit the code change and screenshot baselines together.
-6. Run `pnpm test:e2e:visual` again.
-
-Do not run `test:e2e:update` first after making a UI change; doing so would approve the new appearance before reviewing the regression.
+**Current v0.4.0 limitation:** full-page visual baselines depend on **published CMS content**. Edits to header/title/footer text can legitimately change screenshots even without layout changes. A repository-fixture-based visual suite is planned for v0.5.0; a special Sanity regression dataset is not required for current v0.4 testing.
 
 ### Playwright report
 
@@ -519,6 +477,7 @@ Before deployment:
 
 ```bash
 pnpm test:run
+pnpm exec next typegen
 pnpm exec tsc --noEmit
 pnpm build
 pnpm lint

@@ -5,6 +5,16 @@ import process from "node:process";
 import { createInterface } from "node:readline/promises";
 
 const ROOT = process.cwd();
+const FLAGS = process.argv.slice(2);
+const NEW_PROJECT_FLAG = "--new-project";
+const GIT_RESET_CONFIRMATION = "RESET GIT HISTORY";
+if (
+  FLAGS.some((flag) => flag !== NEW_PROJECT_FLAG) ||
+  FLAGS.filter((flag) => flag === NEW_PROJECT_FLAG).length > 1
+) {
+  throw new Error("Usage: pnpm proti:init [--new-project]");
+}
+const NEW_PROJECT = FLAGS.includes(NEW_PROJECT_FLAG);
 const CONFIG_PATH = path.join(ROOT, "proti.config.json");
 const WEB_ENV_PATH = path.join(ROOT, "web", ".env.local");
 const STUDIO_ENV_PATH = path.join(ROOT, "studio", ".env.local");
@@ -285,27 +295,16 @@ function isProtiStarterRemote(url) {
   return /(?:^|[/:])proti-demo$/i.test(normalized);
 }
 
-async function setupProjectGit() {
+// There is no reliable way to distinguish the original starter repository
+// from a Git clone based on the remote URL alone. Never detach either without
+// an explicit --new-project flag AND an exact typed acknowledgement.
+async function inspectProjectGit() {
   const gitPath = path.join(ROOT, ".git");
-  const initialized = tryGit([
-    "config",
-    "--local",
-    "--get",
-    "proti.initialized",
-  ]);
-
-  if (initialized === "true") {
-    console.log("✓ Existing project Git repository preserved");
-    return false;
-  }
-
-  // Never modify a parent repository when invoked from a nested directory.
   const gitRoot = tryGit(["rev-parse", "--show-toplevel"]);
   if (gitRoot && path.resolve(gitRoot) !== path.resolve(ROOT)) {
-    console.warn(
-      "! Git setup skipped: this folder is inside another Git repository.",
+    throw new Error(
+      "This directory belongs to a parent Git repository. Run initialization at the project root.",
     );
-    return false;
   }
 
   let gitEntry;
@@ -316,42 +315,128 @@ async function setupProjectGit() {
   }
 
   if (!gitEntry) {
-    // Also supports projects created from a downloaded ZIP instead of a clone.
-    try {
-      git(["init", "-b", "main"]);
-      git(["config", "--local", "proti.initialized", "true"]);
-      console.log("✓ Initialized a fresh Git repository (no remotes)");
-      return true;
-    } catch (error) {
-      console.warn(`! Could not initialize Git: ${error.message}`);
-    }
-    return false;
+    return { mode: "new-repository" };
   }
 
-  // A linked worktree/submodule can have a .git file or symlink. Do not detach it.
   if (!gitEntry.isDirectory() || gitEntry.isSymbolicLink()) {
-    console.warn("! Git setup skipped: .git is not a regular directory.");
-    return false;
+    if (NEW_PROJECT) {
+      throw new Error(
+        "Refusing --new-project: .git is a worktree, submodule, or symlink.",
+      );
+    }
+    return {
+      mode: "preserve-repository",
+      firstInitialization: true,
+      markInitialized: false,
+    };
+  }
+
+  // This local-only Git setting identifies the maintained starter repository.
+  // It is not transferred by git clone. Refuse all initialization there,
+  // including --new-project, before editing any configuration or Git metadata.
+  if (
+    tryGit(["config", "--local", "--get", "proti.sourceRepository"]) === "true"
+  ) {
+    throw new Error(
+      "This is the maintained Proti source repository (proti.sourceRepository=true). " +
+        "Initialization is disabled here to protect its Git history and configuration. " +
+        "Create a separate clone to initialize a new project.",
+    );
+  }
+
+  if (tryGit(["config", "--local", "--get", "proti.initialized"]) === "true") {
+    if (NEW_PROJECT) {
+      throw new Error(
+        "This Proti project is already initialized. Refusing to reset its Git history.",
+      );
+    }
+    return { mode: "preserve-repository", firstInitialization: false };
   }
 
   const origin = tryGit(["remote", "get-url", "origin"]);
   if (!isProtiStarterRemote(origin)) {
-    // Preserve already customized repositories, including their commits/remotes.
-    if (tryGit(["rev-parse", "--is-inside-work-tree"]) === "true") {
+    if (NEW_PROJECT) {
+      throw new Error(
+        "Refusing --new-project: this repository does not have the expected Proti starter origin. Its Git history will be preserved.",
+      );
+    }
+    return {
+      mode: "preserve-repository",
+      firstInitialization: true,
+      markInitialized: true,
+    };
+  }
+
+  if (!NEW_PROJECT) {
+    throw new Error(
+      "This repository still points to the Proti starter. Nothing was changed. " +
+        'For an intentional fresh clone, run "pnpm proti:init --new-project" and confirm the Git reset. ' +
+        "Never run that command in the original starter repository.",
+    );
+  }
+
+  // Prevent accidental deletion of user work, including untracked files.
+  // This happens BEFORE config, package, or environment files are rewritten.
+  const changes = tryGit(["status", "--porcelain", "--untracked-files=normal"]);
+  if (changes === null || changes) {
+    throw new Error(
+      "Refusing --new-project: the working tree contains changes or untracked files. " +
+        "Commit or back them up before creating independent history.",
+    );
+  }
+
+  const remotes = tryGit(["remote"]);
+  if (
+    remotes !== "origin" ||
+    !isProtiStarterRemote(tryGit(["remote", "get-url", "--push", "origin"]))
+  ) {
+    throw new Error(
+      "Refusing --new-project: unexpected Git remotes or push URL detected. " +
+        "Only an unchanged starter clone can be detached.",
+    );
+  }
+  return { mode: "detach-starter", gitPath };
+}
+
+async function confirmHistoryReset(rl, scriptedAnswers, scriptedState) {
+  const acknowledgement = await prompt(
+    rl,
+    scriptedAnswers,
+    scriptedState,
+    `To permanently disconnect this clone's Git history, type ${GIT_RESET_CONFIRMATION}`,
+  );
+  if (acknowledgement !== GIT_RESET_CONFIRMATION) {
+    throw new Error(
+      "Git history reset was not confirmed. No files or Git metadata were changed.",
+    );
+  }
+}
+
+async function setupProjectGit(gitPlan) {
+  if (gitPlan.mode === "preserve-repository") {
+    // Record a completed first run only for an independent, regular .git
+    // directory. Future reruns can then honor intentional domain removals.
+    if (gitPlan.markInitialized) {
       git(["config", "--local", "proti.initialized", "true"]);
     }
-    console.log("✓ Existing Git repository preserved (not a proti-demo clone)");
+    console.log("✓ Existing Git repository and history preserved");
     return false;
   }
 
-  // Detach only a first-run clone of the known Proti demo starter. Move the
-  // inherited metadata OUTSIDE the project instead of irreversibly deleting it.
-  // New projects get a clean initial branch, no old commits, tags or remotes.
+  if (gitPlan.mode === "new-repository") {
+    git(["init", "-b", "main"]);
+    git(["config", "--local", "proti.initialized", "true"]);
+    console.log("✓ Initialized a fresh Git repository (no remotes)");
+    return true;
+  }
+
+  // Explicitly authorized first-time clone only. Save the original Git
+  // directory outside this project so the old history stays recoverable.
   const backup = path.join(
     path.dirname(ROOT),
     `${path.basename(ROOT)}-git-backup-${Date.now()}-${process.pid}`,
   );
-  await fs.rename(gitPath, backup);
+  await fs.rename(gitPlan.gitPath, backup);
   try {
     git(["init", "-b", "main"]);
     git(["config", "--local", "proti.initialized", "true"]);
@@ -361,8 +446,8 @@ async function setupProjectGit() {
     console.log(`  Previous Git metadata backed up at: ${backup}`);
     return true;
   } catch (error) {
-    await fs.rm(gitPath, { recursive: true, force: true });
-    await fs.rename(backup, gitPath);
+    await fs.rm(gitPlan.gitPath, { recursive: true, force: true });
+    await fs.rename(backup, gitPlan.gitPath);
     throw new Error(
       `Git initialization failed; original Git metadata restored. ${error.message}`,
     );
@@ -417,6 +502,13 @@ const rl = scriptedAnswers
 
 try {
   console.log("\nProti project initialization\n");
+
+  // Preflight MUST run before editing files, so an accidental init in the
+  // source repository leaves both the working tree and Git history untouched.
+  const gitPlan = await inspectProjectGit();
+  if (gitPlan.mode === "detach-starter") {
+    await confirmHistoryReset(rl, scriptedAnswers, scriptedState);
+  }
 
   const projectName = await prompt(
     rl,
@@ -519,8 +611,7 @@ try {
   // from a rerun (even when the starter already carries a config file).
   // New Sites always need localhost for dev and CI; established Sites may
   // intentionally remove it without a future init silently restoring it.
-  const firstInitialization =
-    tryGit(["config", "--local", "--get", "proti.initialized"]) !== "true";
+  const firstInitialization = gitPlan.firstInitialization ?? true;
   if (firstInitialization && !domains.includes("localhost")) {
     domains.push("localhost");
     console.log("✓ Included localhost for local development and CI");
@@ -655,7 +746,7 @@ try {
     `${packageName}-studio`,
   );
 
-  const freshRepository = await setupProjectGit();
+  const freshRepository = await setupProjectGit(gitPlan);
   if (freshRepository) await clearInheritedVisualBaselines();
 
   console.log("\n✓ Wrote proti.config.json");

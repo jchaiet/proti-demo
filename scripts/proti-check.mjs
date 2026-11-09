@@ -479,6 +479,26 @@ async function checkGitRepository() {
     return;
   }
 
+  // The maintained Proti source repository legitimately points to proti-demo.
+  // The explicit marker lives only in .git/config, so a normal Git clone does
+  // not inherit this exception. Never infer source status from the URL alone.
+  let sourceRepository = false;
+  try {
+    sourceRepository =
+      runGit(["config", "--local", "--get", "proti.sourceRepository"]) ===
+      "true";
+  } catch {
+    // An absent marker is the normal state for generated projects.
+  }
+
+  if (sourceRepository) {
+    pass(
+      "Git independence",
+      "Maintained Proti source repository; existing Git remotes intentionally preserved.",
+    );
+    return;
+  }
+
   // Examine both fetch and push URLs, and every remote name (not just origin).
   const inherited = remotes
     .split(/\r?\n/)
@@ -492,7 +512,7 @@ async function checkGitRepository() {
 
     fail(
       "Git independence",
-      `Inherited proti-demo remote detected (${names.join(", ")}). Run "pnpm proti:init" for a fresh project, or remove the inherited remote with "git remote remove <name>".`,
+      `Inherited proti-demo remote detected (${names.join(", ")}). If this is the maintained original repository, run "git config --local proti.sourceRepository true". If this is a new starter clone, run "pnpm proti:init --new-project" and confirm. Do not remove the original repository's remote.`,
     );
 
     return;

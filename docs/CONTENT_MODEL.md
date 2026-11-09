@@ -2,6 +2,8 @@
 
 The canonical schema registry is `studio/schemaTypes/index.ts`. Document types live in `studio/schemaTypes/documents/`, reusable blocks in `blocks/`, UI objects in `objects/`, and form field definitions in `forms/`.
 
+**v0.4.0 setup note:** New v0.4 projects first seed a Site (optionally minimal default-locale Home/navigation) using `pnpm proti:seed --starter-content`; published Site domains must include `localhost` for local/CI routing as well as the live hostname. See [Project Initialization](PROJECT_INITIALIZATION.md).
+
 ## Core documents
 
 | Document (`_type`) | What editors manage                                                                          | Route/relationship                                                  |

@@ -1,6 +1,6 @@
 # CI and Branch Protection
 
-This guide describes the intended GitHub CI and branch-protection setup for Proti. Confirm the rules and workflow against the live repository: `.github/` was not included in the v0.3 source archive supplied for documentation.
+This guide describes the v0.4 CI workflow and intended branch-protection setup. The current workflow was audited against `.github/workflows/ci.yml`; always confirm ruleset enforcement in GitHub repository settings (the ruleset itself is managed by GitHub, not this Markdown file).
 
 ## Purpose
 
@@ -35,9 +35,10 @@ Push / merge to main
 ### Studio
 
 ```text
-Install dependencies
+Frozen workspace install
+Run `pnpm test:proti` (initializer, Git safeguards, seed/check, acceptance)
 Run Studio tests
-Build Studio
+Build Studio (mode-specific public production Presentation URL; no hardcoded localhost override)
 ```
 
 ### Web
@@ -59,7 +60,7 @@ pnpm exec next typegen && pnpm exec tsc --noEmit
 
 ### Playwright Smoke
 
-Runs functional browser tests against a production build using Chromium and Firefox.
+Runs functional browser tests against a production build using Chromium desktop/mobile and Firefox desktop/mobile-width projects. Both Playwright jobs use `http://localhost:3000`, `pnpm exec next start -p 3000`, `PLAYWRIGHT_SKIP_WEBSERVER="0"`, and `E2E_HOME_PATH=/`. Readiness is `/api/health`, while route assertions require published Sanity Site/Home content and a `localhost` Site domain.
 
 ### Playwright Visual
 
@@ -179,14 +180,20 @@ Web currently consumes:
 web/mino-ui-0.0.3.tgz
 ```
 
-After intentionally rebuilding/replacing it:
+When Mino changes, bump its version and create a **new versioned tarball filename**; do not silently replace bytes behind an existing committed version. Update Web's tarball reference and the root lockfile:
 
 ```bash
-pnpm install --update-checksums
+pnpm install --no-frozen-lockfile
 pnpm install --frozen-lockfile
 ```
 
-Commit the updated tarball and `pnpm-lock.yaml` together.
+Commit the new tarball, updated `web/package.json`, and `pnpm-lock.yaml` together.
+
+## Independent-project prerequisites
+
+GitHub Actions secrets/variables are set **per repository**, not inherited from the demo or Vercel. The published Sanity Site must include `localhost` and a published homepage for CI smoke/visual tests. New projects should run `pnpm proti:visual:init` once and commit **their own** desktop/mobile baselines before requiring visual CI. The Studio job must not pass `SANITY_STUDIO_PREVIEW_URL=http://localhost:3000` in CI; the tracked `studio/.env.production` controls Production Presentation.
+
+Source checkout safety is protected by `git config --local proti.sourceRepository true` and the guarded `proti:init --new-project` flow; source and independent sites must retain separate Git histories.
 
 ## Result
 

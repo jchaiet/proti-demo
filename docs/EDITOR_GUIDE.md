@@ -1,6 +1,6 @@
 # Sanity content editor guide
 
-This guide covers the main tasks for non-developer editors using Proti Studio. Field names and available sections reflect the v0.3 Studio schemas in `studio/schemaTypes/`.
+This guide covers the main tasks for non-developer editors using Proti Studio. The v0.4 release primarily changes project setup and deployment; the editorial content model and v0.3 SEO/GEO practices remain relevant. Field names and available sections are defined in `studio/schemaTypes/`.
 
 ## 1. Choose the correct Site and Locale
 
@@ -43,7 +43,15 @@ CTA Groups organize action items, their alignment and stacking. CTAs can link to
 
 For Page/Blog/Navigation/Singleton documents offering the **Translations** action, create the target locale translation and review all copied text/images/SEO data. Page translations follow the same relative path and may require translated parent Pages. Authors and Taxonomy use _fields on one document_ rather than separate translated documents. Only published, exact alternate routes appear in the public language selector.
 
-## 9. SEO and accessibility checklist before publishing
+## 9. Draft Presentation, publishing, and production verification
+
+1. Open **Presentation** for the current Site/Page. Its destination depends on Studio mode: local development uses `http://localhost:3000`; deployed Studio uses the configured production Web HTTPS origin.
+2. Edit the document but **do not publish**. Confirm that Presentation shows the draft while a private/incognito public browser still shows the last **published** content.
+3. Publish the change. In production, Proti's signed Sanity webhook should revalidate the affected public routes; verify that the live page updates **without redeploying Web**.
+4. If the public page remains stale, report the Site, URL, document type, and publish time to the developer. They should check webhook delivery, signature secret, hostname routing, and Vercel logs rather than asking editors to rebuild the website.
+5. For navigation, shared components, translations, and taxonomy, inspect **all dependent pages** that could have changed.
+
+## 10. SEO and accessibility checklist before publishing
 
 - Correct visible H1 and subordinate H2–H6; avoid placeholder headings and unnecessary multiple H1s.
 - Meaningful page title and concise description; indexing/following settings intentional.

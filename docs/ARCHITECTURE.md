@@ -1,4 +1,4 @@
-# Proti architecture (v0.3.0)
+# Proti architecture (v0.4.0)
 
 Proti is a multi-site, multi-locale website starter. **Web** renders public experiences with Next.js and Mino UI; **Studio** owns Sanity content modeling and editorial workflows; **scripts** initialize, seed and validate a new implementation. See the root [README](../README.md) for installation.
 
@@ -15,6 +15,22 @@ Proti is a multi-site, multi-locale website starter. **Web** renders public expe
 | `studio/structure`      | Site/locale-focused editorial navigation                     | `index.ts` and section modules                            |
 | `studio/actions`        | Creation and resolution of translated documents              | `ShowTranslationsAction.tsx`                              |
 | `scripts`               | Implementation initialization, Site seeding, diagnostics     | `proti-init.mjs`, `proti-seed.mjs`, `proti-check.mjs`     |
+
+## Independent-project lifecycle and identity
+
+`proti:init --new-project` intentionally creates a new project identity in a clean clone, with explicit `RESET GIT HISTORY` confirmation. The maintained Proti source checkout is protected by local-only `git config --local proti.sourceRepository true`; newly initialized sites are marked `proti.initialized=true` in their own `.git/config`. The generator writes project config, package names, Web/Studio local env files, and separate public Studio development/production Presentation URL files. It clears inherited demo screenshot PNGs on **first** independent initialization only.
+
+`proti:seed` optionally creates a minimal published Site/homepage/navigation structure. `proti:check` checks local configuration and the published Sanity Site without modifying them. `proti:visual:init` creates project-owned Chromium screenshot baselines against a production Next server. The disposable acceptance test checks this combined lifecycle with mock Sanity access; the actual hosted deployment remains a separate integration verification.
+
+The original/source repository and every new independent implementation are different **Git histories**, not merely new Sanity datasets under one shared demo deployment. See [Project Initialization](PROJECT_INITIALIZATION.md).
+
+## Runtime and environment boundaries
+
+- **Web** (`web/.env.local` locally; Vercel env in production): Sanity project/dataset/Studio URL; read/write tokens and revalidation secret are server-only.
+- **Studio shared** (`studio/.env.local`): project/dataset/title and optional App ID for environment-driven Studio CLI deployment.
+- **Studio mode** (`studio/.env.development`, `.env.production`): public Web Presentation URLs for each mode, tracked without secrets. Production changes require Studio redeployment.
+- **Routing**: a Site document resolves by hostname, `localhost` distinct from `127.0.0.1`; new projects include localhost for dev/CI and use the actual production hostname as canonical.
+- **Browser CI**: production Next server readiness at `/api/health`; smoke/visual assertions validate real CMS-backed pages independently of readiness.
 
 ## Request → rendered page
 
@@ -52,6 +68,10 @@ A new CMS-driven block typically requires: Sanity object schema registration →
 - Routing and locale logic: `web/src/lib/routing/` and `web/src/cms/resolvers/` tests.
 - SEO: `web/src/cms/resolvers/seo.test.ts`, `structured-data.test.ts` and integration tests.
 - Webhook impact: `web/src/cms/revalidation/` and `web/src/app/api/revalidate/route.test.ts`.
-- Browser behavior: `web/e2e/smoke.spec.ts`, `visual.spec.ts`.
+- Browser behavior: `web/e2e/smoke.spec.ts`, `visual.spec.ts`, backed by `web/playwright.config.ts` and `/api/health`.
+- Initialization, Git safeguard, and disposable lifecycle: `scripts/proti-init.test.mjs`, `proti-check.test.mjs`, `proti-acceptance.test.mjs`.
+- Visual-baseline lifecycle and production Studio URL setup: `scripts/proti-visual-init.test.mjs`, `proti-configure-production.test.mjs`.
+
+Current visual screenshots still reflect published Sanity content; deterministic fixture-only regression routes are planned for v0.5.0.
 
 Run instructions: [Testing](TESTING.md).

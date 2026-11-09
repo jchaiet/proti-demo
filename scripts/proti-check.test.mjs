@@ -573,6 +573,34 @@ test("custom GitHub remote and existing commit are preserved", async () => {
   }
 });
 
+test("maintained source repository accepts its original remote without rewriting history", async () => {
+  const { repo } = await createRepo({
+    remoteUrl: "https://github.com/example/proti-demo.git",
+    withCommit: true,
+  });
+  const originalHead = git(repo, "rev-parse", "HEAD");
+  git(repo, "config", "--local", "proti.sourceRepository", "true");
+  const sanity = await startSanity();
+
+  try {
+    const result = await runCheck({ repo, baseUrl: sanity.baseUrl });
+    assert.equal(result.code, 0, result.stderr + "\n" + result.stdout);
+    assert.match(
+      result.stdout,
+      /Git independence — Maintained Proti source repository/,
+    );
+    assert.match(result.stdout, /Proti is ready\./);
+    assert.equal(git(repo, "rev-parse", "HEAD"), originalHead);
+    assert.equal(
+      git(repo, "remote", "get-url", "origin"),
+      "https://github.com/example/proti-demo.git",
+    );
+  } finally {
+    await sanity.close();
+    await removeRepo(repo);
+  }
+});
+
 test("inherited proti-demo origin is rejected", async () => {
   const { repo } = await createRepo({
     remoteUrl: "git@github.com:example/proti-demo.git",
@@ -587,7 +615,10 @@ test("inherited proti-demo origin is rejected", async () => {
       result.stdout,
       /✗ Git independence — Inherited proti-demo remote detected \(origin\)/,
     );
-    assert.match(result.stdout, /git remote remove/);
+    assert.match(
+      result.stdout,
+      /git config --local proti.sourceRepository true/,
+    );
     assert.match(result.stdout, /Proti setup has 1 problem/);
   } finally {
     await sanity.close();
