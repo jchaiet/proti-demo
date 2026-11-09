@@ -1,184 +1,56 @@
-# Proti Project Initialization
+# Proti project initialization (v0.4.0)
 
-Proti includes a repository-level setup workflow for creating a new implementation from the starter without editing source files just to connect a new Sanity project.
+Proti initializes a new **independent** website from a starter clone without hardcoding another project's Sanity IDs, keeping inherited Git history, or reusing demo screenshot baselines. This document describes the shipped scripts, not a hypothetical generator.
 
-## Commands
+## Safety: two different repository roles
 
-```bash
-pnpm proti:init
-pnpm proti:seed
-pnpm proti:seed --starter-content
-pnpm proti:check
-```
+| Repository                                          | Correct action                                                                                                     |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Maintained `proti-demo` source checkout             | **Never run** `proti:init`; run `git config --local proti.sourceRepository true` once in that checkout             |
+| Clean, newly cloned starter for a different project | `pnpm proti:init --new-project`, followed by typed `RESET GIT HISTORY` confirmation                                |
+| Already initialized independent project             | `pnpm proti:init` safely reuses existing configuration, Git commits, remote, and screenshots                       |
+| Other Git repository/custom remote                  | Ordinary init preserves history; `--new-project` is refused unless the clean clone meets starter-origin safeguards |
 
-## 1. Install dependencies
+The local `proti.sourceRepository=true` marker and `proti.initialized=true` initializer marker live in **`.git/config`**; these are **not committed or inherited by `git clone`**. The maintained-source marker stops either initializer invocation **before** files are edited. Do not remove the maintained source's legitimate `proti-demo` origin to silence `proti:check`.
 
-From the repository root:
+`--new-project` refuses modified/untracked files, unexpected remotes/push URLs, and worktrees/submodules/symlinked `.git` metadata. When explicitly authorized, the initializer moves the clone's old `.git` directory to a backup in the **parent directory** and creates a new independent `main` with no remotes. Do not run it in your existing source or production checkout.
 
-```bash
-pnpm install
-```
-
-Use the pnpm version configured by the repository/CI when generating or updating `pnpm-lock.yaml`.
-
-## 2. Initialize
-
-Run:
+## Recommended new-project sequence
 
 ```bash
-pnpm proti:init
+git clone https://github.com/jchaiet/proti-demo.git my-proti-site
+cd my-proti-site
+pnpm proti:init --new-project
+# Type RESET GIT HISTORY when asked.
+pnpm install --frozen-lockfile
 ```
 
-The initializer prompts for:
+Run initialization before editing the clone. The initializer uses built-in Node tooling and does not require prior content seeding. Provide prompts for:
 
-- project name
-- package/project slug
-- Sanity project ID
-- Sanity dataset
-- Studio URL used by the Web app
-- Web URL used by Sanity Presentation
-- initial Site name
-- initial Site key
-- Site domains
-- canonical domain
-- default locale
-- supported locales
+- Project display name, normalized package/project slug.
+- Sanity project ID and dataset; local Studio URL used by Web.
+- **Development** Web URL for Presentation (usually `http://localhost:3000`).
+- Optional **production** Web HTTPS URL for Presentation (may be supplied later).
+- Site display name/key, allowed **hostnames**, and canonical hostname.
+- Default and supported lowercase language-region locales (`en-us`, `es-us`, `fr-ca`, etc.).
 
-Site domains are hostname-only (for example `example.com` or `localhost`). The canonical domain must be one of those configured Site domains and is the hostname Proti uses for canonical URLs, hreflang, sitemap URLs, robots.txt, and structured data.
+**First initialization automatically adds `localhost`** to the allowed Site domains, even when a production domain was supplied. An established project may intentionally change its domain list later; repeat init does not silently restore a removed domain. `canonicalDomain` must be one of the configured hostnames (no scheme or port). Prefer the eventual production hostname as canonical rather than localhost.
 
-Proti locale codes use lowercase language-region format:
+## Generated/updated files
 
-```text
-en-us
-es-us
-fr-ca
-fil-ph
-```
+| File                                   | Contents                                                                                   | Git policy                                          |
+| -------------------------------------- | ------------------------------------------------------------------------------------------ | --------------------------------------------------- |
+| `proti.config.json`                    | Project identity, Sanity URLs, Site domains/canonical/locales                              | Review and commit; contains no API tokens           |
+| Root, `web/`, `studio/` `package.json` | Independent package names                                                                  | Commit                                              |
+| `web/.env.local`                       | Web Sanity IDs/Studio URL, server-only token placeholders                                  | **Ignore**; fill in tokens locally                  |
+| `studio/.env.local`                    | Studio project/dataset/title and optional Studio App ID                                    | **Ignore**; keep secrets/local overrides out of Git |
+| `studio/.env.development`              | `SANITY_STUDIO_PREVIEW_URL=http://localhost:3000` (or configured dev origin)               | Commit only public URL                              |
+| `studio/.env.production`               | `SANITY_STUDIO_PREVIEW_URL=https://…` once configured                                      | Commit only public URL                              |
+| `web/e2e/__screenshots__/`             | Inherited demo PNGs removed on first independent Git init; never removed on ordinary rerun | Generate site-specific screenshots, then commit     |
 
-The initializer writes:
+Avoid `SANITY_STUDIO_PREVIEW_URL` in `studio/.env.local`; it may override mode-specific files and trigger a `proti:check` warning. Ensure `.gitignore` allows the two public Studio mode files and continues to ignore `.env.local` and `web/e2e/.env.e2e`.
 
-```text
-proti.config.json
-web/.env.local
-studio/.env.local
-```
-
-It also updates the package names in the root, Web, and Studio `package.json` files.
-
-Rerunning `proti:init` reuses the existing project values as defaults and preserves the known Sanity token/secret values already present in `web/.env.local`.
-
-## 3. Add local secrets
-
-The initializer does not ask for secrets interactively. Add the required values to `web/.env.local`:
-
-```text
-SANITY_API_READ_TOKEN=
-SANITY_API_WRITE_TOKEN=
-SANITY_REVALIDATE_SECRET=
-```
-
-`SANITY_API_READ_TOKEN` is used by Draft Mode / Visual Editing.
-
-`SANITY_API_WRITE_TOKEN` is required by `proti:seed` and must have permission to create documents in the configured Sanity project.
-
-## 4. Seed Sanity
-
-There are two supported flows.
-
-### Minimal setup
-
-Run:
-
-```bash
-pnpm proti:seed
-```
-
-This creates only the configured Site document.
-
-If the Site already exists, content is not overwritten. If the Site predates the canonical-domain field and that field is missing, `proti:seed` safely backfills it from `proti.config.json`. An already-authored canonical domain is never replaced.
-
-### Optional starter content
-
-Run:
-
-```bash
-pnpm proti:seed --starter-content
-```
-
-This ensures the Site exists and then creates a minimal usable structure for the Site default locale:
-
-```text
-<default locale>
-├── Home
-├── Default Header
-├── Default Footer
-└── Default Navigation
-```
-
-Starter content is deliberately minimal. It does not create demo articles, authors, taxonomy, marketing copy, or translated duplicates.
-
-The operation is non-destructive:
-
-- existing documents are not replaced
-- an existing homepage for the Site + default locale is reused
-- matching `default-header`, `default-footer`, and `default` navigation documents are reused
-- newly seeded documents use deterministic IDs
-- `createIfNotExists` is used for new documents
-- rerunning the command is safe
-- only the Site default locale receives starter content
-
-Starter content can also be added later:
-
-```bash
-pnpm proti:seed
-# ...later...
-pnpm proti:seed --starter-content
-```
-
-## 5. Verify setup
-
-Run:
-
-```bash
-pnpm proti:check
-```
-
-The check is read-only. It verifies:
-
-- `proti.config.json`
-- Web environment alignment
-- Studio environment alignment
-- root/Web/Studio package names
-- required token/secret presence
-- Sanity connectivity
-- configured Site identity, canonical domain, and locale configuration
-
-Because starter content is optional, missing starter documents do not make `proti:check` fail.
-
-## 6. Start Studio and Web
-
-Run in separate terminals:
-
-```bash
-pnpm dev:studio
-```
-
-```bash
-pnpm dev:web
-```
-
-Default local URLs:
-
-```text
-Studio  http://localhost:3333
-Web     http://localhost:3000
-```
-
-Use `localhost` for the local Site domain unless the Site is intentionally configured differently.
-
-## Generated configuration
-
-A typical `proti.config.json` looks like:
+Example project config (illustrative placeholders):
 
 ```json
 {
@@ -189,13 +61,14 @@ A typical `proti.config.json` looks like:
     "projectId": "abc123",
     "dataset": "production",
     "studioUrl": "http://localhost:3333",
-    "previewUrl": "http://localhost:3000"
+    "previewUrl": "http://localhost:3000",
+    "productionPreviewUrl": "https://acme-health.vercel.app"
   },
   "site": {
     "name": "Acme Health",
     "key": "acme-health",
-    "domains": ["localhost"],
-    "canonicalDomain": "localhost",
+    "domains": ["acme-health.vercel.app", "localhost"],
+    "canonicalDomain": "acme-health.vercel.app",
     "defaultLocale": "en-us",
     "locales": [
       { "code": "en-us", "label": "English (US)" },
@@ -205,43 +78,71 @@ A typical `proti.config.json` looks like:
 }
 ```
 
-## Studio environment
+## Add secrets and seed content
 
-`studio/sanity.config.ts` uses:
+Create your own Sanity project/dataset/tokens through Sanity; initialization does **not** provision them. Set local server-only credentials in `web/.env.local`:
 
-```text
-SANITY_STUDIO_PROJECT_ID
-SANITY_STUDIO_DATASET
-SANITY_STUDIO_TITLE
-SANITY_STUDIO_PREVIEW_URL
+```dotenv
+SANITY_API_READ_TOKEN=
+SANITY_API_WRITE_TOKEN=
+SANITY_REVALIDATE_SECRET=
 ```
 
-## CI
-
-The Proti setup regression suite runs with:
+Use a write token with document creation permissions for the seed. Seed one of two ways:
 
 ```bash
-pnpm test:proti
+pnpm proti:seed                     # Site only
+pnpm proti:seed --starter-content  # Site + default-locale Home/Header/Footer/Navigation
 ```
 
-CI should keep frozen lockfile installation enabled:
+The seed uses `createIfNotExists` and deterministic IDs where appropriate. It does not overwrite an existing Site/homepage/navigation. A missing canonical-domain field on an existing Site may be backfilled; an authored canonical domain is not replaced. Only the default locale gets starter content, not demo Blogs/Authors/Taxonomy or translations. Review the published **Site → Routing** values and **publish** the Site/content before verifying live pages.
+
+## Validate the result
 
 ```bash
-pnpm install --frozen-lockfile
+pnpm proti:check
 ```
 
-## Vercel
+This read-only check covers independent Git repository/remote, mode-specific Studio URLs and tracking, Web and Studio IDs, package identity, read/write token presence, Sanity connectivity, Site domains/canonical/locales, and desktop/mobile visual baselines. Missing production URL or screenshots may generate **warnings** until configured; failed authentication, missing Site, and material mismatches are **errors**. See [Setup Check](PROTI_CHECK.md).
 
-The initializer configures local files only. Vercel environment variables are separate and must be configured on the Vercel project.
+## Generate site-specific visual baselines
+
+After a published homepage is available under `http://localhost:3000`, install Chromium and run:
+
+```bash
+pnpm --dir web exec playwright install chromium
+pnpm proti:visual:init
+```
+
+`proti:visual:init` checks port availability, builds the Web app, starts the Next.js **production** server, generates Chromium desktop/mobile snapshots, and verifies both `home.png` files exist. An existing baseline is protected unless you specify `--force`. Set `PROTI_VISUAL_PORT=3001` (or another available port) if needed; the generated Playwright base/server URLs use that same port. Commit screenshots intentionally; CI must not update them.
+
+## Configure production after Web deployment
+
+```bash
+pnpm proti:configure:production --url=https://acme-health.vercel.app
+```
+
+This updates `proti.config.json` (`sanity.productionPreviewUrl`) and **only** the preview variable in `studio/.env.production`. It preserves development URL and Studio App ID. The URL must be a public HTTPS origin with no path/query/credentials. The command warns if its hostname is absent from configured Site domains; manually align the **published Sanity Site document**, too. Commit the public configuration and **redeploy Studio** so Production Presentation points to the right Web host. No Web redeploy is required solely for this Studio URL change.
+
+Then configure Vercel environment variables, Sanity CORS/Presentation permissions, and the signed publish webhook. See [Deployment](DEPLOYMENT.md).
+
+## Git remote and repetition
+
+After fresh init, create your own remote repository and configure `origin` for **that** project. Ordinary reruns (`pnpm proti:init`) preserve Git history/remotes and do **not** purge project-specific visual baselines. `--new-project` is **not** a reset command for an established project and should never be used to recover Git history.
+
+If a Git push fails, inspect `git status`, `git remote -v`, `git log --oneline --decorate`, and `git rev-list --left-right --count origin/main...main`. Do not force-push the maintained starter or delete protected branches to repair an accidental initialization.
+
+## Automated acceptance coverage
+
+From the root:
+
+```bash
+pnpm test:proti:integration  # Disposable fresh-project acceptance test
+pnpm test:proti              # All script tests including acceptance
+```
+
+The acceptance test creates a temporary project/repository and uses a mock Sanity HTTP API and simulated visual commands. It does not deploy or modify real Sanity data. It verifies end-to-end initialization, Site seeding, Git independence, env files, reinit preservation, production URL configuration, and baseline handling. The real standalone deployment was also tested separately; the automated test is a repeatable local regression, **not** a substitute for real provider integration.
 
 ## Not automated
 
-The initializer does not:
-
-- create a Sanity project
-- create Sanity API tokens
-- configure GitHub secrets/variables
-- configure Vercel environment variables
-- deploy Studio or Web
-- create translated content
-- create opinionated demo content
+The initializer does **not** create a Sanity project/API tokens, GitHub repo/ruleset/secrets, Vercel project/env settings, Sanity webhook/CORS configuration, or editorial translations. See [Getting Started](GETTING_STARTED.md), [Configuration](CONFIGURATION.md), and [Deployment](DEPLOYMENT.md).

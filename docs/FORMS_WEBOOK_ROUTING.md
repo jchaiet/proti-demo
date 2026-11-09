@@ -17,7 +17,7 @@ Keep your existing variables for the **default** webhook:
 ```env
 FORM_WEBHOOK_URL=https://example.com/default-hook
 FORM_WEBHOOK_SECRET=your-default-secret
-FORM_ALLOWED_ORIGINS=https://proti-demo-web.vercel.app
+FORM_ALLOWED_ORIGINS=https://your-site.vercel.app
 ```
 
 Add **one** new server-side environment variable, `FORM_WEBHOOK_DESTINATIONS`, as a single JSON object. Example (replace the placeholder values and **do not commit actual credentials**):
@@ -40,7 +40,7 @@ Add **one** new server-side environment variable, `FORM_WEBHOOK_DESTINATIONS`, a
 }
 ```
 
-Copy the JSON as the value of `FORM_WEBHOOK_DESTINATIONS` in **Vercel → Project → Settings → Environment Variables**, using the intended environment(s). `siteIds` is optional; when provided, only those Sanity Site IDs may send to the destination. A key without `siteIds` can be used by any site served by this deployment.
+Copy the JSON as the value of `FORM_WEBHOOK_DESTINATIONS` in **Vercel → Project → Settings → Environment Variables**, using the intended environment(s). **Do not include literal wrapping single quotes** around the JSON when pasting into Vercel UI fields; doing so can cause production 503 configuration errors. `siteIds` is optional; when provided, only those Sanity Site IDs may send to the destination. A key without `siteIds` can be used by any site served by this deployment.
 
 Use HTTPS endpoints. You may use an HTTP localhost endpoint **only in local development**. Each named destination requires its **own** `secret`; it never silently inherits the default secret.
 

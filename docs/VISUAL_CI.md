@@ -1,116 +1,72 @@
-# Visual Regression CI
+# Visual regression CI (v0.4.0)
 
-Proti uses Playwright visual regression testing as a required CI quality gate.
+Playwright's Chromium desktop/mobile screenshot comparisons are required quality gates for Proti pull requests. Visual tests run **after** functional smoke tests and do not regenerate screenshots in CI.
 
-## Purpose
+## Browser projects
 
-Visual regression tests detect unintended UI changes by comparing current Chromium screenshots against approved baseline screenshots committed to the repository.
+- `chromium-desktop` — 1440 × 900; committed visual baseline.
+- `chromium-mobile` — Pixel 7 emulation; committed visual baseline.
+- `firefox-desktop` / `firefox-mobile` — smoke/functional coverage only (the mobile project is narrow Firefox desktop, not Android emulation).
+- Optional WebKit can be enabled independently when installed; it has no required visual baseline.
 
-Visual CI runs after the functional Playwright smoke tests have passed.
-
-## Required Visual Projects
-
-Visual regression runs only against:
+## Validated CI flow
 
 ```text
-chromium-desktop
-chromium-mobile
+Web unit/type/lint/build checks
+        ↓
+Playwright smoke: build → Next production start → /api/health readiness → CMS page assertions
+        ↓
+Playwright visual: build → Next production start → screenshot comparison
 ```
 
-Firefox remains part of cross-browser functional smoke coverage but does not maintain a separate visual baseline.
-
-## CI Behavior
-
-The visual job is now blocking.
-
-A visual regression failure causes CI to fail and prevents a protected pull request from being merged.
-
-The job should no longer include:
+Both browser jobs set:
 
 ```yaml
-continue-on-error: true
+PLAYWRIGHT_BASE_URL: http://localhost:3000
+PLAYWRIGHT_WEB_SERVER_COMMAND: pnpm exec next start -p 3000
+PLAYWRIGHT_SKIP_WEBSERVER: "0"
+E2E_HOME_PATH: /
 ```
 
-## Required Branch Check
+`/api/health` returns a minimal `{ "status": "ok" }` and checks **only** server readiness. The tests navigate the actual published Sanity-backed homepage, which will return 404 unless **Site → Routing** contains the published `localhost` hostname and a published homepage exists. This separation fixed prior Playwright startup/404 confusion.
 
-`Playwright visual` is a required status check for the protected `main` branch.
+## First-time baselines in a new project
 
-Current required checks:
-
-```text
-Studio
-Web
-Playwright smoke
-Playwright visual
-```
-
-## Visual Test Command
-
-CI runs the visual suite against a production build:
+Running `pnpm proti:init --new-project` in a **clean clone** removes inherited demo PNGs; a rerun in an established project never deletes them. After seeding/publishing the new homepage:
 
 ```bash
-pnpm test:e2e:visual \
-  --project=chromium-desktop \
-  --project=chromium-mobile
+pnpm --dir web exec playwright install chromium
+pnpm proti:visual:init
 ```
 
-## Approved Baselines
+The root command checks for an available port, builds Web, runs desktop/mobile `--update-snapshots` against a production server, verifies the two `home.png` files, and instructs you to review/commit the resulting baseline. Set `PROTI_VISUAL_PORT` to an alternate free port if needed. Existing snapshots require an intentional `pnpm proti:visual:init --force` to replace them.
 
-The committed screenshots are the approved visual baselines.
+Do not run visual initialization in routine CI. CI must fail on missing/changed snapshots rather than approve them automatically.
 
-Canonical local validation:
+## Inspecting and approving visual differences
+
+From `web/`:
 
 ```bash
-cd web
-pnpm build
-pnpm start
-pnpm test:e2e:visual
+pnpm test:e2e:visual --project=chromium-desktop --project=chromium-mobile
+pnpm test:e2e:report
 ```
 
-## Intentional Visual Changes
-
-Do not update screenshots merely because CI fails.
-
-First run:
-
-```bash
-pnpm test:e2e:visual
-```
-
-Inspect the expected, actual, and diff images.
-
-If the change is intentional:
+If the test fails, use expected/actual/diff screenshots and traces in `web/test-results/` / `web/playwright-report/`. Decide whether the change is intentional **before** updating:
 
 ```bash
 pnpm test:e2e:update
 pnpm test:e2e:visual
 ```
 
-Review the new screenshots and commit the approved baselines with the code change.
+Review the changed PNGs and commit them with the intentional code/content change. The configured maximum diff pixel ratio is `0.002`; do not increase it as a shortcut for unreviewed changes.
 
-## CI Artifacts
+## Current limitation and future direction
 
-When visual tests fail, inspect the uploaded Playwright artifacts:
+The v0.4.0 baseline still represents real **published Sanity content**. Changing a header, hero title, footer, or other editorial content can trigger a real screenshot diff even when CSS is unchanged. A deterministic fixture-driven visual suite independent of Sanity content, with representative Page/Blog/interactive states, is a proposed **v0.5.0** improvement. No additional regression dataset is required for v0.4.0.
 
-```text
-web/playwright-report/
-web/test-results/
-```
+## Branch protection and artifacts
 
-These may contain expected, actual, and diff screenshots plus failure context.
+A protected `main` should require `Studio`, `Web`, `Playwright smoke`, and `Playwright visual` checks. Failed Playwright jobs upload the report and test-results artifacts with limited retention. Do not set `continue-on-error: true` on the visual job.
 
-## Relationship to Smoke Tests
-
-```text
-Playwright smoke
-→ Does the application function correctly in real browsers?
-
-Playwright visual
-→ Does the approved UI still look the same?
-```
-
-Both are required before merging into `main`.
-
-## Current Status
-
-The GitHub-hosted visual environment has been validated successfully. Visual regression is now part of Proti's required PR checks.
+See [Testing](TESTING.md), [CI Branch Protection](CI_BRANCH_PROTECTION.md), and [Project Initialization](PROJECT_INITIALIZATION.md).

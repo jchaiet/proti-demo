@@ -1,62 +1,130 @@
-# Configuration and environment
+# Configuration and environments (v0.4.0)
 
-Proti has three distinct configuration layers. Do not treat their files or environment-variable namespaces as interchangeable.
+Proti's configuration has distinct **project**, **Web**, **Studio shared**, **Studio mode-specific**, and **test/CI** layers. Avoid putting a variable in the wrong file: we previously saw Production Presentation point at localhost because a shared/CI preview URL overrode the production file.
 
-## 1. Project initializer configuration
+## Project record: `proti.config.json`
 
-`proti.config.json` is the generated setup record; the starter also includes `proti.config.example.json`. The initializer (`scripts/proti-init.mjs`) collects project/package identity, Sanity project/dataset, Studio/preview URLs, and Site identity/hosts/locales. `pnpm proti:check` validates agreement among configuration, environment files, packages, and the Site document. See [Project Initialization](PROJECT_INITIALIZATION.md).
+Created by `pnpm proti:init --new-project` in an independent clean clone; the starter includes `proti.config.example.json`. The record stores names, Sanity IDs, Site key, locale list, allowed **hostnames**, canonical hostname, and Web/Studio preview URLs. It contains no API tokens and should be committed after review.
 
-For Site routing:
+| Config path                           | Meaning                                                                         |
+| ------------------------------------- | ------------------------------------------------------------------------------- |
+| `sanity.projectId` / `sanity.dataset` | Independent Content Lake connection                                             |
+| `sanity.studioUrl`                    | Studio origin consumed by Web (`NEXT_SANITY_STUDIO_URL`)                        |
+| `sanity.previewUrl`                   | **Development** Web origin for Presentation                                     |
+| `sanity.productionPreviewUrl`         | **Production** HTTPS Web origin for Presentation                                |
+| `site.domains`                        | Allowed hosts (for example `localhost`, `example.com`), **without** scheme/port |
+| `site.canonicalDomain`                | Preferred production hostname; must occur in `site.domains`                     |
+| `site.defaultLocale` / `site.locales` | Default unprefixed locale and supported language-region codes                   |
 
-- `domains` are hostnames, not full `https://` URLs.
-- `canonicalDomain` is the preferred hostname for search and entity URLs; it must be a configured Site domain.
-- `defaultLocale` is omitted from public URLs; other locale codes are prefixed.
-- Current locale conventions use `en-us`, `es-us`, `fr-ca`, etc. Some older source comments/examples use legacy aliases; use actual Site locale values for your implementation.
+Initial `site.domains` automatically includes `localhost`. Keep `proti.config.json` aligned with the **published** Site → Routing document; editing local JSON alone does not update Sanity. In particular, a missing published `localhost` domain causes local Web/CI homepage 404s despite `/api/health` responding successfully.
 
-## 2. Web environment (`web/.env.local`)
+## Web: `web/.env.local` (secret; ignored)
 
-| Variable                   | Use                                                                  | Exposure                |
-| -------------------------- | -------------------------------------------------------------------- | ----------------------- |
-| `NEXT_SANITY_PROJECT_ID`   | Sanity client project                                                | Nonsecret               |
-| `NEXT_SANITY_DATASET`      | Sanity dataset                                                       | Nonsecret               |
-| `NEXT_SANITY_STUDIO_URL`   | Visual editing/Studio origin                                         | Nonsecret               |
-| `SANITY_API_READ_TOKEN`    | Draft Mode reads and server-side operations requiring private access | **Secret; server only** |
-| `SANITY_API_WRITE_TOKEN`   | Sanity write operations such as seed/Poll voting                     | **Secret; server only** |
-| `SANITY_REVALIDATE_SECRET` | Validate signed publish webhook calls                                | **Secret; server only** |
+| Variable                   | Purpose                                 | Exposure               |
+| -------------------------- | --------------------------------------- | ---------------------- |
+| `NEXT_SANITY_PROJECT_ID`   | Web Content Lake project                | Public configuration   |
+| `NEXT_SANITY_DATASET`      | Dataset                                 | Public configuration   |
+| `NEXT_SANITY_STUDIO_URL`   | Actual Studio origin for visual editing | Public configuration   |
+| `SANITY_API_READ_TOKEN`    | Draft Mode/private server reads         | **Server-only secret** |
+| `SANITY_API_WRITE_TOKEN`   | Server-side writes (e.g., Poll, seed)   | **Server-only secret** |
+| `SANITY_REVALIDATE_SECRET` | Verify signed Sanity webhook requests   | **Server-only secret** |
 
-Source references: `web/src/sanity/env.ts`, `web/src/sanity/fetch.ts`, `web/src/app/api/revalidate/route.ts`, `web/src/app/api/poll/vote/route.ts`. Some deployment environments may require further variables; review the application runtime before promoting an environment.
+Keep API tokens and the webhook secret out of `NEXT_PUBLIC_*`, Git, and screenshots/logs. Production equivalents must be configured separately in **Vercel**; GitHub Actions secrets are not automatically copied there. Forms may require additional `FORM_WEBHOOK_DESTINATIONS` server-side configuration for webhook destinations; see [Multiple Form Webhooks](FORMS_WEBOOK_ROUTING.md).
 
-Do not place API tokens in `NEXT_PUBLIC_*` variables, commit `.env.local`, or copy live secrets into example files.
+## Studio shared values: `studio/.env.local` (ignored)
 
-## 3. Studio environment (`studio/.env.local`)
+| Variable                   | Purpose                                                    |
+| -------------------------- | ---------------------------------------------------------- |
+| `SANITY_STUDIO_PROJECT_ID` | Studio Sanity project (matches Web)                        |
+| `SANITY_STUDIO_DATASET`    | Studio dataset (matches Web)                               |
+| `SANITY_STUDIO_TITLE`      | Display title                                              |
+| `SANITY_STUDIO_APP_ID`     | Optional deployment App ID; read by `studio/sanity.cli.ts` |
 
-| Variable                    | Use                                                                    |
-| --------------------------- | ---------------------------------------------------------------------- |
-| `SANITY_STUDIO_PROJECT_ID`  | Required Studio Sanity project ID                                      |
-| `SANITY_STUDIO_DATASET`     | Dataset (default in source: `production`)                              |
-| `SANITY_STUDIO_TITLE`       | Optional Studio display name                                           |
-| `SANITY_STUDIO_PREVIEW_URL` | Next.js origin used by Presentation (default: `http://localhost:3000`) |
+The CLI reads project/dataset/App ID from the environment instead of hardcoded demo IDs. Keep **`SANITY_STUDIO_PREVIEW_URL` out of `studio/.env.local`**: it belongs in one of the mode files below.
 
-These are consumed by `studio/sanity.config.ts`. The initializer generates a Studio environment file; contrary to one older Studio README paragraph, the code **does** read Studio environment variables. Keep Studio and Web pointed at the same dataset.
+## Studio Presentation: mode-specific public URL files
 
-## 4. Playwright (`web/e2e/.env.e2e`)
+These files contain **only non-secret URL configuration** and are intended to be tracked:
 
-The actual contract is in `web/playwright.config.ts` and `web/e2e/helpers/environment.ts`:
+```dotenv
+# studio/.env.development
+SANITY_STUDIO_PREVIEW_URL=http://localhost:3000
+```
 
-| Variable                        | Purpose                                                                |
-| ------------------------------- | ---------------------------------------------------------------------- |
-| `PLAYWRIGHT_BASE_URL`           | Site URL to exercise (config default: `http://127.0.0.1:3000`)         |
-| `PLAYWRIGHT_WEB_SERVER_COMMAND` | Server launch command when Playwright starts one (default: `pnpm dev`) |
-| `PLAYWRIGHT_SKIP_WEBSERVER=1`   | Use a manually started server instead of launching one                 |
+```dotenv
+# studio/.env.production
+SANITY_STUDIO_PREVIEW_URL=https://your-site.vercel.app
+```
 
-The route-specific variables and examples live in `web/e2e/.env.e2e.example`. Use `http://localhost:3000` when the Site resolves `localhost`; `127.0.0.1` is not equivalent for host-matched content. In CI, review configuration and required route fixtures.
+`studio/sanity.config.ts` uses `SANITY_STUDIO_PREVIEW_URL` for Presentation. `studio/.env.production` is updated after Web deployment with:
 
-## Secrets and publication hygiene
+```bash
+pnpm proti:configure:production --url=https://your-site.vercel.app
+```
 
-- Keep local env files untracked; commit only placeholder templates.
-- Treat environment contents uploaded to third parties as exposed; rotate credentials when appropriate.
-- Sanity webhook secret must match the deployed Web project; the webhook signs calls to `/api/revalidate`.
-- GitHub Actions secrets and Vercel environment values are managed separately.
-- Verify `.gitignore` and the committed file set; the source archive used to author these docs did not include a root lockfile or CI workflow files, so their tracked status was **not verified**.
+This also updates `sanity.productionPreviewUrl` in `proti.config.json`, without changing the development URL or Studio App ID. **Redeploy Studio** after the production URL changes. Remove any hardcoded `SANITY_STUDIO_PREVIEW_URL=http://localhost:3000` from the **Studio CI job**; process env overrides can take precedence over mode files.
 
-See [Deployment](DEPLOYMENT.md) and [Release Checklist](RELEASE_CHECKLIST.md).
+Suggested root `.gitignore` treatment, adjusted to your actual existing rules:
+
+```gitignore
+.env*
+!.env.example
+!e2e/.env.e2e.example
+!studio/.env.development
+!studio/.env.production
+```
+
+Verify tracking with:
+
+```bash
+git ls-files --error-unmatch studio/.env.development studio/.env.production
+git ls-files web/.env.local studio/.env.local web/e2e/.env.e2e
+```
+
+The first command should list the two public mode files; the second should return nothing.
+
+## Playwright and screenshot initialization
+
+`web/playwright.config.ts` currently defaults to:
+
+| Variable                        | Meaning/default                                                 |
+| ------------------------------- | --------------------------------------------------------------- |
+| `PLAYWRIGHT_BASE_URL`           | `http://localhost:3000`                                         |
+| `PLAYWRIGHT_WEB_SERVER_COMMAND` | `pnpm exec next start -p <base-URL port>`                       |
+| `PLAYWRIGHT_SKIP_WEBSERVER`     | `0`/unset: start production server; `1`: use an existing server |
+| `E2E_HOME_PATH`                 | `/` for the seeded homepage                                     |
+| `PLAYWRIGHT_INCLUDE_WEBKIT=1`   | Optional WebKit browser project (requires browser installation) |
+| `PROTI_VISUAL_PORT`             | Port used only by `pnpm proti:visual:init` (default `3000`)     |
+
+The server-readiness URL is `<baseURL>/api/health`, separate from the CMS-backed route assertions. `reuseExistingServer` is false: if the desired port is busy, stop that process rather than accidentally testing a different server. E2E route selections live in `web/e2e/.env.e2e` (ignored); copy its committed example file.
+
+Typical GitHub Actions settings for **both** Playwright jobs:
+
+```yaml
+PLAYWRIGHT_BASE_URL: http://localhost:3000
+PLAYWRIGHT_WEB_SERVER_COMMAND: pnpm exec next start -p 3000
+PLAYWRIGHT_SKIP_WEBSERVER: "0"
+E2E_HOME_PATH: /
+```
+
+The Site document must have a published `localhost` domain and published homepage. Screenshots are site-specific until a future deterministic fixture harness replaces CMS-dependent visual baselines.
+
+## Git source/initialized markers
+
+The maintained original Proti checkout should have the **local-only** setting:
+
+```bash
+git config --local proti.sourceRepository true
+```
+
+It prevents `proti:init` from modifying that checkout and allows `proti:check` to recognize its legitimate `proti-demo` remote. New clones **do not inherit** `.git/config`. Independent init writes its own `proti.initialized=true` Git setting. See [Project Initialization](PROJECT_INITIALIZATION.md).
+
+## Secret and provider hygiene
+
+- Commit project config and public Studio mode URLs, **never credentials**.
+- Store production secrets in Vercel and/or provider-specific secret stores; configure GitHub Secrets/Variables separately for CI.
+- Configure Sanity CORS and Presentation to allow the actual deployed Web/Studio origins.
+- Ensure signed document webhook secret matches the deployed Web environment; avoid surrounding values with shell quote characters when entering provider UI fields.
+- Review environment files before committing; rotate a token if accidentally disclosed.
+
+See [Deployment](DEPLOYMENT.md), [Setup Check](PROTI_CHECK.md), and [Release Checklist](RELEASE_CHECKLIST.md).

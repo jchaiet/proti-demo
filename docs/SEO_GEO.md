@@ -1,6 +1,6 @@
 # SEO, structured data and GEO discoverability — v0.3.0
 
-Proti's v0.3 batches brought locale/hreflang, canonical origin, Author locale integrity, JSON-LD entity relationships, and semantic markup under one tested contract. This guide documents **implementation mechanisms**, not a promise of search-engine ranking or generative-engine citation.
+Proti's v0.3 batches brought locale/hreflang, canonical origin, Author locale integrity, JSON-LD entity relationships, and semantic markup under one tested contract. **These SEO/GEO contracts remain part of v0.4.0**; the newer initialization workflow requires the correct **published production Site canonical hostname** and published `localhost` development domain. This guide documents **implementation mechanisms**, not a promise of search-engine ranking or generative-engine citation.
 
 ## Where each part lives
 

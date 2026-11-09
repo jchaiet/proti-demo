@@ -532,45 +532,355 @@ test("first initialization clears inherited visual baselines and rerun preserves
   }
 });
 
-test("initializing a cloned proti-demo repository clears its origin and demo screenshots", async () => {
+function gitIn(repo, ...args) {
+  return execFileSync("git", args, {
+    cwd: repo,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  }).trim();
+}
+
+async function createStarterCloneFixture() {
   const repo = await createTempRepo();
+  await copyScript(INIT_SCRIPT, repo, "proti-init.mjs");
+  gitIn(repo, "init", "--quiet", "--initial-branch=main");
+  gitIn(
+    repo,
+    "remote",
+    "add",
+    "origin",
+    "git@github.com:example/proti-demo.git",
+  );
   const screenshot = path.join(
     repo,
-    "web",
-    "e2e",
-    "__screenshots__",
-    "chromium-mobile",
-    "home.png",
+    "web/e2e/__screenshots__/chromium-mobile/home.png",
   );
+  await fs.mkdir(path.dirname(screenshot), { recursive: true });
+  await fs.writeFile(screenshot, "inherited screenshot");
+  gitIn(repo, "add", "-A");
+  gitIn(
+    repo,
+    "-c",
+    "user.name=Proti Test",
+    "-c",
+    "user.email=proti@example.invalid",
+    "commit",
+    "--quiet",
+    "-m",
+    "Existing starter history",
+  );
+  return { repo, screenshot, commit: gitIn(repo, "rev-parse", "HEAD") };
+}
 
+const initialAnswers = ["", "", "abc123", ...new Array(10).fill("")];
+
+test("accidental init in the original starter refuses before modifying any files or Git history", async () => {
+  const { repo, screenshot, commit } = await createStarterCloneFixture();
   try {
-    await copyScript(INIT_SCRIPT, repo, "proti-init.mjs");
-    execFileSync("git", ["init", "-q"], { cwd: repo });
-    execFileSync(
-      "git",
-      ["remote", "add", "origin", "git@github.com:example/proti-demo.git"],
-      { cwd: repo },
+    const packageBefore = await fs.readFile(
+      path.join(repo, "package.json"),
+      "utf8",
     );
-    await fs.mkdir(path.dirname(screenshot), { recursive: true });
-    await fs.writeFile(screenshot, "demo screenshot");
-
     const result = await runNode({
       cwd: repo,
       script: "scripts/proti-init.mjs",
-      input: scriptedInput(["", "", "abc123", ...new Array(10).fill("")]),
+      input: scriptedInput(initialAnswers),
     });
+    assert.notEqual(result.code, 0);
+    assert.match(result.stderr, /--new-project/);
+    assert.equal(gitIn(repo, "rev-parse", "HEAD"), commit);
+    assert.equal(
+      gitIn(repo, "remote", "get-url", "origin"),
+      "git@github.com:example/proti-demo.git",
+    );
+    assert.equal(
+      await fs.readFile(path.join(repo, "package.json"), "utf8"),
+      packageBefore,
+    );
+    assert.equal(await fs.readFile(screenshot, "utf8"), "inherited screenshot");
+    await assert.rejects(fs.access(path.join(repo, "proti.config.json")), {
+      code: "ENOENT",
+    });
+    assert.equal(gitIn(repo, "status", "--porcelain"), "");
+  } finally {
+    await removeTempRepo(repo);
+  }
+});
 
+test("maintained source repository refuses all initialization before any file or Git changes", async () => {
+  const { repo, screenshot, commit } = await createStarterCloneFixture();
+  try {
+    gitIn(repo, "config", "--local", "proti.sourceRepository", "true");
+    const packageBefore = await fs.readFile(
+      path.join(repo, "package.json"),
+      "utf8",
+    );
+    const beforeStatus = gitIn(repo, "status", "--porcelain");
+    for (const args of [[], ["--new-project"]]) {
+      const result = await runNode({
+        cwd: repo,
+        script: "scripts/proti-init.mjs",
+        args,
+        input: scriptedInput(["RESET GIT HISTORY", ...initialAnswers]),
+      });
+      assert.notEqual(result.code, 0);
+      assert.match(result.stderr, /maintained Proti source repository/);
+      assert.equal(gitIn(repo, "rev-parse", "HEAD"), commit);
+      assert.equal(
+        gitIn(repo, "remote", "get-url", "origin"),
+        "git@github.com:example/proti-demo.git",
+      );
+      assert.equal(
+        await fs.readFile(path.join(repo, "package.json"), "utf8"),
+        packageBefore,
+      );
+      assert.equal(
+        await fs.readFile(screenshot, "utf8"),
+        "inherited screenshot",
+      );
+      assert.equal(gitIn(repo, "status", "--porcelain"), beforeStatus);
+      await assert.rejects(fs.access(path.join(repo, "proti.config.json")), {
+        code: "ENOENT",
+      });
+    }
+  } finally {
+    await removeTempRepo(repo);
+  }
+});
+
+test("--new-project requires exact typed acknowledgement before any changes", async () => {
+  const { repo, commit } = await createStarterCloneFixture();
+  try {
+    const result = await runNode({
+      cwd: repo,
+      script: "scripts/proti-init.mjs",
+      args: ["--new-project"],
+      input: scriptedInput(["yes", ...initialAnswers]),
+    });
+    assert.notEqual(result.code, 0);
+    assert.match(result.stderr, /not confirmed/);
+    assert.equal(gitIn(repo, "rev-parse", "HEAD"), commit);
+    assert.equal(
+      gitIn(repo, "remote", "get-url", "origin"),
+      "git@github.com:example/proti-demo.git",
+    );
+    await assert.rejects(fs.access(path.join(repo, "proti.config.json")), {
+      code: "ENOENT",
+    });
+  } finally {
+    await removeTempRepo(repo);
+  }
+});
+
+test("--new-project refuses dirty clones, including untracked files", async () => {
+  const { repo, commit } = await createStarterCloneFixture();
+  try {
+    await fs.writeFile(path.join(repo, "new-file.txt"), "do not discard");
+    const result = await runNode({
+      cwd: repo,
+      script: "scripts/proti-init.mjs",
+      args: ["--new-project"],
+      input: scriptedInput(["RESET GIT HISTORY", ...initialAnswers]),
+    });
+    assert.notEqual(result.code, 0);
+    assert.match(result.stderr, /working tree contains changes/);
+    assert.equal(gitIn(repo, "rev-parse", "HEAD"), commit);
+    assert.equal(
+      await fs.readFile(path.join(repo, "new-file.txt"), "utf8"),
+      "do not discard",
+    );
+    await assert.rejects(fs.access(path.join(repo, "proti.config.json")), {
+      code: "ENOENT",
+    });
+  } finally {
+    await removeTempRepo(repo);
+  }
+});
+
+test("explicit --new-project detaches a clean starter clone and clears inherited screenshots", async () => {
+  const { repo, screenshot, commit } = await createStarterCloneFixture();
+  try {
+    const result = await runNode({
+      cwd: repo,
+      script: "scripts/proti-init.mjs",
+      args: ["--new-project"],
+      input: scriptedInput(["RESET GIT HISTORY", ...initialAnswers]),
+    });
     assert.equal(result.code, 0, result.stderr);
     assert.match(result.stdout, /Initialized independent Git repository/);
     assert.match(result.stdout, /Removed inherited demo visual baselines/);
+    assert.equal(gitIn(repo, "remote", "-v"), "");
+    assert.equal(gitIn(repo, "rev-list", "--count", "--all"), "0");
     assert.equal(
-      execFileSync("git", ["remote", "-v"], {
-        cwd: repo,
-        encoding: "utf8",
-      }).trim(),
-      "",
+      gitIn(repo, "config", "--local", "--get", "proti.initialized"),
+      "true",
     );
+    assert.notEqual(gitIn(repo, "rev-parse", "--git-dir"), "");
     await assert.rejects(fs.access(screenshot), { code: "ENOENT" });
+    assert.ok(commit);
+  } finally {
+    await removeTempRepo(repo);
+  }
+});
+
+test("an existing custom repository retains its history, remotes, and screenshots", async () => {
+  const { repo, screenshot, commit } = await createStarterCloneFixture();
+  try {
+    gitIn(
+      repo,
+      "remote",
+      "set-url",
+      "origin",
+      "git@github.com:example/independent-project.git",
+    );
+    const result = await runNode({
+      cwd: repo,
+      script: "scripts/proti-init.mjs",
+      input: scriptedInput(initialAnswers),
+    });
+    assert.equal(result.code, 0, result.stderr);
+    assert.equal(gitIn(repo, "rev-parse", "HEAD"), commit);
+    assert.equal(
+      gitIn(repo, "remote", "get-url", "origin"),
+      "git@github.com:example/independent-project.git",
+    );
+    assert.equal(await fs.readFile(screenshot, "utf8"), "inherited screenshot");
+    const force = await runNode({
+      cwd: repo,
+      script: "scripts/proti-init.mjs",
+      args: ["--new-project"],
+      input: scriptedInput(["RESET GIT HISTORY", ...initialAnswers]),
+    });
+    assert.notEqual(force.code, 0);
+    assert.match(force.stderr, /already initialized/);
+    assert.equal(gitIn(repo, "rev-parse", "HEAD"), commit);
+  } finally {
+    await removeTempRepo(repo);
+  }
+});
+
+test("first initialization in an existing custom repository marks it without touching history", async () => {
+  const { repo, commit } = await createStarterCloneFixture();
+  try {
+    gitIn(
+      repo,
+      "remote",
+      "set-url",
+      "origin",
+      "git@github.com:example/custom-site.git",
+    );
+    const first = await runNode({
+      cwd: repo,
+      script: "scripts/proti-init.mjs",
+      input: scriptedInput([
+        "Custom Site",
+        "custom-site",
+        "abc123",
+        "production",
+        "",
+        "",
+        "",
+        "",
+        "example.org",
+        "example.org",
+        "",
+        "",
+        "",
+      ]),
+    });
+    assert.equal(first.code, 0, first.stderr);
+    assert.equal(gitIn(repo, "rev-parse", "HEAD"), commit);
+    assert.equal(
+      gitIn(repo, "config", "--local", "--get", "proti.initialized"),
+      "true",
+    );
+    const configPath = path.join(repo, "proti.config.json");
+    const config = JSON.parse(await fs.readFile(configPath, "utf8"));
+    assert.deepEqual(config.site.domains, ["example.org", "localhost"]);
+    config.site.domains = ["example.org"];
+    await fs.writeFile(configPath, JSON.stringify(config, null, 2) + "\n");
+    const rerun = await runNode({
+      cwd: repo,
+      script: "scripts/proti-init.mjs",
+      input: scriptedInput(Array(13).fill("")),
+    });
+    assert.equal(rerun.code, 0, rerun.stderr);
+    assert.deepEqual(
+      JSON.parse(await fs.readFile(configPath, "utf8")).site.domains,
+      ["example.org"],
+    );
+    assert.equal(gitIn(repo, "rev-parse", "HEAD"), commit);
+  } finally {
+    await removeTempRepo(repo);
+  }
+});
+
+test("refuses reset when starter clone has an unexpected push URL", async () => {
+  const { repo, commit } = await createStarterCloneFixture();
+  try {
+    gitIn(
+      repo,
+      "remote",
+      "set-url",
+      "--push",
+      "origin",
+      "git@github.com:example/production-repo.git",
+    );
+    const result = await runNode({
+      cwd: repo,
+      script: "scripts/proti-init.mjs",
+      args: ["--new-project"],
+      input: scriptedInput(["RESET GIT HISTORY", ...initialAnswers]),
+    });
+    assert.notEqual(result.code, 0);
+    assert.match(result.stderr, /unexpected Git remotes or push URL/);
+    assert.equal(gitIn(repo, "rev-parse", "HEAD"), commit);
+  } finally {
+    await removeTempRepo(repo);
+  }
+});
+
+test("existing initialized project preserves a manually added starter remote", async () => {
+  const repo = await createTempRepo();
+  try {
+    await copyScript(INIT_SCRIPT, repo, "proti-init.mjs");
+    const first = await runNode({
+      cwd: repo,
+      script: "scripts/proti-init.mjs",
+      input: scriptedInput(initialAnswers),
+    });
+    assert.equal(first.code, 0, first.stderr);
+    gitIn(repo, "add", "-A");
+    gitIn(
+      repo,
+      "-c",
+      "user.name=Proti Test",
+      "-c",
+      "user.email=proti@example.invalid",
+      "commit",
+      "--quiet",
+      "-m",
+      "Project initialized",
+    );
+    gitIn(
+      repo,
+      "remote",
+      "add",
+      "origin",
+      "git@github.com:example/proti-demo.git",
+    );
+    const commit = gitIn(repo, "rev-parse", "HEAD");
+    const next = await runNode({
+      cwd: repo,
+      script: "scripts/proti-init.mjs",
+      input: scriptedInput(Array(13).fill("")),
+    });
+    assert.equal(next.code, 0, next.stderr);
+    assert.equal(gitIn(repo, "rev-parse", "HEAD"), commit);
+    assert.equal(
+      gitIn(repo, "remote", "get-url", "origin"),
+      "git@github.com:example/proti-demo.git",
+    );
   } finally {
     await removeTempRepo(repo);
   }

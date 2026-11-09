@@ -12,16 +12,34 @@ From the Studio directory:
 pnpm install
 ```
 
-## Environment Configuration
+## Environment configuration and independent Studio deployment
 
-Studio reads its configuration from `studio/sanity.config.ts`:
+Studio reads shared values from `studio/.env.local` (ignored by Git):
 
-- `SANITY_STUDIO_PROJECT_ID` (required)
-- `SANITY_STUDIO_DATASET` (defaults to `production`)
-- `SANITY_STUDIO_TITLE` (optional)
-- `SANITY_STUDIO_PREVIEW_URL` (defaults to `http://localhost:3000`)
+- `SANITY_STUDIO_PROJECT_ID` — independent Sanity project ID.
+- `SANITY_STUDIO_DATASET` — dataset (normally `production`).
+- `SANITY_STUDIO_TITLE` — display name.
+- `SANITY_STUDIO_APP_ID` — optional app ID used by `studio/sanity.cli.ts` for deployment; the CLI does **not** hardcode the demo app.
 
-The root `pnpm proti:init` workflow writes `studio/.env.local` and `web/.env.local`. Do not commit real credentials. The uploaded documentation source archive did not contain a Studio example-env template; verify placeholder templates separately in the release repository. See [Configuration](../docs/CONFIGURATION.md).
+Sanity **Presentation** uses separate **non-secret, tracked** mode files:
+
+```dotenv
+# studio/.env.development
+SANITY_STUDIO_PREVIEW_URL=http://localhost:3000
+```
+
+```dotenv
+# studio/.env.production
+SANITY_STUDIO_PREVIEW_URL=https://your-site.vercel.app
+```
+
+Generate them through a new independent project's `pnpm proti:init --new-project` workflow. Once Web is deployed, run from the root:
+
+```bash
+pnpm proti:configure:production --url=https://your-site.vercel.app
+```
+
+Commit the public production URL file and `proti.config.json`, **redeploy Studio**, and verify Production Presentation opens the new hostname, not localhost. Keep `SANITY_STUDIO_PREVIEW_URL` out of `studio/.env.local` and avoid hardcoding it in the Studio CI job, since overrides can supersede the production mode file. Keep credentials in ignored env files/provider secret settings. See [Configuration](../docs/CONFIGURATION.md) and [Deployment](../docs/DEPLOYMENT.md).
 
 ## Development
 
@@ -43,11 +61,13 @@ Build Studio:
 pnpm build
 ```
 
-Deploy Studio:
+Deploy Studio to the **project-specific** Sanity application:
 
 ```bash
 pnpm deploy
 ```
+
+Verify `SANITY_STUDIO_PROJECT_ID`, dataset, and optional Studio App ID before deploying. Sanity project creation and app setup are provider-side actions, not performed by Proti initialization.
 
 Deploy the Sanity GraphQL API when intentionally required:
 
@@ -304,6 +324,10 @@ Key translation behaviors include:
 - Parent-first rules are enforced where the hierarchy requires a translated parent.
 
 The Web language selector only exposes translations that actually exist. A missing translation is not represented as a fallback link to the target locale homepage.
+
+## Draft Presentation and publishing
+
+Edits can be previewed in Presentation without publishing when Web Draft Mode and the server-only read token are configured. A private draft must **not** appear on the public published site. Publishing should trigger the separately configured signed Sanity webhook to the deployed Web `/api/revalidate` endpoint. Use the Web app's exported filter/projection, with drafts and versions disabled, and verify production updates without redeploying. See [Deployment](../docs/DEPLOYMENT.md).
 
 ## Revalidation
 
