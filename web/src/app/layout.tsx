@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { draftMode, headers } from "next/headers";
 
 import { HtmlLanguageSync } from "@/components/HtmlLanguageSync";
+import { visualFixturesEnabled } from "@/visual-fixtures/enabled";
 import {
   resolveLocaleCodeFromPathname,
   siteLocaleToLanguageTag,
@@ -76,15 +77,21 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
 
   const host = getRequestHost(requestHeaders);
   const pathname = requestHeaders.get("x-proti-pathname") ?? "/";
-  const localeContext = await resolveRootLocaleContext(host, pathname);
+  // In the opt-in visual test server, do not fetch the CMS Site for fixture
+  // routes. This keeps screenshots independent of the Sanity dataset.
+  const fixtureMode = visualFixturesEnabled();
+  const localeContext = fixtureMode
+    ? null
+    : await resolveRootLocaleContext(host, pathname);
 
   const htmlLang = localeContext?.htmlLang ?? "en";
 
   // Load preview-only dependencies on the server exclusively for draft requests.
   // Published requests should not reference Sanity's editing client bundles.
-  const PreviewTools = isDraftMode
-    ? (await import("@/components/Preview/PreviewTools")).PreviewTools
-    : null;
+  const PreviewTools =
+    !fixtureMode && isDraftMode
+      ? (await import("@/components/Preview/PreviewTools")).PreviewTools
+      : null;
 
   return (
     <html lang={htmlLang}>

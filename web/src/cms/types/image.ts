@@ -1,4 +1,14 @@
 export interface CmsImage {
+  /**
+   * Local, deterministic image available only to opt-in visual regression runs.
+   * Not authored by Sanity Studio and ignored when PROTI_VISUAL_FIXTURES is off.
+   */
+  visualFixture?: {
+    src: string;
+    width: number;
+    height: number;
+  };
+
   asset?: {
     _ref?: string;
 

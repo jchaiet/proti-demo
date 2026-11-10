@@ -8,6 +8,36 @@ import { sanityClient } from "@/sanity/client";
 
 const imageBuilder = createImageUrlBuilder(sanityClient);
 
+/**
+ * A narrowly scoped local asset escape hatch for visual-only fixtures.
+ * Normal Sanity images continue through the existing image URL builder.
+ * The opt-in flag must not be set on normal public deployments.
+ */
+function getLocalFixtureImage(image: CmsImage | null | undefined) {
+  if (process.env.PROTI_VISUAL_FIXTURES !== "1") return undefined;
+
+  const asset = image?.visualFixture;
+  if (!asset) return undefined;
+
+  // No remote URLs, query strings, traversal, or arbitrary public paths.
+  if (
+    !/^\/visual-fixtures\/assets\/[a-z0-9-]+\.(?:svg|png|webp)$/.test(asset.src)
+  ) {
+    return undefined;
+  }
+
+  if (
+    !Number.isSafeInteger(asset.width) ||
+    !Number.isSafeInteger(asset.height) ||
+    asset.width < 1 ||
+    asset.height < 1
+  ) {
+    return undefined;
+  }
+
+  return asset;
+}
+
 export interface ResolveSanityImageOptions {
   width?: number;
 
@@ -72,6 +102,19 @@ export function resolveSanityImageDimensions(
   image: CmsImage | null | undefined,
   options: { aspectRatio?: number } = {},
 ): { width: number; height: number } | undefined {
+  const local = getLocalFixtureImage(image);
+  if (local) {
+    if (options.aspectRatio !== undefined) {
+      const ratio = options.aspectRatio;
+      if (!Number.isFinite(ratio) || ratio <= 0) return undefined;
+      return {
+        width: local.width,
+        height: Math.max(1, Math.round(local.width / ratio)),
+      };
+    }
+    return { width: local.width, height: local.height };
+  }
+
   const ref = image?.asset?._ref;
   if (!ref) return undefined;
 
@@ -122,6 +165,9 @@ export function resolveSanityImage(
 
   options: ResolveSanityImageOptions = {},
 ): string | undefined {
+  const local = getLocalFixtureImage(image);
+  if (local) return local.src;
+
   if (!image?.asset?._ref) {
     return undefined;
   }
@@ -167,6 +213,9 @@ export function resolveSanityImageSrcSet(
   widths: readonly number[] = SANITY_RESPONSIVE_WIDTHS.hero,
   options: { aspectRatio?: number } = {},
 ): string | undefined {
+  // Local fixture images are fixed public assets; there are no responsive
+  // Sanity CDN variants to advertise in srcSet.
+  if (getLocalFixtureImage(image)) return undefined;
   if (!image?.asset?._ref) return undefined;
 
   // Sanity asset references encode the original pixel dimensions.
