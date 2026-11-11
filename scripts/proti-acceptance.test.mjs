@@ -10,6 +10,7 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 import { runNode, scriptedInput } from "./test-helpers.mjs";
+import { VISUAL_FIXTURE_BASELINES } from "./proti-visual-fixtures.mjs";
 
 const SOURCE_ROOT = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -20,6 +21,7 @@ const SCRIPTS = [
   "proti-seed.mjs",
   "proti-check.mjs",
   "proti-visual-init.mjs",
+  "proti-visual-fixtures.mjs",
   "proti-configure-production.mjs",
 ];
 const SITE_ID = "site-phase2";
@@ -242,13 +244,16 @@ async function runVisualWithMockPnpm(repo, port) {
     `#!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
+import { VISUAL_FIXTURE_BASELINES } from "../scripts/proti-visual-fixtures.mjs";
 const root = process.cwd();
 fs.appendFileSync(path.join(root, "pnpm-invocations.txt"), JSON.stringify({args: process.argv.slice(2), skip: process.env.PLAYWRIGHT_SKIP_WEBSERVER, url: process.env.PLAYWRIGHT_BASE_URL}) + "\\n");
 if (process.argv.includes("--update-snapshots")) {
-  for (const browser of ["chromium-desktop", "chromium-mobile"]) {
-    const filename = path.join(root, "web/e2e/__screenshots__", browser, "home.png");
-    fs.mkdirSync(path.dirname(filename), { recursive: true });
-    fs.writeFileSync(filename, "project-specific screenshot");
+  for (const [browser, images] of Object.entries(VISUAL_FIXTURE_BASELINES)) {
+    for (const name of images) {
+      const filename = path.join(root, "web/e2e/__screenshots__", browser, name);
+      fs.mkdirSync(path.dirname(filename), { recursive: true });
+      fs.writeFileSync(filename, "fixture baseline");
+    }
   }
 }
 `,
@@ -422,10 +427,10 @@ test(
       for (const platform of ["chromium-desktop", "chromium-mobile"]) {
         assert.equal(
           await fs.readFile(
-            path.join(repo, "web/e2e/__screenshots__", platform, "home.png"),
+            path.join(repo, "web/e2e/__screenshots__", platform, "hero.png"),
             "utf8",
           ),
-          "project-specific screenshot",
+          "fixture baseline",
         );
       }
       const invocations = (
@@ -437,6 +442,13 @@ test(
       assert.equal(invocations.length, 2);
       assert.deepEqual(invocations[0].args, ["--filter", "./web", "build"]);
       assert.ok(invocations[1].args.includes("--update-snapshots"));
+      assert.deepEqual(invocations[1].args.slice(0, 5), [
+        "--filter",
+        "./web",
+        "exec",
+        "playwright",
+        "test",
+      ]);
       assert.equal(invocations[1].skip, "0");
 
       const configure = await runProject(
@@ -495,10 +507,10 @@ test(
       );
       assert.equal(
         await fs.readFile(
-          path.join(repo, "web/e2e/__screenshots__/chromium-mobile/home.png"),
+          path.join(repo, "web/e2e/__screenshots__/chromium-mobile/hero.png"),
           "utf8",
         ),
-        "project-specific screenshot",
+        "fixture baseline",
       );
       assert.match(
         await fs.readFile(webEnvPath, "utf8"),

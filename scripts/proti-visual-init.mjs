@@ -4,6 +4,10 @@ import net from "node:net";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
+import {
+  VISUAL_FIXTURE_SPECS,
+  visualBaselinePaths,
+} from "./proti-visual-fixtures.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const SNAPSHOT_DIR = path.join(ROOT, "web", "e2e", "__screenshots__");
@@ -103,47 +107,50 @@ if ((await hasScreenshots(SNAPSHOT_DIR)) && !force) {
 }
 
 await ensurePortAvailable();
-console.log("Building Next.js production website...");
-run(["--filter", "./web", "build"]);
+console.log("Building Next.js with deterministic fixture routes enabled...");
+run(["--filter", "./web", "build"], { PROTI_VISUAL_FIXTURES: "1" });
 
 // Recheck because other local dev servers could start during the build.
 await ensurePortAvailable();
-console.log("Generating Playwright desktop and mobile baselines...");
+console.log(
+  "Generating deterministic Chromium desktop and mobile baselines...",
+);
 run(
   [
     "--filter",
     "./web",
-    "run",
-    "test:e2e:visual",
+    "exec",
+    "playwright",
+    "test",
+    ...VISUAL_FIXTURE_SPECS,
     "--project=chromium-desktop",
     "--project=chromium-mobile",
     "--update-snapshots",
   ],
   {
-    PLAYWRIGHT_BASE_URL: `http://localhost:${PORT}`,
-    PLAYWRIGHT_WEB_SERVER_COMMAND: `pnpm exec next start -p ${PORT}`,
+    // Match the CI visual job. Fixture routes do not depend on the hostname.
+    PLAYWRIGHT_BASE_URL: `http://127.0.0.1:${PORT}`,
+    PLAYWRIGHT_WEB_SERVER_COMMAND: `pnpm exec next start -p ${PORT} -H 127.0.0.1`,
     PLAYWRIGHT_SKIP_WEBSERVER: "0",
+    PROTI_VISUAL_FIXTURES: "1",
   },
 );
 
-// Visual tests currently capture the home route for both Chromium projects.
-// A successful process alone does not guarantee both baselines were written.
-const requiredBaselines = ["chromium-desktop", "chromium-mobile"].map(
-  (project) => path.join(SNAPSHOT_DIR, project, "home.png"),
-);
+// Playwright can exit successfully even when screenshots were skipped.
+// Require every approved fixture screenshot, including interactive states.
 const missingBaselines = [];
-for (const file of requiredBaselines) {
-  if (!(await exists(file))) {
-    missingBaselines.push(path.relative(ROOT, file));
+for (const relative of visualBaselinePaths()) {
+  if (!(await exists(path.join(ROOT, relative)))) {
+    missingBaselines.push(relative);
   }
 }
 if (missingBaselines.length > 0) {
   throw new Error(
-    `Playwright completed, but required visual baselines are missing: ${missingBaselines.join(", ")}. Check web/e2e/visual.spec.ts.`,
+    `Playwright completed, but ${missingBaselines.length} required fixture baseline(s) are missing:\n${missingBaselines.join("\n")}.`,
   );
 }
 
-console.log("\n✓ Site-specific visual baselines generated.");
+console.log("\n✓ Deterministic fixture visual baselines generated.");
 console.log("Review web/e2e/__screenshots__, then commit the new screenshots.");
 console.log(
   "CI should compare against these snapshots; it should never update them automatically.\n",

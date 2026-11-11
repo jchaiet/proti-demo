@@ -2,6 +2,32 @@
 
 All notable Proti baseline changes are recorded here.
 
+## v0.5.0 — Deterministic Visual Regression
+
+### Added
+
+- CMS-independent, version-controlled visual fixtures through the real Proti block and navigation mappers and Mino UI components.
+- Chromium desktop/mobile screenshots for Hero, Content, Rich Text, Grid, Article/Resource Cards, Accordion, Tabs, Carousel, Header, Footer, dropdowns and megamenu states.
+- Local SVG fixtures and test-only visual routes protected by `PROTI_VISUAL_FIXTURES`.
+- Full fixture screenshot manifest and checks for all 37 expected baselines.
+
+### Improved
+
+- CI visual job compares deterministic fixtures instead of mutable published Sanity content; real-CMS smoke checks remain mandatory.
+- Normal production CI validates that fixture routes return 404.
+- `proti:visual:init` builds fixture mode and generates fixture baselines; `proti:check` verifies the correct new baselines instead of legacy `home.png`.
+- Web visual scripts and testing/setup documentation aligned to the v0.5.0 workflow; optional legacy CMS snapshot scripts retained.
+
+### Fixed / Regression
+
+- Corrected the CI smoke hostname to `localhost` for Sanity Site domain matching.
+- Corrected fixture selectors and test assumptions discovered during desktop/mobile Playwright integration.
+
+### Validation
+
+- Stages 1–7 reported passing, including GitHub Actions PR checks.
+- Stage 8 setup-script unit/acceptance tests run locally in isolation; full final regression and release sign-off remain pending.
+
 ## v0.4.0 — Independent Project Initialization and Deployment
 
 ### Added

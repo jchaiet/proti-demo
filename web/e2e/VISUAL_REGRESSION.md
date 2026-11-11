@@ -1,3 +1,8 @@
+> **v0.5.0 note:** This page documents the **legacy Sanity-backed page-snapshot**
+> workflow for historical reference and optional manual diagnostics. Required
+> CI visual regression now uses deterministic fixture routes. See
+> [Deterministic Visual CI](../../docs/VISUAL_CI.md) for current instructions.
+
 # Proti — Playwright Visual Regression Testing
 
 A reference for updating Proti's approved Playwright screenshots after **intentional visual changes** to Mino UI or content in Sanity Studio.

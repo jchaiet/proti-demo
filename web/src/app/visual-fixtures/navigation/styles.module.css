@@ -1,0 +1,73 @@
+.content {
+  width: min(100%, 1120px);
+  margin: 0 auto;
+  padding: clamp(44px, 7vw, 96px) 24px clamp(52px, 7vw, 88px);
+}
+
+.eyebrow {
+  margin: 0 0 16px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.content h1 {
+  max-width: 780px;
+  margin: 0 0 18px;
+  font-size: clamp(30px, 4vw, 52px);
+  line-height: 1.12;
+}
+
+.intro {
+  max-width: 680px;
+  margin: 0 0 42px;
+  font-size: clamp(16px, 1.8vw, 19px);
+  line-height: 1.6;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.card {
+  padding: 24px;
+  border: 1px solid var(--mino-color-border, #dedede);
+  border-radius: 12px;
+  background: var(--mino-color-surface, #f6f6f6);
+}
+
+.card h2 {
+  margin: 0 0 12px;
+  font-size: 21px;
+}
+
+.card p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.targets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 36px;
+  font-size: 12px;
+  opacity: 0.65;
+}
+
+@media (max-width: 767px) {
+  .cards {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .card {
+    padding: 20px;
+  }
+
+  .intro {
+    margin-bottom: 28px;
+  }
+}

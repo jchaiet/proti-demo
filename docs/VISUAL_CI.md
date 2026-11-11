@@ -1,72 +1,117 @@
-# Visual regression CI (v0.4.0)
+# Deterministic visual regression (v0.5.0)
 
-Playwright's Chromium desktop/mobile screenshot comparisons are required quality gates for Proti pull requests. Visual tests run **after** functional smoke tests and do not regenerate screenshots in CI.
+Proti uses **repository-controlled CMS-shaped fixtures** with the real production
+`BlockRenderer`, mappers, and Mino UI components. Unlike the former page-level
+screenshots, fixture screenshots are **not coupled to published Sanity content**.
 
-## Browser projects
+## What CI tests
 
-- `chromium-desktop` — 1440 × 900; committed visual baseline.
-- `chromium-mobile` — Pixel 7 emulation; committed visual baseline.
-- `firefox-desktop` / `firefox-mobile` — smoke/functional coverage only (the mobile project is narrow Firefox desktop, not Android emulation).
-- Optional WebKit can be enabled independently when installed; it has no required visual baseline.
+The required jobs in `.github/workflows/ci.yml` remain **Studio**, **Web**,
+**Playwright smoke**, and **Playwright visual**.
 
-## Validated CI flow
+- **Smoke:** builds with `PROTI_VISUAL_FIXTURES=0` and uses actual published
+  Site content. Because Sites resolve by host, smoke uses `localhost`, which
+  must be in the Site's configured domains. The smoke job also verifies that
+  every `/visual-fixtures/*` route returns HTTP 404.
+- **Visual:** performs a **separate production build** with
+  `PROTI_VISUAL_FIXTURES=1` and compares the approved fixture screenshots on
+  `chromium-desktop` and `chromium-mobile`. It runs the six specs below only;
+  it does not run the legacy Sanity-backed `e2e/visual.spec.ts`.
+- Neither CI job uses `--update-snapshots`. Review diffs and commit approved
+  snapshots in the PR before merging.
 
-```text
-Web unit/type/lint/build checks
-        ↓
-Playwright smoke: build → Next production start → /api/health readiness → CMS page assertions
-        ↓
-Playwright visual: build → Next production start → screenshot comparison
-```
+## Fixture suites
 
-Both browser jobs set:
+| Fixture routes                                           | Spec                               |
+| -------------------------------------------------------- | ---------------------------------- |
+| `/visual-fixtures/hero`                                  | `e2e/visual-fixtures.spec.ts`      |
+| `/visual-fixtures/content`, `/visual-fixtures/rich-text` | `e2e/visual-content.spec.ts`       |
+| `/visual-fixtures/grid`, `/visual-fixtures/cards`        | `e2e/visual-grid-cards.spec.ts`    |
+| `/visual-fixtures/accordion`                             | `e2e/visual-accordion.spec.ts`     |
+| `/visual-fixtures/tabs`, `/visual-fixtures/carousel`     | `e2e/visual-tabs-carousel.spec.ts` |
+| `/visual-fixtures/navigation`                            | `e2e/visual-navigation.spec.ts`    |
 
-```yaml
-PLAYWRIGHT_BASE_URL: http://localhost:3000
-PLAYWRIGHT_WEB_SERVER_COMMAND: pnpm exec next start -p 3000
-PLAYWRIGHT_SKIP_WEBSERVER: "0"
-E2E_HOME_PATH: /
-```
+Fixtures use checked-in SVGs from `web/public/visual-fixtures/assets/` and
+stable source objects in `web/src/visual-fixtures/`. The route flag is intended
+**only for test builds**; never set `PROTI_VISUAL_FIXTURES=1` in normal Vercel
+production or public staging deployments.
 
-`/api/health` returns a minimal `{ "status": "ok" }` and checks **only** server readiness. The tests navigate the actual published Sanity-backed homepage, which will return 404 unless **Site → Routing** contains the published `localhost` hostname and a published homepage exists. This separation fixed prior Playwright startup/404 confusion.
+## Running fixture snapshots locally
 
-## First-time baselines in a new project
-
-Running `pnpm proti:init --new-project` in a **clean clone** removes inherited demo PNGs; a rerun in an established project never deletes them. After seeding/publishing the new homepage:
+From the repository root, first make sure port 3000 is free. Fixture mode must
+be enabled at **build time**, not only when starting Playwright:
 
 ```bash
-pnpm --dir web exec playwright install chromium
+PROTI_VISUAL_FIXTURES=1 pnpm --dir web build
+PROTI_VISUAL_FIXTURES=1 PLAYWRIGHT_SKIP_WEBSERVER=0 \
+PLAYWRIGHT_BASE_URL=http://127.0.0.1:3000 \
+PLAYWRIGHT_WEB_SERVER_COMMAND='pnpm exec next start -p 3000 -H 127.0.0.1' \
+pnpm --dir web test:e2e:visual \
+  --project=chromium-desktop --project=chromium-mobile
+```
+
+For a **freshly initialized Proti project**, generate the entire baseline set
+once after setup:
+
+```bash
 pnpm proti:visual:init
 ```
 
-The root command checks for an available port, builds Web, runs desktop/mobile `--update-snapshots` against a production server, verifies the two `home.png` files, and instructs you to review/commit the resulting baseline. Set `PROTI_VISUAL_PORT` to an alternate free port if needed. Existing snapshots require an intentional `pnpm proti:visual:init --force` to replace them.
+The command builds with fixtures enabled and updates all fixture screenshots.
+It refuses to overwrite existing PNGs unless you explicitly pass `--force`.
+Do **not** use `--force` to silence unexplained CI differences. Approved images
+live under `web/e2e/__screenshots__/chromium-{desktop,mobile}/`. Review and
+commit changes. `pnpm proti:check` warns if any required fixture PNG is missing.
 
-Do not run visual initialization in routine CI. CI must fail on missing/changed snapshots rather than approve them automatically.
+## Intentionally updating a baseline
 
-## Inspecting and approving visual differences
+1. Investigate the Playwright **expected / actual / diff** artifacts first.
+2. Make the intended component change and confirm that it warrants a new image.
+3. Use the **same OS, fonts, browser and Playwright version** as CI whenever
+   possible. A local Ubuntu snapshot may still differ from GitHub-hosted Ubuntu.
+4. Rebuild with `PROTI_VISUAL_FIXTURES=1` and run `pnpm --dir web test:e2e:update`
+   with the two Chromium `--project` options.
+5. Review `git diff -- web/e2e/__screenshots__/` and the PNGs themselves.
+6. Rerun `pnpm --dir web test:e2e:visual` **without** updating. Commit approved
+   images in the same PR as the change.
 
-From `web/`:
+For a brand-new component, add a CMS-shaped fixture, gated route, Vitest mapper
+coverage, and Playwright assertions. Then register the screenshot filenames in
+`scripts/proti-visual-fixtures.mjs` and update the Web scripts/CI fixture list.
+
+## Running the production route gate
+
+A separate build is required when switching modes:
 
 ```bash
-pnpm test:e2e:visual --project=chromium-desktop --project=chromium-mobile
-pnpm test:e2e:report
+PROTI_VISUAL_FIXTURES=0 pnpm --dir web build
+PROTI_VISUAL_FIXTURES=0 PLAYWRIGHT_SKIP_WEBSERVER=0 \
+PLAYWRIGHT_BASE_URL=http://localhost:3000 \
+PLAYWRIGHT_WEB_SERVER_COMMAND='pnpm exec next start -p 3000' \
+pnpm --dir web exec playwright test \
+  e2e/visual-fixtures.spec.ts e2e/visual-content.spec.ts \
+  e2e/visual-grid-cards.spec.ts e2e/visual-accordion.spec.ts \
+  e2e/visual-tabs-carousel.spec.ts e2e/visual-navigation.spec.ts \
+  --grep 'disabled without|returns? 404' --project=chromium-desktop
 ```
 
-If the test fails, use expected/actual/diff screenshots and traces in `web/test-results/` / `web/playwright-report/`. Decide whether the change is intentional **before** updating:
+Do not test a normal-build gate against a stale fixture-enabled `.next` build.
 
-```bash
-pnpm test:e2e:update
-pnpm test:e2e:visual
-```
+## Legacy page-level CMS screenshots
 
-Review the changed PNGs and commit them with the intentional code/content change. The configured maximum diff pixel ratio is `0.002`; do not increase it as a shortcut for unreviewed changes.
+`pnpm --dir web test:e2e:visual:cms` remains available as an **optional** manual
+integration diagnostic. These screenshots depend on published CMS pages and are
+**not required** by the v0.5.0 CI Visual job. Use
+`test:e2e:update:cms` only when intentionally reviewing that legacy baseline.
+See `web/e2e/VISUAL_REGRESSION.md` for historical context.
 
-## Current limitation and future direction
+## Troubleshooting
 
-The v0.4.0 baseline still represents real **published Sanity content**. Changing a header, hero title, footer, or other editorial content can trigger a real screenshot diff even when CSS is unchanged. A deterministic fixture-driven visual suite independent of Sanity content, with representative Page/Blog/interactive states, is a proposed **v0.5.0** improvement. No additional regression dataset is required for v0.4.0.
-
-## Branch protection and artifacts
-
-A protected `main` should require `Studio`, `Web`, `Playwright smoke`, and `Playwright visual` checks. Failed Playwright jobs upload the report and test-results artifacts with limited retention. Do not set `continue-on-error: true` on the visual job.
-
-See [Testing](TESTING.md), [CI Branch Protection](CI_BRANCH_PROTECTION.md), and [Project Initialization](PROJECT_INITIALIZATION.md).
+- **Smoke `/` is 404:** ensure the request hostname is `localhost` and the
+  published Site includes it in `domains`; this is not a visual-fixture issue.
+- **Fixture route is 404:** rebuild with `PROTI_VISUAL_FIXTURES=1`.
+- **SVGs are missing:** check `web/public/visual-fixtures/assets/`.
+- **Screenshots differ only in CI:** compare OS/fonts/Playwright/browser version
+  and examine uploaded `web/test-results/` / `web/playwright-report/` artifacts.
+- **Initializer refuses to overwrite:** commit or inspect existing PNGs; use
+  `--force` only for deliberately approved regeneration.

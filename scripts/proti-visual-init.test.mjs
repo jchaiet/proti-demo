@@ -6,7 +6,13 @@ import net from "node:net";
 import path from "node:path";
 import test from "node:test";
 
+import {
+  VISUAL_FIXTURE_BASELINES,
+  VISUAL_FIXTURE_SPECS,
+} from "./proti-visual-fixtures.mjs";
+
 const VISUAL_SCRIPT = new URL("./proti-visual-init.mjs", import.meta.url);
+const MANIFEST_SCRIPT = new URL("./proti-visual-fixtures.mjs", import.meta.url);
 
 async function fixture({ configured = true, withSnapshot = false } = {}) {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "proti-visual-test-"));
@@ -32,6 +38,10 @@ async function fixture({ configured = true, withSnapshot = false } = {}) {
   await fs.mkdir(mobileScreenshots, { recursive: true });
   await fs.mkdir(bin, { recursive: true });
   await fs.copyFile(VISUAL_SCRIPT, path.join(scripts, "proti-visual-init.mjs"));
+  await fs.copyFile(
+    MANIFEST_SCRIPT,
+    path.join(scripts, "proti-visual-fixtures.mjs"),
+  );
 
   if (configured) {
     await fs.writeFile(path.join(root, "proti.config.json"), "{}\n");
@@ -41,7 +51,7 @@ async function fixture({ configured = true, withSnapshot = false } = {}) {
     );
   }
   if (withSnapshot) {
-    await fs.writeFile(path.join(screenshots, "home.png"), "old baseline");
+    await fs.writeFile(path.join(screenshots, "hero.png"), "old baseline");
   }
 
   // Mock the pnpm process: no network, build, browser, or real web server.
@@ -52,16 +62,17 @@ async function fixture({ configured = true, withSnapshot = false } = {}) {
     `#!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
+import { VISUAL_FIXTURE_BASELINES } from "../scripts/proti-visual-fixtures.mjs";
 const root = process.env.PROTI_VISUAL_TEST_ROOT;
-fs.appendFileSync(path.join(root, "pnpm-calls.txt"), JSON.stringify({ args: process.argv.slice(2), url: process.env.PLAYWRIGHT_BASE_URL, server: process.env.PLAYWRIGHT_WEB_SERVER_COMMAND, skip: process.env.PLAYWRIGHT_SKIP_WEBSERVER }) + "\\n");
+fs.appendFileSync(path.join(root, "pnpm-calls.txt"), JSON.stringify({ args: process.argv.slice(2), url: process.env.PLAYWRIGHT_BASE_URL, server: process.env.PLAYWRIGHT_WEB_SERVER_COMMAND, skip: process.env.PLAYWRIGHT_SKIP_WEBSERVER, fixtures: process.env.PROTI_VISUAL_FIXTURES }) + "\\n");
 if (process.argv.includes("--update-snapshots")) {
-  const dest = path.join(root, "web", "e2e", "__screenshots__", "chromium-desktop", "home.png");
-  fs.mkdirSync(path.dirname(dest), {recursive: true});
-  fs.writeFileSync(dest, "site baseline");
-  if (!process.env.PROTI_VISUAL_TEST_MISSING_MOBILE) {
-    const mobile = path.join(root, "web", "e2e", "__screenshots__", "chromium-mobile", "home.png");
-    fs.mkdirSync(path.dirname(mobile), {recursive: true});
-    fs.writeFileSync(mobile, "mobile baseline");
+  for (const [project, filenames] of Object.entries(VISUAL_FIXTURE_BASELINES)) {
+    for (const name of filenames) {
+      if (process.env.PROTI_VISUAL_TEST_MISSING_MOBILE && project === "chromium-mobile" && name === "navigation-mobile-submenu-open.png") continue;
+      const file = path.join(root, "web/e2e/__screenshots__", project, name);
+      fs.mkdirSync(path.dirname(file), { recursive: true });
+      fs.writeFileSync(file, "fixture baseline");
+    }
   }
 }
 `,
@@ -147,7 +158,7 @@ test(
       assert.notEqual(result.code, 0);
       assert.match(result.stderr, /--force/);
       assert.equal(
-        await fs.readFile(path.join(screenshots, "home.png"), "utf8"),
+        await fs.readFile(path.join(screenshots, "hero.png"), "utf8"),
         "old baseline",
       );
       await assert.rejects(fs.access(path.join(root, "pnpm-calls.txt")), {
@@ -168,9 +179,22 @@ test(
       const result = await run(root, bin);
       assert.equal(result.code, 0, result.stderr);
       assert.equal(
-        await fs.readFile(path.join(screenshots, "home.png"), "utf8"),
-        "site baseline",
+        await fs.readFile(path.join(screenshots, "hero.png"), "utf8"),
+        "fixture baseline",
       );
+      for (const [project, filenames] of Object.entries(
+        VISUAL_FIXTURE_BASELINES,
+      )) {
+        for (const filename of filenames) {
+          const location = path.join(
+            root,
+            "web/e2e/__screenshots__",
+            project,
+            filename,
+          );
+          assert.equal(await fs.readFile(location, "utf8"), "fixture baseline");
+        }
+      }
       const calls = (
         await fs.readFile(path.join(root, "pnpm-calls.txt"), "utf8")
       )
@@ -178,11 +202,25 @@ test(
         .split("\n")
         .map((line) => JSON.parse(line));
       assert.deepEqual(calls[0].args, ["--filter", "./web", "build"]);
+      assert.equal(calls[0].fixtures, "1");
+      assert.deepEqual(calls[1].args.slice(0, 5), [
+        "--filter",
+        "./web",
+        "exec",
+        "playwright",
+        "test",
+      ]);
+      for (const spec of VISUAL_FIXTURE_SPECS)
+        assert.ok(calls[1].args.includes(spec));
+      assert.equal(calls[1].fixtures, "1");
       assert.ok(calls[1].args.includes("--update-snapshots"));
       assert.ok(calls[1].args.includes("--project=chromium-desktop"));
       assert.ok(calls[1].args.includes("--project=chromium-mobile"));
-      assert.equal(calls[1].url, `http://localhost:${result.port}`);
-      assert.equal(calls[1].server, `pnpm exec next start -p ${result.port}`);
+      assert.equal(calls[1].url, `http://127.0.0.1:${result.port}`);
+      assert.equal(
+        calls[1].server,
+        `pnpm exec next start -p ${result.port} -H 127.0.0.1`,
+      );
       assert.equal(calls[1].skip, "0");
     } finally {
       await clean(root);
@@ -199,8 +237,8 @@ test(
       const result = await run(root, bin, ["--force"]);
       assert.equal(result.code, 0, result.stderr);
       assert.equal(
-        await fs.readFile(path.join(screenshots, "home.png"), "utf8"),
-        "site baseline",
+        await fs.readFile(path.join(screenshots, "hero.png"), "utf8"),
+        "fixture baseline",
       );
     } finally {
       await clean(root);
@@ -218,7 +256,10 @@ test(
         PROTI_VISUAL_TEST_MISSING_MOBILE: "1",
       });
       assert.notEqual(result.code, 0);
-      assert.match(result.stderr, /chromium-mobile.*home\.png/);
+      assert.match(
+        result.stderr,
+        /chromium-mobile.*navigation-mobile-submenu-open\.png/,
+      );
     } finally {
       await clean(root);
     }
