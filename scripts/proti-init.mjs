@@ -331,9 +331,9 @@ async function inspectProjectGit() {
     };
   }
 
-  // This local-only Git setting identifies the maintained starter repository.
-  // It is not transferred by git clone. Refuse all initialization there,
-  // including --new-project, before editing any configuration or Git metadata.
+  // The maintained Proti source repository is identified by a local-only
+  // Git setting. Clones do not inherit this marker. Never initialize, reset,
+  // or rewrite configuration in the maintained source repository.
   if (
     tryGit(["config", "--local", "--get", "proti.sourceRepository"]) === "true"
   ) {
@@ -454,8 +454,8 @@ async function setupProjectGit(gitPlan) {
   }
 }
 
-// Visual snapshots belong to the site that created them. Never carry the
-// proti-demo screenshots into a brand-new generated project's CI baseline.
+// Inherited demo snapshots do not belong in an independent project. Clear the
+// old screenshots so fixture baselines can be generated and approved anew.
 // This runs only when Git was freshly initialized/reset, not on repeat init.
 // Remove PNG baselines without deleting directory structure or unrelated files.
 async function clearInheritedVisualBaselines() {
@@ -485,7 +485,7 @@ async function clearInheritedVisualBaselines() {
     console.log("✓ No inherited demo visual baselines to remove");
   }
   console.log(
-    "  Generate your site's baselines after seeding: pnpm proti:visual:init",
+    "  Generate deterministic component fixture baselines: pnpm proti:visual:init",
   );
 }
 

@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
+import { visualBaselinePaths } from "./proti-visual-fixtures.mjs";
 
 const ROOT = process.cwd();
 const API_VERSION = "2026-08-21";
@@ -479,16 +480,15 @@ async function checkGitRepository() {
     return;
   }
 
-  // The maintained Proti source repository legitimately points to proti-demo.
-  // The explicit marker lives only in .git/config, so a normal Git clone does
-  // not inherit this exception. Never infer source status from the URL alone.
+  // The maintained Proti source repo is allowed to retain its origin.
+  // This local-only marker is not transferred when creating a Git clone.
   let sourceRepository = false;
   try {
     sourceRepository =
       runGit(["config", "--local", "--get", "proti.sourceRepository"]) ===
       "true";
   } catch {
-    // An absent marker is the normal state for generated projects.
+    // An absent marker is normal for independently initialized projects.
   }
 
   if (sourceRepository) {
@@ -555,29 +555,30 @@ async function checkStudioModeFilesTracked() {
 }
 
 async function checkVisualBaselines() {
-  const projects = ["chromium-desktop", "chromium-mobile"];
+  const expected = visualBaselinePaths();
   const missing = [];
-
-  for (const project of projects) {
-    const relative = path.join(
-      "web",
-      "e2e",
-      "__screenshots__",
-      project,
-      "home.png",
-    );
+  for (const relative of expected) {
     if (!(await fileExists(path.join(ROOT, relative)))) {
       missing.push(relative);
     }
   }
 
   if (missing.length > 0) {
+    const examples = missing.slice(0, 4).join(", ");
+    const affectedProjects = [
+      ...new Set(missing.map((file) => file.split("/")[3])),
+    ].join(", ");
     warn(
       "Visual baselines",
-      `Missing ${missing.join(", ")}. After seeding, run "pnpm proti:visual:init" and commit the screenshots.`,
+      `Missing ${missing.length} of ${expected.length} deterministic fixture screenshots` +
+        ` across ${affectedProjects} (e.g. ${examples}). Run "pnpm proti:visual:init" for a clean project` +
+        ` or "pnpm proti:visual:init --force" to intentionally regenerate existing baselines. Review and commit the PNGs.`,
     );
   } else {
-    pass("Visual baselines", "Desktop and mobile home screenshots exist.");
+    pass(
+      "Visual baselines",
+      `All ${expected.length} deterministic Chromium desktop/mobile fixture screenshots exist.`,
+    );
   }
 }
 

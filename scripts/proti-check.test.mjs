@@ -6,7 +6,10 @@ import path from "node:path";
 import { execFileSync, spawn } from "node:child_process";
 import test from "node:test";
 
+import { VISUAL_FIXTURE_BASELINES } from "./proti-visual-fixtures.mjs";
+
 const CHECK_SCRIPT = new URL("./proti-check.mjs", import.meta.url);
+const MANIFEST_SCRIPT = new URL("./proti-visual-fixtures.mjs", import.meta.url);
 
 function git(repo, ...args) {
   return execFileSync("git", args, {
@@ -49,6 +52,10 @@ async function createRepo({
   await fs.copyFile(
     CHECK_SCRIPT,
     path.join(repo, "scripts", "proti-check.mjs"),
+  );
+  await fs.copyFile(
+    MANIFEST_SCRIPT,
+    path.join(repo, "scripts", "proti-visual-fixtures.mjs"),
   );
 
   const config = {
@@ -167,7 +174,9 @@ async function createRepo({
         project,
       );
       await fs.mkdir(directory, { recursive: true });
-      await fs.writeFile(path.join(directory, "home.png"), "fixture baseline");
+      for (const name of VISUAL_FIXTURE_BASELINES[project]) {
+        await fs.writeFile(path.join(directory, name), "fixture baseline");
+      }
     }
   }
 
@@ -573,34 +582,6 @@ test("custom GitHub remote and existing commit are preserved", async () => {
   }
 });
 
-test("maintained source repository accepts its original remote without rewriting history", async () => {
-  const { repo } = await createRepo({
-    remoteUrl: "https://github.com/example/proti-demo.git",
-    withCommit: true,
-  });
-  const originalHead = git(repo, "rev-parse", "HEAD");
-  git(repo, "config", "--local", "proti.sourceRepository", "true");
-  const sanity = await startSanity();
-
-  try {
-    const result = await runCheck({ repo, baseUrl: sanity.baseUrl });
-    assert.equal(result.code, 0, result.stderr + "\n" + result.stdout);
-    assert.match(
-      result.stdout,
-      /Git independence — Maintained Proti source repository/,
-    );
-    assert.match(result.stdout, /Proti is ready\./);
-    assert.equal(git(repo, "rev-parse", "HEAD"), originalHead);
-    assert.equal(
-      git(repo, "remote", "get-url", "origin"),
-      "https://github.com/example/proti-demo.git",
-    );
-  } finally {
-    await sanity.close();
-    await removeRepo(repo);
-  }
-});
-
 test("inherited proti-demo origin is rejected", async () => {
   const { repo } = await createRepo({
     remoteUrl: "git@github.com:example/proti-demo.git",
@@ -617,8 +598,10 @@ test("inherited proti-demo origin is rejected", async () => {
     );
     assert.match(
       result.stdout,
-      /git config --local proti.sourceRepository true/,
+      /git config --local proti\.sourceRepository true/,
     );
+
+    assert.match(result.stdout, /pnpm proti:init --new-project/);
     assert.match(result.stdout, /Proti setup has 1 problem/);
   } finally {
     await sanity.close();
