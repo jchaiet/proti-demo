@@ -20,6 +20,7 @@ const SCRIPTS = [
   "proti-init.mjs",
   "proti-seed.mjs",
   "proti-check.mjs",
+  "proti-integration-readiness.mjs",
   "proti-visual-init.mjs",
   "proti-visual-fixtures.mjs",
   "proti-configure-production.mjs",
