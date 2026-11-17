@@ -51,6 +51,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.restoreAllMocks();
   vi.clearAllMocks();
   vi.unstubAllEnvs();
 });
@@ -278,5 +279,188 @@ describe("POST /api/forms/submit", () => {
     );
     expect(response.status).toBe(413);
     expect(find).not.toHaveBeenCalled();
+  });
+
+  it("logs a privacy-safe request rejection without changing the response", async () => {
+    const info = vi.spyOn(console, "info").mockImplementation(() => {});
+    const response = await POST(request(payload, "https://attacker.test"));
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({
+      error: "Submission origin is not allowed.",
+    });
+    expect(info).toHaveBeenCalledTimes(1);
+    expect(info).toHaveBeenCalledWith(
+      JSON.stringify({
+        source: "proti.forms",
+        event: "origin_rejected",
+        stage: "request",
+        status: 403,
+      }),
+    );
+    expect(find).not.toHaveBeenCalled();
+    expect(forward).not.toHaveBeenCalled();
+  });
+
+  it("logs unavailable destinations as configuration failures without secrets", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.stubEnv("FORM_WEBHOOK_SECRET", "do-not-log-this-secret");
+    vi.stubEnv("FORM_WEBHOOK_URL", "");
+
+    const response = await POST(request());
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({
+      error: "Form submissions are not configured.",
+    });
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn).toHaveBeenCalledWith(
+      JSON.stringify({
+        source: "proti.forms",
+        event: "destination_unconfigured",
+        stage: "configuration",
+        status: 503,
+      }),
+    );
+    expect(JSON.stringify(warn.mock.calls)).not.toContain(
+      "do-not-log-this-secret",
+    );
+    expect(forward).not.toHaveBeenCalled();
+  });
+
+  it("distinguishes webhook delivery failures from configuration failures", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    forward.mockResolvedValue("unavailable");
+
+    const response = await POST(request());
+    expect(response.status).toBe(502);
+    expect(await response.json()).toEqual({
+      error: "Unable to submit your form. Please try again.",
+    });
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn).toHaveBeenCalledWith(
+      JSON.stringify({
+        source: "proti.forms",
+        event: "webhook_unavailable",
+        stage: "delivery",
+        status: 502,
+      }),
+    );
+    expect(JSON.stringify(warn.mock.calls)).not.toContain("person@example.com");
+  });
+
+  it("never logs Sanity exception messages, field values, or identifiers", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    find.mockRejectedValue(
+      new Error("person@example.com, do-not-log-this-secret, site-1"),
+    );
+
+    const response = await POST(request());
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({
+      error: "Form submissions are temporarily unavailable.",
+    });
+    expect(error).toHaveBeenCalledTimes(1);
+    expect(error).toHaveBeenCalledWith(
+      JSON.stringify({
+        source: "proti.forms",
+        event: "unexpected_failure",
+        stage: "published_form",
+        status: 503,
+      }),
+    );
+    const recorded = JSON.stringify(error.mock.calls);
+    for (const sensitive of [
+      "person@example.com",
+      "do-not-log-this-secret",
+      "site-1",
+    ]) {
+      expect(recorded).not.toContain(sensitive);
+    }
+    expect(forward).not.toHaveBeenCalled();
+  });
+
+  it("reports thrown webhook failures at the delivery stage without exposing provider details", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    forward.mockRejectedValue(
+      new Error(
+        "Provider response contained person@example.com and secret-123",
+      ),
+    );
+
+    const response = await POST(request());
+    expect(response.status).toBe(503);
+    expect(error).toHaveBeenCalledTimes(1);
+    expect(error).toHaveBeenCalledWith(
+      JSON.stringify({
+        source: "proti.forms",
+        event: "unexpected_failure",
+        stage: "delivery",
+        status: 503,
+      }),
+    );
+    expect(JSON.stringify(error.mock.calls)).not.toContain(
+      "person@example.com",
+    );
+    expect(JSON.stringify(error.mock.calls)).not.toContain("secret-123");
+  });
+
+  it("logs validation failures without submitted field values", async () => {
+    const info = vi.spyOn(console, "info").mockImplementation(() => {});
+    const response = await POST(
+      request({
+        ...payload,
+        fields: { email: "person@example.com", admin: "SECRET" },
+      }),
+    );
+    expect(response.status).toBe(400);
+    expect(info).toHaveBeenCalledTimes(1);
+    expect(info).toHaveBeenCalledWith(
+      JSON.stringify({
+        source: "proti.forms",
+        event: "validation_rejected",
+        stage: "validation",
+        status: 400,
+      }),
+    );
+    expect(JSON.stringify(info.mock.calls)).not.toContain("person@example.com");
+    expect(JSON.stringify(info.mock.calls)).not.toContain("SECRET");
+    expect(forward).not.toHaveBeenCalled();
+  });
+
+  it("keeps honeypot submissions indistinguishable to the client and logs no values", async () => {
+    const info = vi.spyOn(console, "info").mockImplementation(() => {});
+    const response = await POST(
+      request({ ...payload, honeypot: "sensitive-spam-value" }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ success: true });
+    expect(info).toHaveBeenCalledTimes(1);
+    expect(info).toHaveBeenCalledWith(
+      JSON.stringify({
+        source: "proti.forms",
+        event: "honeypot_discarded",
+        stage: "request",
+        status: 200,
+      }),
+    );
+    expect(JSON.stringify(info.mock.calls)).not.toContain(
+      "sensitive-spam-value",
+    );
+    expect(find).not.toHaveBeenCalled();
+    expect(forward).not.toHaveBeenCalled();
+  });
+
+  it("does not log personally identifying data for successful submissions", async () => {
+    const info = vi.spyOn(console, "info").mockImplementation(() => {});
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const response = await POST(request());
+
+    expect(response.status).toBe(200);
+    expect(info).not.toHaveBeenCalled();
+    expect(warn).not.toHaveBeenCalled();
+    expect(error).not.toHaveBeenCalled();
+    expect(forward).toHaveBeenCalledTimes(1);
   });
 });

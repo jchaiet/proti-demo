@@ -471,6 +471,31 @@ Interactive UI mode:
 pnpm test:e2e:ui
 ```
 
+## Performance Budgets (v0.6.0 — Batches 1–3)
+
+Lighthouse CI checks the fixture-backed production build on desktop and mobile,
+three runs each for Hero, Grid, and Navigation (**18 total reports**).
+
+**Blocking:** Performance ≥ 90, LCP ≤ 2.5 s, CLS ≤ 0.1.
+
+**Warning only:** TBT ≤ 200 ms.
+
+```bash
+pnpm test:performance:unit
+PROTI_VISUAL_FIXTURES=1 pnpm build
+pnpm test:performance
+```
+
+Results are saved to `test-results/performance/summary.md` and `summary.json`,
+with raw reports in `desktop/` and `mobile/`. An assertion failure exits with
+code 1 **after preserving the reports**. The runner starts and stops its own
+local production server; keep port 3000 free (or set `PROTI_PERF_PORT`).
+
+GitHub Actions adds a standalone **Performance budgets** check on PRs and pushes
+to `main` and uploads reports even when assertions fail. See
+[Performance Budgets](docs/PERFORMANCE_BUDGETS.md) for requirements, limits,
+Chrome setup, CI configuration and troubleshooting.
+
 ## Release Validation
 
 Before deployment:

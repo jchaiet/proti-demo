@@ -21,7 +21,9 @@
     "test:e2e:update": "playwright test e2e/visual.spec.ts --update-snapshots",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:report": "playwright show-report",
-    "typecheck": "next typegen && tsc --noEmit"
+    "typecheck": "next typegen && tsc --noEmit",
+    "test:performance": "node scripts/performance-baseline.mjs",
+    "test:performance:unit": "node --test scripts/performance-summary.test.mjs scripts/performance-config.test.mjs scripts/performance-runner.test.mjs"
   },
   "dependencies": {
     "@portabletext/react": "^8.0.1",
@@ -36,6 +38,7 @@
     "react-icons": "^5.7.0"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.14.0",
     "@playwright/test": "1.63.0",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^7.0.1",
@@ -50,7 +53,8 @@
     "typescript": "^5",
     "vite": "^6.4.1",
     "vite-tsconfig-paths": "^5.1.4",
-    "vitest": "4.1.12"
+    "vitest": "4.1.12",
+    "@lhci/cli": "0.16.0"
   },
   "packageManager": "pnpm@10.34.1"
 }

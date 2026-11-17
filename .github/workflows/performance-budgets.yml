@@ -1,0 +1,86 @@
+# Standalone CI gate: does not modify existing Studio/Web/Playwright workflow.
+name: Performance budgets
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  performance-budgets:
+    name: Performance budgets
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Performance fixtures render without a CMS connection, but next-sanity's
+    # module-level client still needs a syntactically valid project/dataset.
+    # No Sanity API credentials are used for this job or exposed to PRs.
+    env:
+      CI: "true"
+      NEXT_SANITY_PROJECT_ID: test1234
+      NEXT_SANITY_DATASET: production
+      NEXT_SANITY_STUDIO_URL: http://localhost:3333
+      PROTI_PERF_RUNS: "3"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.34.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.19.0
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install workspace dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify performance runner unit tests
+        run: pnpm --dir web test:performance:unit
+
+      - name: Locate Chrome or Chromium
+        shell: bash
+        run: |
+          for browser in google-chrome google-chrome-stable chromium chromium-browser; do
+            if command -v "$browser" >/dev/null 2>&1; then
+              echo "CHROME_PATH=$(command -v "$browser")" >> "$GITHUB_ENV"
+              "$browser" --version
+              exit 0
+            fi
+          done
+          echo "A Chrome/Chromium binary is required for Lighthouse CI" >&2
+          exit 1
+
+      - name: Build fixture-enabled production Web app
+        env:
+          PROTI_VISUAL_FIXTURES: "1"
+        run: pnpm --dir web build
+
+      - name: Enforce performance budgets
+        run: pnpm --dir web test:performance
+
+      - name: Include measurements in workflow summary
+        if: always()
+        shell: bash
+        run: |
+          if [[ -f web/test-results/performance/summary.md ]]; then
+            cat web/test-results/performance/summary.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'No performance summary was generated. See the failed job step.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload Lighthouse reports (including failures)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: proti-performance-${{ github.run_id }}-${{ github.run_attempt }}
+          path: web/test-results/performance/
+          if-no-files-found: warn
+          retention-days: 14
