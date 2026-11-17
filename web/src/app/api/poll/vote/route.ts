@@ -17,6 +17,12 @@ import {
   readPollHistory,
 } from "@/lib/polls/visitor";
 import { sanityClient } from "@/sanity/client";
+import {
+  logPollDiagnostic,
+  type PollDiagnosticEvent,
+  type PollDiagnosticSeverity,
+  type PollDiagnosticStage,
+} from "@/lib/polls/diagnostics";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -50,7 +56,14 @@ function resultId(siteId: string, locale: string, pollKey: string): string {
     .slice(0, 40)}`;
 }
 
-function reply(error: string, status: number): NextResponse {
+function reply(
+  error: string,
+  status: number,
+  event: PollDiagnosticEvent,
+  stage: PollDiagnosticStage,
+  severity: PollDiagnosticSeverity = status >= 500 ? "warn" : "info",
+): NextResponse {
+  logPollDiagnostic(event, stage, status, severity);
   return NextResponse.json(
     { error },
     { status, headers: { "Cache-Control": "no-store" } },
@@ -121,10 +134,22 @@ export async function GET(request: Request) {
     pollKey: params.get("pollKey"),
     optionId: params.get("optionId"),
   });
-  if (!vote) return reply("Invalid poll status query.", 400);
+  if (!vote)
+    return reply(
+      "Invalid poll status query.",
+      400,
+      "status_query_rejected",
+      "request",
+    );
 
   const settings = config();
-  if (!settings) return reply("Poll voting is not configured.", 503);
+  if (!settings)
+    return reply(
+      "Poll voting is not configured.",
+      503,
+      "configuration_unavailable",
+      "configuration",
+    );
 
   const history = readPollHistory(getPollCookie(request), settings.secret);
   const alreadyVoted = history.includes(
@@ -132,9 +157,17 @@ export async function GET(request: Request) {
   );
   const readClient = client(settings.token);
 
+  let stage: PollDiagnosticStage = "lookup";
   try {
     if (!(await pollExists(readClient, vote)))
-      return reply("Poll or option not found.", 404);
+      return reply(
+        "Poll or option not found.",
+        404,
+        "published_poll_missing",
+        "lookup",
+      );
+
+    stage = "results";
     const votes = await getVotes(
       readClient,
       resultId(vote.siteId, vote.locale, vote.pollKey),
@@ -142,37 +175,68 @@ export async function GET(request: Request) {
     // If a signed cookie exists but the result is missing/empty, do not claim
     // that the poll received zero votes. Surface a real error instead.
     if (alreadyVoted && (!votes || Object.keys(votes).length === 0)) {
-      return reply("Poll results are temporarily unavailable.", 503);
+      return reply(
+        "Poll results are temporarily unavailable.",
+        503,
+        "results_unavailable",
+        "results",
+      );
     }
     return success(votes ?? {}, alreadyVoted);
   } catch {
-    return reply("Poll results are temporarily unavailable.", 503);
+    // No raw errors or request/visitor identifiers in diagnostic output.
+    return reply(
+      "Poll results are temporarily unavailable.",
+      503,
+      stage === "lookup"
+        ? "published_poll_lookup_failed"
+        : "results_read_failed",
+      stage,
+      "error",
+    );
   }
 }
 
 /** Mutates totals only for a browser without this poll in its signed cookie. */
 export async function POST(request: Request) {
   if (!pollOriginAllowed(request))
-    return reply("Voting origin is not allowed.", 403);
+    return reply(
+      "Voting origin is not allowed.",
+      403,
+      "origin_rejected",
+      "request",
+    );
   if (
     !/^application\/json(?:\s*;|\s*$)/i.test(
       request.headers.get("content-type") ?? "",
     )
   ) {
-    return reply("Expected JSON.", 415);
+    return reply("Expected JSON.", 415, "content_type_rejected", "request");
   }
 
   const parsed = await readPollVoteBody(request);
   if (parsed.status !== "ok") {
     return parsed.status === "large"
-      ? reply("Vote request is too large.", 413)
-      : reply("Invalid request body.", 400);
+      ? reply("Vote request is too large.", 413, "body_too_large", "request")
+      : reply("Invalid request body.", 400, "invalid_body", "request");
   }
   const vote = parsePollVote(parsed.value);
-  if (!vote) return reply("Invalid poll vote data.", 400);
+  if (!vote)
+    return reply(
+      "Invalid poll vote data.",
+      400,
+      "vote_data_rejected",
+      "request",
+    );
 
   const settings = config();
-  if (!settings) return reply("Poll voting is not configured.", 503);
+  if (!settings)
+    return reply(
+      "Poll voting is not configured.",
+      503,
+      "configuration_unavailable",
+      "configuration",
+    );
 
   const history = readPollHistory(getPollCookie(request), settings.secret);
   const fingerprint = pollFingerprint(vote.siteId, vote.locale, vote.pollKey);
@@ -180,18 +244,37 @@ export async function POST(request: Request) {
 
   try {
     if (!(await pollExists(readClient, vote)))
-      return reply("Poll or option not found.", 404);
+      return reply(
+        "Poll or option not found.",
+        404,
+        "published_poll_missing",
+        "lookup",
+      );
   } catch {
-    return reply("Poll voting is temporarily unavailable.", 503);
+    return reply(
+      "Poll voting is temporarily unavailable.",
+      503,
+      "published_poll_lookup_failed",
+      "lookup",
+      "error",
+    );
   }
 
   const documentId = resultId(vote.siteId, vote.locale, vote.pollKey);
+  const isDuplicate = history.includes(fingerprint);
+  const stage: PollDiagnosticStage = isDuplicate ? "results" : "mutation";
   try {
-    if (history.includes(fingerprint)) {
+    if (isDuplicate) {
       const votes = await getVotes(readClient, documentId);
       if (!votes || Object.keys(votes).length === 0) {
-        return reply("Poll results are temporarily unavailable.", 503);
+        return reply(
+          "Poll results are temporarily unavailable.",
+          503,
+          "results_unavailable",
+          "results",
+        );
       }
+      logPollDiagnostic("duplicate_vote", "results", 200, "info");
       return success(votes, true);
     }
 
@@ -219,7 +302,12 @@ export async function POST(request: Request) {
       !Number.isSafeInteger(votes[vote.optionId]) ||
       votes[vote.optionId] < 1
     ) {
-      return reply("Poll voting is temporarily unavailable.", 503);
+      return reply(
+        "Poll voting is temporarily unavailable.",
+        503,
+        "mutation_unconfirmed",
+        "mutation",
+      );
     }
 
     const response = success(votes, false);
@@ -237,7 +325,14 @@ export async function POST(request: Request) {
     return response;
   } catch {
     // A mutation can complete before a network timeout. Cookie-only dedupe
-    // cannot guarantee exact-once voting in that situation.
-    return reply("Poll voting is temporarily unavailable.", 503);
+    // cannot guarantee exact-once voting in that situation. Never log the
+    // caught error, as it may contain Sanity URLs or other sensitive values.
+    return reply(
+      "Poll voting is temporarily unavailable.",
+      503,
+      isDuplicate ? "results_read_failed" : "mutation_failed",
+      stage,
+      "error",
+    );
   }
 }

@@ -69,6 +69,14 @@ function responseCookie(response: Response): string {
   return cookie;
 }
 
+function diagnosticRecords(spy: {
+  mock: { calls: unknown[][] };
+}): Record<string, unknown>[] {
+  return spy.mock.calls.map(
+    ([message]) => JSON.parse(String(message)) as Record<string, unknown>,
+  );
+}
+
 describe("cookie-only polls: mutation and hydration", () => {
   beforeEach(() => {
     vi.stubEnv("POLL_VISITOR_SECRET", secret);
@@ -83,7 +91,10 @@ describe("cookie-only polls: mutation and hydration", () => {
     inc.mockReset().mockReturnValue({ commit });
   });
 
-  afterEach(() => vi.unstubAllEnvs());
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.restoreAllMocks();
+  });
 
   it("returns a vote tally and sets the cookie only after a confirmed increment", async () => {
     const response = await POST(post());
@@ -198,5 +209,258 @@ describe("cookie-only polls: mutation and hydration", () => {
     vi.stubEnv("POLL_VISITOR_SECRET", secret);
     vi.stubEnv("SANITY_API_WRITE_TOKEN", "");
     expect((await POST(post())).status).toBe(503);
+  });
+
+  it("logs fixed request diagnostic codes without poll identifiers", async () => {
+    const info = vi.spyOn(console, "info").mockImplementation(() => undefined);
+
+    expect(
+      (await GET(new Request("https://example.com/api/poll/vote?siteId=x")))
+        .status,
+    ).toBe(400);
+    expect(
+      (await POST(post(data, "", "https://not-allowed.test"))).status,
+    ).toBe(403);
+    expect(
+      (
+        await POST(
+          new Request("https://example.com/api/poll/vote", {
+            method: "POST",
+            headers: {
+              origin: "https://example.com",
+              "content-type": "text/plain",
+            },
+            body: "not-json",
+          }),
+        )
+      ).status,
+    ).toBe(415);
+    expect((await POST(post({ ...data, optionId: "not.valid" }))).status).toBe(
+      400,
+    );
+    expect((await POST(post({ ...data, extra: "x" }))).status).toBe(400);
+    expect(
+      (await POST(post({ ...data, oversized: "x".repeat(3000) }))).status,
+    ).toBe(413);
+
+    const records = diagnosticRecords(info);
+    expect(records).toEqual([
+      {
+        source: "proti.polls",
+        event: "status_query_rejected",
+        stage: "request",
+        status: 400,
+      },
+      {
+        source: "proti.polls",
+        event: "origin_rejected",
+        stage: "request",
+        status: 403,
+      },
+      {
+        source: "proti.polls",
+        event: "content_type_rejected",
+        stage: "request",
+        status: 415,
+      },
+      {
+        source: "proti.polls",
+        event: "vote_data_rejected",
+        stage: "request",
+        status: 400,
+      },
+      {
+        source: "proti.polls",
+        event: "vote_data_rejected",
+        stage: "request",
+        status: 400,
+      },
+      {
+        source: "proti.polls",
+        event: "body_too_large",
+        stage: "request",
+        status: 413,
+      },
+    ]);
+    expect(JSON.stringify(records)).not.toContain(data.siteId);
+    expect(JSON.stringify(records)).not.toContain(data.pollKey);
+  });
+
+  it("distinguishes missing configuration and missing published polls", async () => {
+    const warning = vi
+      .spyOn(console, "warn")
+      .mockImplementation(() => undefined);
+    const info = vi.spyOn(console, "info").mockImplementation(() => undefined);
+
+    vi.stubEnv("POLL_VISITOR_SECRET", "short");
+    expect((await GET(get())).status).toBe(503);
+    expect((await POST(post())).status).toBe(503);
+    vi.stubEnv("POLL_VISITOR_SECRET", secret);
+
+    fetchMock.mockResolvedValue(false);
+    expect((await GET(get())).status).toBe(404);
+    expect((await POST(post())).status).toBe(404);
+
+    expect(diagnosticRecords(warning)).toEqual([
+      {
+        source: "proti.polls",
+        event: "configuration_unavailable",
+        stage: "configuration",
+        status: 503,
+      },
+      {
+        source: "proti.polls",
+        event: "configuration_unavailable",
+        stage: "configuration",
+        status: 503,
+      },
+    ]);
+    expect(diagnosticRecords(info)).toEqual([
+      {
+        source: "proti.polls",
+        event: "published_poll_missing",
+        stage: "lookup",
+        status: 404,
+      },
+      {
+        source: "proti.polls",
+        event: "published_poll_missing",
+        stage: "lookup",
+        status: 404,
+      },
+    ]);
+    expect(commit).not.toHaveBeenCalled();
+  });
+
+  it("distinguishes Sanity lookup and result-read failures without logging secrets", async () => {
+    const failureDetails = `private-${secret}-https://sanity.example/?token=abc`;
+    const error = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+
+    fetchMock.mockRejectedValueOnce(new Error(failureDetails));
+    expect((await GET(get())).status).toBe(503);
+
+    getDocument.mockRejectedValueOnce(new Error(failureDetails));
+    expect((await GET(get())).status).toBe(503);
+
+    fetchMock.mockRejectedValueOnce(new Error(failureDetails));
+    expect((await POST(post())).status).toBe(503);
+
+    const records = diagnosticRecords(error);
+    expect(records).toEqual([
+      {
+        source: "proti.polls",
+        event: "published_poll_lookup_failed",
+        stage: "lookup",
+        status: 503,
+      },
+      {
+        source: "proti.polls",
+        event: "results_read_failed",
+        stage: "results",
+        status: 503,
+      },
+      {
+        source: "proti.polls",
+        event: "published_poll_lookup_failed",
+        stage: "lookup",
+        status: 503,
+      },
+    ]);
+    expect(JSON.stringify(records)).not.toContain(failureDetails);
+    expect(JSON.stringify(records)).not.toContain(secret);
+    expect(JSON.stringify(records)).not.toContain(data.pollKey);
+  });
+
+  it("logs repeated votes without another increment or visitor information", async () => {
+    const info = vi.spyOn(console, "info").mockImplementation(() => undefined);
+    const first = await POST(post());
+    const cookie = responseCookie(first);
+
+    const duplicate = await POST(post(data, cookie));
+    expect(duplicate.status).toBe(200);
+    expect(await duplicate.json()).toEqual({
+      votes: { yes: 4, no: 2 },
+      alreadyVoted: true,
+    });
+    expect(commit).toHaveBeenCalledTimes(1);
+    expect(duplicate.headers.get("set-cookie")).toBeNull();
+    const records = diagnosticRecords(info);
+    expect(records).toEqual([
+      {
+        source: "proti.polls",
+        event: "duplicate_vote",
+        stage: "results",
+        status: 200,
+      },
+    ]);
+    expect(JSON.stringify(records)).not.toContain(cookie);
+  });
+
+  it("logs missing results after a signed vote without falsely reporting zeros", async () => {
+    const warning = vi
+      .spyOn(console, "warn")
+      .mockImplementation(() => undefined);
+    const first = await POST(post());
+    const cookie = responseCookie(first);
+
+    getDocument.mockResolvedValue(null);
+    const status = await GET(get(cookie));
+    const repeat = await POST(post(data, cookie));
+    expect(status.status).toBe(503);
+    expect(repeat.status).toBe(503);
+    expect(diagnosticRecords(warning)).toEqual([
+      {
+        source: "proti.polls",
+        event: "results_unavailable",
+        stage: "results",
+        status: 503,
+      },
+      {
+        source: "proti.polls",
+        event: "results_unavailable",
+        stage: "results",
+        status: 503,
+      },
+    ]);
+    expect(commit).toHaveBeenCalledTimes(1);
+  });
+
+  it("distinguishes unconfirmed increments from Sanity mutation failures", async () => {
+    const warning = vi
+      .spyOn(console, "warn")
+      .mockImplementation(() => undefined);
+    const error = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    commit.mockResolvedValueOnce({ votes: {} });
+    const unconfirmed = await POST(post());
+    expect(unconfirmed.status).toBe(503);
+    expect(unconfirmed.headers.get("set-cookie")).toBeNull();
+
+    const privateError = new Error(`private-cookie-${secret}`);
+    commit.mockRejectedValueOnce(privateError);
+    const failed = await POST(post());
+    expect(failed.status).toBe(503);
+    expect(failed.headers.get("set-cookie")).toBeNull();
+
+    expect(diagnosticRecords(warning)).toEqual([
+      {
+        source: "proti.polls",
+        event: "mutation_unconfirmed",
+        stage: "mutation",
+        status: 503,
+      },
+    ]);
+    expect(diagnosticRecords(error)).toEqual([
+      {
+        source: "proti.polls",
+        event: "mutation_failed",
+        stage: "mutation",
+        status: 503,
+      },
+    ]);
+    expect(JSON.stringify(diagnosticRecords(error))).not.toContain(secret);
   });
 });

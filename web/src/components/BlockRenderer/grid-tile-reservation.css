@@ -1,0 +1,16 @@
+/*
+ * Proti workaround for image-only tiles in Mino UI GridBlock.
+ *
+ * Lighthouse on /visual-fixtures/grid attributed a ~0.125 desktop / ~0.177
+ * mobile layout shift to the first tile image, despite explicit HTML
+ * width/height attributes. An explicit auto height allows those intrinsic
+ * dimensions to reserve vertical space while the image is still loading.
+ *
+ * Target only Mino's GridBlock image tile, not ArticleCard/ResourceCard
+ * images; those may have their own intentional crop and aspect ratio.
+ * The class-name prefix is a temporary integration hook. The durable fix
+ * belongs in Mino UI's GridBlock image/wrapper CSS.
+ */
+img[class*="_gridItemImage_"][width][height] {
+  height: auto;
+}

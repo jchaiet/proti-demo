@@ -40,3 +40,18 @@
   font-weight: var(--mino-font-weight-bold, var(--font-weight-bold, 700));
   white-space: nowrap;
 }
+
+/*
+ * Mino FooterLink may render shorter than the 24px minimum target size.
+ * Make every link in the real site footer (including fixture footers)
+ * comfortably clickable. Scope this to the footer; do not affect nav links
+ * or alter the deterministic fixture data to hide a11y violations.
+ *
+ * This can move upstream to Mino UI once FooterLink guarantees a
+ * minimum hit area by default.
+ */
+.siteLayout :global(footer a[href]) {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+}
