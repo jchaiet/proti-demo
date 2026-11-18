@@ -128,3 +128,14 @@ It prevents `proti:init` from modifying that checkout and allows `proti:check` t
 - Review environment files before committing; rotate a token if accidentally disclosed.
 
 See [Deployment](DEPLOYMENT.md), [Setup Check](PROTI_CHECK.md), and [Release Checklist](RELEASE_CHECKLIST.md).
+
+## Offline pre-build validation (v0.6.0)
+
+From the repository root, run `pnpm proti:env:check` to check Web/Studio
+variables, URLs, and cross-app consistency without accessing Sanity. Use
+`pnpm build:web:checked` or `pnpm build:studio:checked` for an explicit
+preflight before a local build. Production and CI flags, precedence, and error
+messages are documented in [Environment Preflight](ENVIRONMENT_PREFLIGHT.md).
+
+The existing `pnpm proti:check` remains the full online setup and integration
+readiness check; the new command does not replace it.

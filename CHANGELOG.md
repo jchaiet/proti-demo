@@ -2,6 +2,41 @@
 
 All notable Proti baseline changes are recorded here.
 
+## v0.6.0 — Production Readiness, Accessibility, Performance and Developer Experience
+
+### Added
+
+- Production configuration readiness checks, dependency-security review, and regression coverage for security-sensitive behavior.
+- Forms and Polls diagnostics for checking submission, voting and deployment configuration.
+- Automated WCAG A/AA accessibility tests against deterministic visual fixtures on desktop and mobile.
+- Lighthouse performance baselines and enforceable CI budgets for the Hero, Grid, and Navigation fixtures, using three runs per profile and median results.
+- A standalone performance-budget GitHub Actions workflow with saved desktop/mobile reports and summaries, including when an assertion fails.
+- Read-only, offline Web/Studio environment preflight via `pnpm proti:env:check`, with development, CI, and production modes.
+- Repository-wide verification commands: `pnpm verify:quick`, `pnpm verify:fixtures`, `pnpm verify:performance`, and `pnpm verify:all`, with a dry-run option.
+- Fresh-project developer-experience regression coverage for initialization, environment validation, safe Git handling, and developer tooling.
+- Updated onboarding, architecture, component-extension, visual testing, performance, and developer workflow documentation.
+
+### Improved
+
+- Clearer, actionable environment errors without echoing secret values; existing `pnpm proti:check` remains the live setup/readiness check.
+- Grid image-tile layout reserves image space before loading, preventing visible content shifts on the tested fixtures.
+- Footer link minimum target height for WCAG 2.2 target-size coverage.
+- Visual regression baselines reviewed and refreshed for the intentional Grid and footer layout changes.
+- CI diagnostics: performance results are retained even if a blocking Lighthouse assertion fails.
+
+### Fixed / Regression
+
+- Resolved Grid fixture layout shift on both desktop and mobile without weakening the CLS budget.
+- Corrected developer documentation references that still described visual fixtures as planned or pointed at legacy CMS-dependent snapshots.
+- Preserved production-only fixture protection: fixture routes remain unavailable unless explicitly enabled for testing.
+
+### Validation
+
+- `pnpm verify:all`: **10 steps passed**, reported in the final v0.6.0 regression run.
+- Most recent six Lighthouse fixture/profile scores: **100/100** each; measured CLS **0.000** for all six; all blocking budgets passed.
+- Earlier desktop/mobile visual and accessibility CI checks were reported green after reviewed baseline updates.
+- Final release-PR CI, frozen-lockfile installation, production smoke tests, and publication of the `v0.6.0` tag remain release checklist items, not claims of completed release.
+
 ## v0.5.0 — Deterministic Visual Regression
 
 ### Added

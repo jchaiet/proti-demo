@@ -1,31 +1,28 @@
-# Proti Release / Repo Hygiene Checklist
+# Proti Release / Repository Hygiene Checklist — v0.6.0
 
-Use this before merging a release PR and before tagging a Proti baseline.
+Use this checklist **before merging the v0.6.0 release PR**, then complete the deployment and tagging items only after `main` is green. Checkboxes are intentionally unchecked: local verification was reported successful, but the release itself has not yet been signed off.
 
-## Version / release target
+## 1. Release contents and versions
 
-- [ ] Root/Web/Studio package versions match the intended Proti `0.5.0` release.
-- [ ] Independently-versioned local Mino UI tarball is present in `web/` and matches `web/package.json` and the root lockfile.
-- [ ] Review [v0.5.0 Release Notes](releases/v0.5.0.md) and [SEO/GEO](SEO_GEO.md).
+- [ ] Root `package.json`, `web/package.json`, and `studio/package.json` all declare version `0.6.0`.
+- [ ] `CHANGELOG.md` contains the v0.6.0 entry without changing earlier release history.
+- [ ] Review [v0.6.0 release notes](releases/v0.6.0.md) and [SEO/GEO guidance](SEO_GEO.md).
+- [ ] The independently versioned `web/mino-ui-0.0.3.tgz` is present and matches the `mino-ui` dependency in `web/package.json`.
+- [ ] Existing dependencies (including Mino UI) have not been changed just to bump the Proti version.
+- [ ] Root `pnpm-lock.yaml` resolves cleanly with the updated manifests; commit any lockfile changes only if the package manager generates them.
+- [ ] The release PR includes only intended changes; no temporary files, reports, or local credentials.
 
-- [ ] Release target is documented in `CHANGELOG.md`.
-- [ ] Release PR contains only intended changes.
-- [ ] `git status` is clean after the final validation run.
+## 2. Repository and environment hygiene
 
-## Repository hygiene
+- [ ] Local secrets such as `web/.env.local`, `web/e2e/.env.e2e`, Studio private env files, and deployment credentials remain ignored/untracked.
+- [ ] Placeholder-only `web/.env.example` and `web/e2e/.env.e2e.example` are tracked.
+- [ ] `test-results/`, `playwright-report/`, and Lighthouse generated results are untracked/ignored.
+- [ ] All 37 version-controlled fixture baseline PNGs under `web/e2e/__screenshots__/` are present and reviewed.
+- [ ] The production Vercel build **does not** set `PROTI_VISUAL_FIXTURES=1`; confirm the public fixture routes return 404.
+- [ ] The Web/Studio env settings use the expected Sanity project/dataset; secrets are not printed by diagnostics.
+- [ ] The local Mino tarball matches the lockfile. If it changes in a future release, use a _new_ tarball version/name rather than modifying existing bytes in place.
 
-- [ ] `web/.env.local` is ignored.
-- [ ] `web/e2e/.env.e2e` is ignored.
-- [ ] `web/.env.example` is committed.
-- [ ] `web/e2e/.env.e2e.example` is committed.
-- [ ] `test-results/` is ignored.
-- [ ] `playwright-report/` is ignored.
-- [ ] All 37 deterministic fixture baselines under `web/e2e/__screenshots__/` are committed and reviewed.
-- [ ] No temporary ZIPs, debug output, generated reports, or local-only files are tracked.
-- [ ] README instructions match actual package scripts.
-- [ ] `pnpm-lock.yaml` is current.
-
-Recommended environment ignore pattern:
+Example ignore rules (verify against the actual repository rather than replacing the existing `.gitignore`):
 
 ```gitignore
 .env*
@@ -33,171 +30,105 @@ Recommended environment ignore pattern:
 !e2e/.env.e2e.example
 ```
 
-## Proti DX validation
+## 3. Reproducible installation and developer verification
 
-From the repository root:
-
-```bash
-pnpm test:proti
-```
-
-Perform a clean-clone/new-implementation rehearsal when initialization behavior changes:
+From the repository root, using Node and pnpm versions supported by this project (Web declares `pnpm@10.34.1`):
 
 ```bash
-pnpm install
-pnpm proti:init
-# add local Sanity token/secret values
-pnpm proti:seed --starter-content
-pnpm proti:check
-pnpm dev:studio
-pnpm dev:web
-```
-
-Verify:
-
-- [ ] Site is created.
-- [ ] Optional starter-content flow creates Home, Default Header, Default Footer, and Default Navigation.
-- [ ] Rerunning the seed command does not duplicate or overwrite existing content.
-- [ ] `proti:check` reports the implementation ready.
-
-## Mino UI tarball updates
-
-When Mino changes:
-
-- [ ] Bump the Mino package version.
-- [ ] Create a new versioned tarball filename (for example `mino-ui-0.0.3.tgz`).
-- [ ] Do not replace a committed tarball with different bytes under the same version.
-- [ ] Update `web/package.json` to the new tarball.
-- [ ] Use the same pnpm version locally that CI uses.
-- [ ] Regenerate the lockfile after the manifest change.
-- [ ] Confirm the frozen install passes locally.
-
-Recommended flow:
-
-```bash
-pnpm install --no-frozen-lockfile
 pnpm install --frozen-lockfile
+pnpm test:proti
+pnpm test:proti:dx
+pnpm proti:env:check
+pnpm verify:all
 ```
 
-Commit together:
+- [ ] Frozen-lockfile installation succeeds **without** loosening `--frozen-lockfile`.
+- [ ] Root initializer/environment/DX regression tests pass.
+- [ ] `pnpm verify:all` finishes all ten steps successfully, including Web/Studio checks, visual, accessibility, Grid layout and performance verification.
+- [ ] Web and Studio production builds, lint, type checking, and unit tests are green.
+- [ ] Reviewed snapshots are committed; no `--update-snapshots` command was used merely to make tests green.
+- [ ] If initialization changed, rehearse `pnpm proti:init --new-project` only in a disposable clone (it resets Git history after confirmation), then run `pnpm proti:check` and seed checks with a test Sanity project.
 
-```text
-web/package.json
-web/mino-ui-<new-version>.tgz
-pnpm-lock.yaml
-removal of the previous tarball (when applicable)
-```
+The v0.6.0 root workflows are `pnpm verify:quick`, `pnpm verify:fixtures`, `pnpm verify:performance`, and `pnpm verify:all`. `pnpm proti:commands` displays the workflow reference. `pnpm verify:all --dry-run` displays commands without executing them.
 
-## Studio validation
+## 4. Playwright and performance validation
 
-From `studio/`:
+- [ ] Fixture-mode visual regression and WCAG accessibility checks pass on desktop and mobile.
+- [ ] Grid image layout regression passes with intentionally delayed image responses.
+- [ ] Lighthouse budgets pass across desktop/mobile Hero, Grid, and Navigation fixtures: score ≥ 90, LCP ≤ 2,500 ms, CLS ≤ 0.1; TBT ≤ 200 ms is warning-only.
+- [ ] Lighthouse reports and the summary are available for review, including on failures.
+- [ ] CMS-backed production smoke coverage remains active separately from fixture tests.
+- [ ] A normal production build has test-only fixture routes disabled.
+
+The preferred combined commands are:
 
 ```bash
-pnpm test
-pnpm build
+pnpm verify:fixtures
+pnpm verify:performance
 ```
 
-Run lint as configured by the Studio package/repository.
+For a standalone CMS-backed smoke check, use a **non-fixture** production build, start it, and run the Web smoke suite with its usual local E2E configuration. Do not deploy a fixture-enabled test build.
 
-## Web validation
+If a visual baseline truly needs updating, use the fixture-specific specs and `--update-snapshots` deliberately, inspect the diff, and commit only the approved PNGs. **Do not use** the legacy `web` `test:e2e:update` script for the current deterministic fixture suite; it still points to `e2e/visual.spec.ts`.
 
-From `web/`:
+## 5. Security and configuration readiness
 
-```bash
-pnpm test:run
-pnpm exec next typegen
-pnpm exec tsc --noEmit
-pnpm lint
-pnpm build
-```
+- [ ] Review dependency audit findings and any documented exceptions.
+- [ ] Confirm public env values are appropriate and secrets remain server-side.
+- [ ] Confirm Form webhook destinations and credentials are valid in production (including correct quoting of JSON values in Vercel configuration).
+- [ ] Confirm Poll duplicate-vote handling, cookie behavior, and result rendering use the intended production configuration.
+- [ ] Confirm preview, webhook revalidation, and write-token permissions are still correctly scoped.
+- [ ] Run `pnpm proti:check` for live setup/Sanity connectivity when appropriate; it is **not** the same as the offline environment preflight.
 
-## Production Playwright validation
+## 6. CI sign-off (release pull request)
 
-For **CMS smoke**, from `web/`, build and start the production application **with `PROTI_VISUAL_FIXTURES=0`**:
+Confirm the **actual repository** checks, rather than assuming local success implies CI success:
 
-```bash
-PROTI_VISUAL_FIXTURES=0 pnpm build
-pnpm start
-```
+- [ ] Proti initialization / DX checks.
+- [ ] Web lint, typecheck, build, and unit tests.
+- [ ] Studio tests and build.
+- [ ] CMS-backed Playwright smoke checks.
+- [ ] Deterministic fixture visual and accessibility checks, desktop and mobile.
+- [ ] Lighthouse performance-budget workflow (including report artifacts).
+- [ ] No unexpected skipped/disabled required checks.
+- [ ] Required branch protections/status checks are green before merging.
 
-With `e2e/.env.e2e` configured for `http://localhost:3000` and `PLAYWRIGHT_SKIP_WEBSERVER=1`, run:
+## 7. Production smoke (after deployment, before tagging)
 
-```bash
-pnpm test:e2e:smoke
-```
+Use a safe test page, form, and poll so smoke checks do not disturb real visitors' content or votes.
 
-For **deterministic visual regression**, stop the server, rebuild and run:
+- [ ] Site homepage and representative Page/Blog/Author routes load on production.
+- [ ] EN/ES links and locale selector resolve only valid translations; canonical, hreflang, metadata, structured data, sitemap, and robots are sensible.
+- [ ] Representative Grid, Navigation/megamenu, tabs, carousel, modal, and document-list controls work at desktop/mobile widths.
+- [ ] A test Form submission succeeds and is received at the intended destination; errors and diagnostics are appropriate.
+- [ ] A controlled Poll accepts a first vote, blocks a duplicate vote, and displays the intended result/previously-voted state after refresh.
+- [ ] Preview/Draft Mode remains private; publishing and webhook revalidation update the public site without redeploying.
+- [ ] Production URLs cannot access the visual fixture routes.
+- [ ] No production console errors or unexpected 4xx/5xx responses during smoke testing.
 
-```bash
-PROTI_VISUAL_FIXTURES=1 pnpm build
-PROTI_VISUAL_FIXTURES=1 PLAYWRIGHT_SKIP_WEBSERVER=0 \
-pnpm test:e2e:visual --project=chromium-desktop --project=chromium-mobile
-```
+## 8. Documentation and release notes
 
-Only when intentionally approving new fixture screenshots, use
-`pnpm test:e2e:update` under the same fixture-enabled build, review and commit
-all changed PNGs, then compare again without the update flag.
+- [ ] `docs/GETTING_STARTED.md`, `docs/ARCHITECTURE.md`, `docs/COMPONENTS.md`, and `docs/TESTING.md` reflect the current implementation.
+- [ ] `docs/RELEASE_CHECKLIST.md` (this file) uses v0.6.0 versions and current developer commands.
+- [ ] `docs/releases/v0.6.0.md` is reviewed for factual accuracy and migration notes.
+- [ ] `CHANGELOG.md` accurately distinguishes completed verification from checks still pending.
+- [ ] Document any observed breaking changes or additional migration steps before release.
 
-After updating a baseline:
+## 9. Merge, deploy, tag, and publish
 
-- [ ] Inspect the changed screenshot/diff.
-- [ ] Confirm the visual change is intentional.
-- [ ] Rerun `pnpm test:e2e:visual`.
-- [ ] Commit the updated baseline screenshot.
-
-## Functional sanity checks
-
-Verify representative content after deployment:
-
-- [ ] Page publish/update
-- [ ] Blog publish/update
-- [ ] Author publish/update
-- [ ] Taxonomy changes
-- [ ] Navigation changes
-- [ ] Modal behavior
-- [ ] Translations/language selector
-- [ ] Document List search/filter/sorting
-- [ ] Sanity webhook revalidation without redeploy
-
-## CI
-
-Required checks should pass on the release PR:
-
-- [ ] Studio
-- [ ] Web
-- [ ] Playwright smoke
-- [ ] Playwright visual
-
-Do not loosen `--frozen-lockfile` to make a release pass. Fix dependency, tarball, or lockfile drift in the repository instead.
-
-## Documentation
-
-- [ ] Root `README.md` matches the current repository workflow.
-- [ ] `docs/PROJECT_INITIALIZATION.md` matches `proti:init`, `proti:seed`, and `proti:check` behavior.
-- [ ] `docs/RELEASE_CHECKLIST.md` reflects current validation commands.
-- [ ] `CHANGELOG.md` includes the release.
-- [ ] Environment variable examples contain placeholders only—never real secrets.
-
-## Historical v0.3 SEO/GEO sign-off
-
-- [ ] Representative Page, Blog, and Author HTML: canonical, hreflang, `lang`, metadata, robots and JSON-LD confirmed.
-- [ ] Locale selector only offers existing equivalents and has no broken fallback items.
-- [ ] Sitemap/robots reflect production Site canonical domain and indexed routes.
-- [ ] Publish/revert webhook revalidation verified in the deployed environment.
-- [ ] Secrets (including E2E environment credentials) rotated if disclosed and all local env files ignored.
-- [ ] `.github` workflows and CI status requirements inspected in the actual repository; not present in the supplied documentation archive.
-- [ ] Confirm optional Web/Studio `.env.example` templates are tracked; these were not present in the supplied documentation archive.
-- [ ] Baselines were inspected/committed and final `pnpm test:e2e` passed without regenerating them.
-
-## Tagging
-
-After the release PR is merged and `main` is green:
+Only after the previous checks pass:
 
 ```bash
 git checkout main
 git pull --ff-only
-git tag -a v0.5.0 -m "Proti v0.5.0"
-git push origin v0.5.0
+git status --short
+# Confirm the deployed main commit and GitHub Actions checks are green.
+git tag -a v0.6.0 -m "Proti v0.6.0"
+git push origin v0.6.0
 ```
 
-Adjust the tag version for later releases.
+- [ ] Release PR merged to `main`, branch checks green, and working tree clean.
+- [ ] Web and Studio are deployed from the intended commit and production smoke checks pass.
+- [ ] `v0.6.0` annotated tag is created on the verified release commit and pushed.
+- [ ] GitHub Release is published using `docs/releases/v0.6.0.md` as the source for the notes.
+- [ ] Release tag, commit, and deployment are recorded for rollback if necessary.

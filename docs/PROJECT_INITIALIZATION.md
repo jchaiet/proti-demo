@@ -5,7 +5,7 @@ Proti includes a repository-level setup workflow for creating a new implementati
 ## Commands
 
 ```bash
-pnpm proti:init
+pnpm proti:init --new-project  # run only in a clean, independent clone
 pnpm proti:seed
 pnpm proti:seed --starter-content
 pnpm proti:check
@@ -23,11 +23,13 @@ Use the pnpm version configured by the repository/CI when generating or updating
 
 ## 2. Initialize
 
-Run:
+In a fresh clone of the starter, run **before editing files**:
 
 ```bash
-pnpm proti:init
+pnpm proti:init --new-project
 ```
+
+The command requires a clean clone with the expected starter remote and the exact typed `RESET GIT HISTORY` confirmation. It backs up the old `.git` beside the project and initializes an independent repository with no remote. **Never run it in the maintained source repository.**
 
 The initializer prompts for:
 
@@ -61,11 +63,13 @@ The initializer writes:
 proti.config.json
 web/.env.local
 studio/.env.local
+studio/.env.development
+studio/.env.production
 ```
 
 It also updates the package names in the root, Web, and Studio `package.json` files.
 
-Rerunning `proti:init` reuses the existing project values as defaults and preserves the known Sanity token/secret values already present in `web/.env.local`.
+Run `proti:init --new-project` only on an independent new checkout. For an existing configured project, use `pnpm proti:env:check` and `pnpm proti:check` rather than reinitializing Git/project identity. Local secrets are kept in ignored `.env.local` files; the Studio mode-specific Presentation URL files contain non-secret public URLs.
 
 ## 3. Add local secrets
 
