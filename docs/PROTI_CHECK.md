@@ -1,5 +1,9 @@
 # Proti setup check (v0.4.0)
 
+For a **fast, offline check before building**, run `pnpm proti:env:check`
+([Environment Preflight](ENVIRONMENT_PREFLIGHT.md)). The full checker below
+contacts Sanity and validates published Site configuration.
+
 `pnpm proti:check` validates a configured implementation **without changing Git metadata, local files, or Sanity documents**. Run it from the repository root after initialization/seeding and after production URL changes.
 
 ```bash

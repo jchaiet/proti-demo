@@ -1,14 +1,44 @@
-# Getting started with Proti (v0.4.0)
+# Getting started with Proti (v0.6.0 developer workflow)
 
-This guide is for **creating a separate website from the Proti starter**. If you maintain the original `proti-demo` repository, **do not run the initializer there**. See [Project Initialization](PROJECT_INITIALIZATION.md) for the Git safeguards and full setup contract.
+Proti is a Next.js Web + Sanity Studio starter powered by Mino UI. **Web and Studio are separate apps in one pnpm workspace**. Follow the path that matches your task:
+
+- **Maintaining the existing Proti repository?** Do not run `proti:init` or `proti:seed` just to start development. Install dependencies, check the existing environment, and use the developer commands below.
+- **Creating a site for a new client?** Start from a _fresh, clean, independent clone_ and run `proti:init --new-project`. This intentionally resets that clone's Git history; never run it in the maintained source checkout.
+
+For implementation details see [Architecture](ARCHITECTURE.md), [Components / Mino UI](COMPONENTS.md), [Developer Commands](DEVELOPER_COMMANDS.md), and [Testing](TESTING.md).
 
 ## Prerequisites
 
-- Node **24.19.0**, pnpm **10.34.1**, Git, and the versioned Mino UI tarball included with Web.
-- Your own Sanity project, dataset (normally `production`), and a write-capable API token for seeding.
-- A public HTTPS Web hostname and Sanity Studio deployment when you reach production.
+- Node **24.19.0** and pnpm **10.34.1** (the versions used by the starter's validated setup), plus Git.
+- The versioned Mino UI package archive referenced by `web/package.json` (`file:mino-ui-0.0.3.tgz` in the supplied Web source); it must be present in `web/` for install and CI. Do not replace it with an unrelated published package.
+- An existing Sanity project and dataset, or permission to create them in Sanity. Proti does **not** provision Sanity accounts, projects, or API tokens.
+- Chromium for Playwright and a compatible Chrome/Chromium executable for Lighthouse when running the browser and performance suites.
 
-## 1. Create an independent clone
+## Path A — Work on an existing configured Proti site
+
+From the repository root:
+
+```bash
+pnpm install --frozen-lockfile
+pnpm proti:env:check
+pnpm proti:check
+pnpm verify:quick
+```
+
+`proti:env:check` is **offline** and reads local `.env` files in its default development mode. `proti:check` additionally checks live Sanity configuration and connectivity. `verify:quick` runs environment validation, root/Web/Studio tests, linting, and type checking without starting a browser.
+
+Start the apps in separate terminals:
+
+```bash
+pnpm dev:studio # normally http://localhost:3333
+pnpm dev:web    # normally http://localhost:3000
+```
+
+The published Site's Routing `domains` must include `localhost` for `http://localhost:3000` to resolve. `127.0.0.1` is **not equivalent** unless separately configured. Do not set `PROTI_VISUAL_FIXTURES=1` in a normal public deployment.
+
+## Path B — Create a new independent site
+
+### 1. Initialize the new checkout
 
 ```bash
 git clone https://github.com/jchaiet/proti-demo.git my-proti-site
@@ -16,99 +46,101 @@ cd my-proti-site
 pnpm proti:init --new-project
 ```
 
-Run this **before modifying files**. The operation requires a clean clone with the expected starter remote and the exact typed confirmation **`RESET GIT HISTORY`**. The old `.git` is backed up next to the project; the new project has its own empty Git history and no remote. Set up a new repository/remote for your client or website; do not repoint the maintained source repository.
+Run initialization **before other edits**. It requires a clean clone with the expected starter remote and the exact typed confirmation `RESET GIT HISTORY`. It backs up the original `.git` beside the clone and creates a new independent repository history without a remote. Set your own project remote afterward. Never use this command to reset the maintained `proti-demo` repository.
 
-The initializer requests project/package identity, Sanity project/dataset, Web↔Studio URLs, Site identity, Site domains, canonical hostname, and locales. **`localhost` is included automatically** on first initialization for local Web and CI routing.
+The initializer collects project identity, Sanity project/dataset, Studio/Web URLs, Site domains/canonical domain, and locale configuration. It writes `proti.config.json`, Web/Studio local environment files, mode-specific Studio Presentation URLs, and project-specific package names. It also removes inherited demo visual screenshots on first initialization.
 
-## 2. Configure local environments
+### 2. Install and add secrets
 
 ```bash
 pnpm install --frozen-lockfile
 ```
 
-The initializer writes `proti.config.json`, `web/.env.local`, `studio/.env.local`, `studio/.env.development`, and `studio/.env.production`, and updates package names. Add required secrets to `web/.env.local` only:
+Set the **server-side** values needed by your chosen features in `web/.env.local` (never commit credentials):
 
 ```dotenv
-SANITY_API_READ_TOKEN=
-SANITY_API_WRITE_TOKEN=
-SANITY_REVALIDATE_SECRET=
+SANITY_API_READ_TOKEN=   # Draft Mode / private reads
+SANITY_API_WRITE_TOKEN=  # Seeding, Polls, other writes
+SANITY_REVALIDATE_SECRET= # Signed publish webhook
 ```
 
-- `studio/.env.local`: shared Studio project/dataset/title and optional Studio App ID.
-- `studio/.env.development`: local Presentation URL (usually `http://localhost:3000`).
-- `studio/.env.production`: public HTTPS Web Presentation URL; can be completed after deployment.
-- The two mode-specific Studio files contain **public URLs only** and should be committed. Keep `.env.local` and credentials ignored.
+Web also needs `NEXT_SANITY_PROJECT_ID`, `NEXT_SANITY_DATASET`, and `NEXT_SANITY_STUDIO_URL`, which the initializer configures. Studio uses `SANITY_STUDIO_PROJECT_ID`, `SANITY_STUDIO_DATASET`, and optional title/App ID from `studio/.env.local`. Studio Presentation uses the **tracked non-secret** `studio/.env.development` and `studio/.env.production` files; do not move its preview URL into `.env.local`.
 
-See [Configuration](CONFIGURATION.md) for all fields.
+For exact variable names, precedence, and troubleshooting see [Configuration](CONFIGURATION.md) and [Environment Preflight](ENVIRONMENT_PREFLIGHT.md).
 
-## 3. Seed the site and publish initial content
+### 3. Seed and publish the starting Site
 
 ```bash
 pnpm proti:seed                    # Site only
-# OR
-pnpm proti:seed --starter-content # Site + minimal Home/Header/Footer/Navigation
+# or
+pnpm proti:seed --starter-content  # Site + minimal Home/Header/Footer/Navigation
 ```
 
-The seed is idempotent and does not overwrite existing content. Use the starter-content option if you want a published homepage for Playwright smoke and screenshot tests. In Sanity Studio, confirm **Site → Routing** includes both `localhost` and your future public hostname; set the production hostname as canonical. Publish the Site and required pages.
+Seeding is idempotent and does not replace existing authored content. Confirm in Studio that the Site, homepage and any navigation needed for your first route are **published**; Site → Routing should include `localhost` and your intended production hostname, with the public hostname selected as canonical.
 
-## 4. Validate and develop
+### 4. Validate and run locally
 
 ```bash
+pnpm proti:env:check
 pnpm proti:check
+pnpm verify:quick
+pnpm dev:studio
+# in a second terminal: pnpm dev:web
 ```
 
-In separate terminals:
+If you need a failed check explained, use [Environment Preflight](ENVIRONMENT_PREFLIGHT.md) or [Project Check](PROTI_CHECK.md). **Do not** run `--mode=ci` locally expecting it to read `web/.env.local`: CI mode requires exported Web environment variables.
 
-```bash
-pnpm dev:studio   # http://localhost:3333
-pnpm dev:web      # http://localhost:3000
-```
-
-Proti resolves its Site by request hostname. `http://127.0.0.1:3000` is **not** an interchangeable alias for `http://localhost:3000` unless Site Routing explicitly recognizes both.
-
-## 5. Generate the first project-owned visual baselines
-
-After your homepage is published and port 3000 is available:
+### 5. Generate project-owned fixture screenshots
 
 ```bash
 pnpm --dir web exec playwright install chromium
 pnpm proti:visual:init
 ```
 
-This builds Web, starts a production server, and saves desktop/mobile screenshots to `web/e2e/__screenshots__/`. Review and commit them before opening a PR; CI will **compare** them. To deliberately regenerate existing baselines, use `pnpm proti:visual:init --force` only after reviewing the expected differences. Screenshots currently reflect **published CMS content**; publishing different text can cause expected visual failures. Stable fixture-driven visuals are planned for v0.5.0.
+This builds Web with the guarded **version-controlled, CMS-independent** fixture routes, captures Chromium desktop/mobile screenshots, and refuses to overwrite existing PNGs unless `--force` is explicitly passed. Review and commit the generated screenshots. The normal production build **must not** expose `/visual-fixtures/*` routes. See [Visual CI](VISUAL_CI.md).
 
-## 6. Deploy and configure Production Presentation
+## Day-to-day developer workflow
 
-Deploy Web to Vercel with **Root Directory `web`** and configure its Sanity credentials and webhook secret. Deploy Studio against the same Sanity project/dataset with its own deployment configuration. Once your production URL is known:
+| Task                                                   | From repository root                                  |
+| ------------------------------------------------------ | ----------------------------------------------------- |
+| Discover available checks                              | `pnpm proti:commands`                                 |
+| Local checks before a PR                               | `pnpm verify:quick`                                   |
+| Component visuals, accessibility, Grid image stability | `pnpm verify:fixtures`                                |
+| Lighthouse desktop/mobile budgets                      | `pnpm verify:performance`                             |
+| Full developer regression                              | `pnpm verify:all`                                     |
+| Preview any check without executing                    | `pnpm verify:all --dry-run`                           |
+| Build apps with local environment preflight            | `pnpm build:web:checked`, `pnpm build:studio:checked` |
+
+For an isolated onboarding regression (including a disposable Git reset test), use `pnpm test:proti:dx`. See [DX Regression](DX_REGRESSION.md) for the separate manual clean-install checklist.
+
+`verify:all` performs the combined checks with **one fixture-enabled build**. These scripts neither deploy content nor update screenshots, and their fixture-enabled output **must never be deployed**. CI and Vercel have their own explicit build settings. See [Developer Commands](DEVELOPER_COMMANDS.md) and [Testing](TESTING.md).
+
+## Deploy an independently initialized site
+
+Deploy Web to Vercel with Root Directory **`web`** using a **normal** build (`PROTI_VISUAL_FIXTURES` unset or `0`), with server-side credentials configured on Vercel. Deploy Studio to the intended Sanity Studio application and point it at the same project/dataset.
+
+After the public HTTPS Web URL is known:
 
 ```bash
 pnpm proti:configure:production --url=https://your-site.vercel.app
 ```
 
-Commit the updated non-secret Studio production URL file and project config, **redeploy Studio**, add the public Web hostname to the **published** Site Routing domains, and configure Sanity's signed document webhook at `https://your-site.vercel.app/api/revalidate`. See [Deployment](DEPLOYMENT.md) for the complete sequence, required permissions, and checks.
+Commit the updated public Studio production Presentation URL and project configuration; **redeploy Studio**. Add the Web hostname to the **published Site** domains and configure the signed Sanity document webhook at `https://your-site.vercel.app/api/revalidate`. Confirm both public pages and draft Presentation separately. Full instructions: [Deployment](DEPLOYMENT.md), [Production Readiness](PRODUCTION_READINESS.md).
 
-## First editorial pass
+## Extending a site
 
-1. Confirm Site locale, canonical domain, routing, and SEO defaults; publish Site.
-2. Create/publish the default-locale homepage, Header/Footer and Navigation Set (or use starter content).
-3. Add content blocks and accessibility/SEO metadata; verify the public route.
-4. Create exact translated Pages as needed, preserving logical paths and translated parents.
-5. Confirm the language selector exposes only published exact equivalents.
-6. Edit a draft in Presentation, ensure public visitors cannot see it, publish, and verify the public page updates through revalidation.
-
-See [Editor Guide](EDITOR_GUIDE.md) and [Translations](TRANSLATIONS.md).
+Start in [Components / Mino UI](COMPONENTS.md) for the actual Studio schema → GROQ → CMS type → mapper → `BlockRenderer` flow and a worked Accordion field example. New routes/templates involve the catch-all page and route/SEO resolvers; see [Architecture](ARCHITECTURE.md). Before merging, run `verify:quick`, followed by the fixture/other targeted suites appropriate to the change.
 
 ## Common setup failures
 
-| Symptom                                           | Check                                                                                                                      |
-| ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `proti:init` refuses in original source           | Correct: **never initialize** the maintained repo; mark its checkout with `git config --local proti.sourceRepository true` |
-| New clone refuses normal initialization           | Use `pnpm proti:init --new-project` in a **clean** fresh clone, with explicit confirmation                                 |
-| Homepage/Playwright receives 404                  | Publish Site/Home and include `localhost` in **published Site Routing** and `proti.config.json`                            |
-| Studio Presentation opens localhost in production | Set `studio/.env.production` with `proti:configure:production` and redeploy Studio; remove CI hardcoded preview overrides  |
-| `proti:check` warns about mode env tracking       | Allow `studio/.env.development` and `studio/.env.production` in `.gitignore`                                               |
-| Studio fails to connect                           | Correct Studio project ID, dataset, app ID (when used), and origin/CORS settings                                           |
-| Visual CI fails after content edits               | Inspect actual/diff screenshots; update only intentionally changed committed baselines                                     |
-| Published production content is stale             | Check webhook URL, signature secret, filter/projection, and deployed Web logs                                              |
+| Symptom                                              | First check                                                                                          |
+| ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `proti:init` rejects the original source repository  | Expected safeguard. Use a **clean independent clone**, never reset the maintained checkout.          |
+| `/` returns 404 on a healthy local Web server        | Check **published** Site/homepage and `localhost` in Site Routing domains.                           |
+| Preflight misses variables in `--mode=ci`            | That mode intentionally ignores local Web `.env` files. Use the default mode locally.                |
+| Studio Presentation opens localhost after deployment | Update `studio/.env.production` via `proti:configure:production`, then redeploy Studio.              |
+| Fixture route returns 404                            | Intentional in a normal build; build with `PROTI_VISUAL_FIXTURES=1` only for local/test use.         |
+| Visual CI fails after an intentional styling change  | Inspect actual/diff artifacts and review only the affected snapshots before approving new baselines. |
+| Production content stays stale after publishing      | Check webhook URL/signature, revalidation filter, and deployment logs.                               |
 
-For commands and test coverage, see [Testing](TESTING.md) and [Project Initialization](PROJECT_INITIALIZATION.md).
+For editing content and translations, see [Editor Guide](EDITOR_GUIDE.md) and [Translations](TRANSLATIONS.md).

@@ -1,5 +1,7 @@
 # Proti Sanity Studio
 
+For project onboarding and root-level checks see [Getting Started](../docs/GETTING_STARTED.md) and [Developer Commands](../docs/DEVELOPER_COMMANDS.md). For CMS schema and block extension points see [Components / Mino UI](../docs/COMPONENTS.md).
+
 See the repository [Editor Guide](../docs/EDITOR_GUIDE.md), [Content Model](../docs/CONTENT_MODEL.md), and [Translations](../docs/TRANSLATIONS.md).
 
 This package is the Sanity Content Studio for Proti. It defines the content model, authoring structure, translation actions, validation, navigation, taxonomy, reusable blocks, and CMS-side configuration used by the Next.js Web application.
