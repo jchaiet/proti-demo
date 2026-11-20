@@ -667,6 +667,190 @@ it("supports taxonomy any/all filtering using Taxonomy IDs or paths", async () =
   expect(idResponse.results).toHaveLength(2);
 });
 
+it("filters independent Category terms (Article and Video) in dynamic Document Lists", async () => {
+  taxonomy = [
+    { _id: "taxonomy-article", title: "Article", slug: "article" },
+    { _id: "taxonomy-video", title: "Video", slug: "video" },
+  ];
+
+  documents = [
+    {
+      _id: "blog-article-one",
+      _type: "blog",
+      title: "First article",
+      locale: "en-us",
+      slug: "first-article",
+      taxonomy: [
+        { _id: "taxonomy-article", title: "Article", slug: "article" },
+      ],
+      sections: [],
+    },
+    {
+      _id: "blog-article-two",
+      _type: "blog",
+      title: "Second article",
+      locale: "en-us",
+      slug: "second-article",
+      taxonomy: [
+        { _id: "taxonomy-article", title: "Article", slug: "article" },
+      ],
+      sections: [],
+    },
+    {
+      _id: "blog-video",
+      _type: "blog",
+      title: "Video guide",
+      locale: "en-us",
+      slug: "video-guide",
+      taxonomy: [{ _id: "taxonomy-video", title: "Video", slug: "video" }],
+      sections: [],
+    },
+  ];
+
+  const baseOptions = {
+    siteId: "site-proti",
+    locale: "en-us",
+    query: "",
+    includeAllOnEmptyQuery: true,
+    types: ["blog" as const],
+    sort: "title-asc" as const,
+  };
+
+  const all = await searchContent(baseOptions);
+  expect(all.total).toBe(3);
+
+  const articles = await searchContent({
+    ...baseOptions,
+    taxonomyGroups: [{ taxonomy: ["taxonomy-article"], taxonomyMatch: "any" }],
+  });
+  expect(articles.total).toBe(2);
+  expect(articles.results.map(({ id }) => id)).toEqual([
+    "blog-article-one",
+    "blog-article-two",
+  ]);
+
+  const videos = await searchContent({
+    ...baseOptions,
+    taxonomyGroups: [{ taxonomy: ["taxonomy-video"], taxonomyMatch: "any" }],
+  });
+  expect(videos.total).toBe(1);
+  expect(videos.results.map(({ id }) => id)).toEqual(["blog-video"]);
+
+  const both = await searchContent({
+    ...baseOptions,
+    taxonomyGroups: [
+      {
+        taxonomy: ["taxonomy-article", "taxonomy-video"],
+        taxonomyMatch: "any",
+      },
+    ],
+  });
+  expect(both.total).toBe(3);
+});
+
+it("combines separate Taxonomy filter groups with AND and respects ALL within a group", async () => {
+  taxonomy = [
+    { _id: "taxonomy-article", title: "Article", slug: "article" },
+    { _id: "taxonomy-video", title: "Video", slug: "video" },
+    { _id: "taxonomy-health", title: "Health", slug: "health" },
+    { _id: "taxonomy-nutrition", title: "Nutrition", slug: "nutrition" },
+  ];
+
+  const term = (id: string, title: string, slug: string) => ({
+    _id: id,
+    title,
+    slug,
+  });
+
+  documents = [
+    {
+      _id: "blog-article-health-nutrition",
+      _type: "blog",
+      title: "Article with both topics",
+      locale: "en-us",
+      slug: "article-both",
+      taxonomy: [
+        term("taxonomy-article", "Article", "article"),
+        term("taxonomy-health", "Health", "health"),
+        term("taxonomy-nutrition", "Nutrition", "nutrition"),
+      ],
+      sections: [],
+    },
+    {
+      _id: "blog-video-health-nutrition",
+      _type: "blog",
+      title: "Video with both topics",
+      locale: "en-us",
+      slug: "video-both",
+      taxonomy: [
+        term("taxonomy-video", "Video", "video"),
+        term("taxonomy-health", "Health", "health"),
+        term("taxonomy-nutrition", "Nutrition", "nutrition"),
+      ],
+      sections: [],
+    },
+    {
+      _id: "blog-article-health",
+      _type: "blog",
+      title: "Article with one topic",
+      locale: "en-us",
+      slug: "article-health",
+      taxonomy: [
+        term("taxonomy-article", "Article", "article"),
+        term("taxonomy-health", "Health", "health"),
+      ],
+      sections: [],
+    },
+  ];
+
+  const baseOptions = {
+    siteId: "site-proti",
+    locale: "en-us",
+    query: "",
+    includeAllOnEmptyQuery: true,
+    types: ["blog" as const],
+  };
+
+  const response = await searchContent({
+    ...baseOptions,
+    taxonomyGroups: [
+      { taxonomy: ["taxonomy-article"], taxonomyMatch: "any" },
+      {
+        taxonomy: ["taxonomy-health", "taxonomy-nutrition"],
+        taxonomyMatch: "all",
+      },
+    ],
+  });
+
+  expect(response.total).toBe(1);
+  expect(response.results.map(({ id }) => id)).toEqual([
+    "blog-article-health-nutrition",
+  ]);
+
+  // Empty groups do not narrow the results, but active groups still do.
+  const withEmptyGroup = await searchContent({
+    ...baseOptions,
+    taxonomyGroups: [
+      { taxonomy: [], taxonomyMatch: "any" },
+      { taxonomy: ["taxonomy-video"], taxonomyMatch: "any" },
+    ],
+  });
+  expect(withEmptyGroup.results.map(({ id }) => id)).toEqual([
+    "blog-video-health-nutrition",
+  ]);
+
+  // Existing legacy Taxonomy filtering remains independently enforced.
+  const withLegacyFilter = await searchContent({
+    ...baseOptions,
+    taxonomy: ["taxonomy-health"],
+    taxonomyMatch: "any",
+    taxonomyGroups: [{ taxonomy: ["taxonomy-video"], taxonomyMatch: "any" }],
+  });
+  expect(withLegacyFilter.results.map(({ id }) => id)).toEqual([
+    "blog-video-health-nutrition",
+  ]);
+});
+
 it("combines authored Taxonomy scope with visitor Taxonomy filters", async () => {
   taxonomy = [
     {

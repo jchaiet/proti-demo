@@ -634,6 +634,18 @@ export async function searchContent(
 
   const taxonomyMatch = options.taxonomyMatch ?? "any";
 
+  // Independent visitor Taxonomy groups are combined with AND. Each group
+  // determines whether its selected terms use ANY or ALL matching.
+  // Ignore empty groups so an unselected group does not affect results.
+  const taxonomyGroups = (options.taxonomyGroups ?? [])
+    .map((group) => ({
+      taxonomy: Array.from(
+        new Set(group.taxonomy.map((value) => value.trim()).filter(Boolean)),
+      ),
+      taxonomyMatch: group.taxonomyMatch,
+    }))
+    .filter((group) => group.taxonomy.length > 0);
+
   const taxonomyScope = Array.from(
     new Set(
       (options.taxonomyScope ?? [])
@@ -973,13 +985,25 @@ export async function searchContent(
       return false;
     }
 
-    return matchesTaxonomy({
-      resultTaxonomy: item.result.taxonomy ?? [],
+    const resultTaxonomy = item.result.taxonomy ?? [];
 
-      requested: taxonomy,
+    if (
+      !matchesTaxonomy({
+        resultTaxonomy,
+        requested: taxonomy,
+        mode: taxonomyMatch,
+      })
+    ) {
+      return false;
+    }
 
-      mode: taxonomyMatch,
-    });
+    return taxonomyGroups.every((group) =>
+      matchesTaxonomy({
+        resultTaxonomy,
+        requested: group.taxonomy,
+        mode: group.taxonomyMatch,
+      }),
+    );
   });
 
   const sorted = sortResults(filtered, sort);
