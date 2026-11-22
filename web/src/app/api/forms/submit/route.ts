@@ -153,8 +153,16 @@ export async function POST(request: Request) {
 
     stage = "validation";
     const validated = validateFormValues(form, body.fields);
-    if (!validated.ok)
+    if (!validated.ok) {
+      if (validated.code === "unsupported_file_upload")
+        return reply(
+          validated.error,
+          503,
+          "attachment_unsupported",
+          "configuration",
+        );
       return reply(validated.error, 400, "validation_rejected", "validation");
+    }
 
     stage = "delivery";
     const result = await forwardFormSubmission(

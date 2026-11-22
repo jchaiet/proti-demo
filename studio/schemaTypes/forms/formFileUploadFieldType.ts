@@ -9,30 +9,37 @@ import {
 
 export const formFileUploadFieldType = defineType({
   name: 'formFileUploadField',
-  title: 'File Upload',
+  title: 'File Upload (Unavailable)',
+  deprecated: {
+    reason:
+      'No file-storage adapter is installed. Existing fields are retained for migration; disable or remove them before publishing.',
+  },
   type: 'object',
   description:
-    'Requires a dedicated file-storage submission adapter. The default Proti webhook adapter does not accept file attachments.',
+    'Unavailable with the default webhook adapter. Existing settings are preserved, but active uploads prevent publishing. Disable the field or remove it. No storage adapter is currently supported.',
 
   fields: [
     defineField({
       name: 'label',
       title: 'Label',
       type: 'string',
+      readOnly: true,
     }),
 
-    formFieldNameField(),
+    defineField({...formFieldNameField(), readOnly: true}),
 
     defineField({
       name: 'helperText',
       title: 'Helper Text',
       type: 'string',
+      readOnly: true,
     }),
 
     defineField({
       name: 'accept',
       title: 'Accepted File Types',
       type: 'string',
+      readOnly: true,
 
       description:
         'Comma-separated MIME types or extensions, for example ".pdf,.doc,.docx" or "image/*".',
@@ -42,6 +49,7 @@ export const formFileUploadFieldType = defineType({
       name: 'multiple',
       title: 'Allow Multiple Files',
       type: 'boolean',
+      readOnly: true,
 
       initialValue: false,
     }),
@@ -50,17 +58,23 @@ export const formFileUploadFieldType = defineType({
       name: 'maxSizeMb',
       title: 'Maximum File Size',
       type: 'number',
+      readOnly: true,
 
       description: 'Maximum allowed size for each uploaded file, in MB.',
 
       validation: (Rule) => Rule.min(1),
     }),
 
-    formFieldRequiredField(),
+    defineField({...formFieldRequiredField(), readOnly: true}),
 
-    formFieldDisabledField(),
+    defineField({
+      ...formFieldDisabledField(),
+      initialValue: true,
+      description:
+        'Keep this checked to retain a legacy upload field without blocking publication. Active file uploads are unsupported.',
+    }),
 
-    formFieldWidthField(),
+    defineField({...formFieldWidthField(), readOnly: true}),
   ],
 
   preview: {
@@ -74,7 +88,7 @@ export const formFileUploadFieldType = defineType({
       return {
         title: label || name || 'File Upload',
 
-        subtitle: `${multiple ? 'Multiple Files' : 'Single File'}${name ? ` · ${name}` : ''}`,
+        subtitle: `Unavailable · ${multiple ? 'Multiple Files' : 'Single File'}${name ? ` · ${name}` : ''}`,
       }
     },
   },

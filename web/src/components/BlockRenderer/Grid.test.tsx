@@ -2,89 +2,64 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import type { GridBlockProps } from "mino-ui/blocks/GridBlock";
 
-// The real Mino renderer is exercised by the Playwright regression. Here,
-// we check that Proti emits the correct dimensions before the block renders.
+const mocks = vi.hoisted(() => ({ renderGrid: vi.fn() }));
+
 vi.mock("mino-ui/blocks/GridBlock", () => ({
-  GridBlock: () => <section data-testid="mino-grid" />,
+  GridBlock: (props: GridBlockProps) => {
+    mocks.renderGrid(props);
+    return <section data-testid="mino-grid" />;
+  },
 }));
 
 import { Grid } from "./Grid";
 
-function render(items: GridBlockProps["items"]) {
-  return renderToStaticMarkup(
-    <Grid {...({ cols: 2, items } as GridBlockProps)} />,
-  );
-}
+describe("Grid adapter", () => {
+  it("forwards image-only tile dimensions to Mino unchanged", () => {
+    const props: GridBlockProps = {
+      cols: 2,
+      items: [
+        {
+          type: "image",
+          imageSrc: "/wide.svg",
+          imageWidth: 1200,
+          imageHeight: 675,
+          imageAlt: "Wide image",
+        },
+        {
+          type: "image",
+          imageSrc: "/square.svg",
+          imageWidth: 800,
+          imageHeight: 800,
+          href: "/gallery",
+          imageAlt: "Square image",
+        },
+      ],
+    };
 
-describe("Grid image geometry (temporary Mino integration fix)", () => {
-  it("reserves each distinct tile ratio before rendering Mino GridBlock", () => {
-    const html = render([
-      {
-        id: "wide-1",
-        type: "image",
-        imageSrc: "/wide.svg",
-        imageAlt: "Wide image",
-        imageWidth: 1200,
-        imageHeight: 675,
-      },
-      {
-        id: "square",
-        type: "image",
-        imageSrc: "/square.svg",
-        imageAlt: "Square image",
-        imageWidth: 800,
-        imageHeight: 800,
-      },
-      {
-        id: "wide-2",
-        type: "image",
-        imageSrc: "/other-wide.svg",
-        imageAlt: "Other wide image",
-        imageWidth: 1200,
-        imageHeight: 675,
-      },
-    ]);
+    const html = renderToStaticMarkup(<Grid {...props} />);
 
-    expect(html).toContain("data-proti-grid-image-geometry");
-    expect(html).toContain('[width="1200"][height="675"]');
-    expect(html).toContain("aspect-ratio: 1200 / 675");
-    expect(html).toContain("aspect-ratio: 800 / 800");
-    expect(html.match(/aspect-ratio: 1200 \/ 675/g)).toHaveLength(1);
-    expect(html.indexOf("aspect-ratio")).toBeLessThan(
-      html.indexOf('data-testid="mino-grid"'),
-    );
-  });
-
-  it("does not alter ArticleCard/ResourceCard-only grids", () => {
-    const html = render([
-      { id: "one", type: "article", article: {} },
-      { id: "two", type: "resource", resource: {} },
-    ] as unknown as GridBlockProps["items"]);
-
-    expect(html).not.toContain("data-proti-grid-image-geometry");
-    expect(html).not.toContain("aspect-ratio");
+    expect(mocks.renderGrid).toHaveBeenCalledWith(props);
     expect(html).toContain('data-testid="mino-grid"');
+    expect(html).not.toContain("data-proti-grid-image-geometry");
+    expect(html).not.toContain("<style>");
   });
 
-  it("skips invalid or missing dimensions", () => {
-    const html = render([
-      {
-        id: "missing",
-        type: "image",
-        imageSrc: "/missing.svg",
-        imageAlt: "Unknown dimensions",
-      },
-      {
-        id: "zero",
-        type: "image",
-        imageSrc: "/zero.svg",
-        imageAlt: "Zero height",
-        imageWidth: 1200,
-        imageHeight: 0,
-      },
-    ]);
+  it("does not inject layout rules for mixed or unsized grids", () => {
+    const props: GridBlockProps = {
+      items: [
+        { type: "image", imageSrc: "/unknown.svg" },
+        {
+          type: "article",
+          article: {} as NonNullable<
+            GridBlockProps["items"]
+          >[number]["article"],
+        },
+      ],
+    };
 
-    expect(html).not.toContain("aspect-ratio");
-    expect(html).not.toContain("data-proti-grid-image-geometry");
+    const html = renderToStaticMarkup(<Grid {...props} />);
+
+    expect(mocks.renderGrid).toHaveBeenCalledWith(props);
+    expect(html).toBe('<section data-testid="mino-grid"></section>');
   });
 });

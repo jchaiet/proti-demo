@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { validateFormValues, type PublishedFormDefinition } from "./validation";
+import {
+  validateFormValues,
+  hasActiveFileUploads,
+  type PublishedFormDefinition,
+} from "./validation";
 
 const form: PublishedFormDefinition = {
   _key: "form-block-1",
@@ -148,6 +152,67 @@ describe("published CMS form validation", () => {
         },
         { x: "value" },
       ).ok,
+    ).toBe(false);
+  });
+});
+
+describe("legacy upload fail-closed behavior", () => {
+  const email = { _type: "formInputField", name: "email", required: true };
+  const upload = {
+    _type: "formFileUploadField",
+    name: "resume",
+    required: false,
+  };
+
+  it("rejects optional uploads even if the visitor sends no file value", () => {
+    expect(
+      validateFormValues(
+        { _key: "legacy", fields: [email, upload] },
+        { email: "person@example.com" },
+      ),
+    ).toEqual({
+      ok: false,
+      code: "unsupported_file_upload",
+      error:
+        "This form is unavailable because file attachments are not supported.",
+    });
+  });
+
+  it("rejects uploads inside enabled fieldsets and stepped forms", () => {
+    const nested = { _type: "formFieldset", fields: [upload] };
+    expect(hasActiveFileUploads([nested])).toBe(true);
+    expect(
+      validateFormValues(
+        { _key: "nested", fields: [email, nested] },
+        { email: "a" },
+      ).ok,
+    ).toBe(false);
+    expect(
+      validateFormValues(
+        {
+          _key: "steps",
+          formMode: "stepped",
+          steps: [{ fields: [email] }, { fields: [upload] }],
+        },
+        { email: "a" },
+      ).ok,
+    ).toBe(false);
+  });
+
+  it("preserves normal submissions when legacy uploads are disabled", () => {
+    expect(
+      validateFormValues(
+        {
+          _key: "legacy-disabled",
+          fields: [email, { ...upload, disabled: true }],
+        },
+        { email: "person@example.com" },
+      ),
+    ).toEqual({ ok: true, values: { email: "person@example.com" } });
+    expect(
+      hasActiveFileUploads([
+        { _type: "formFieldset", disabled: true, fields: [upload] },
+      ]),
     ).toBe(false);
   });
 });

@@ -31,7 +31,7 @@ export type SubmittedValues = Record<string, SubmittedValue>;
 
 export type ValidationResult =
   | { ok: true; values: SubmittedValues }
-  | { ok: false; error: string };
+  | { ok: false; error: string; code?: "unsupported_file_upload" };
 
 const SUBMITTABLE = new Set([
   "formInputField",
@@ -46,6 +46,25 @@ const SUBMITTABLE = new Set([
   "formSwitchField",
   "formHiddenField",
 ]);
+/** True if an enabled File Upload exists in the published form field tree. */
+export function hasActiveFileUploads(fields: unknown, depth = 0): boolean {
+  if (!Array.isArray(fields) || depth > 4) return false;
+  return fields.some((field: unknown) => {
+    if (!field || typeof field !== "object") return false;
+    const item = field as {
+      _type?: string;
+      disabled?: boolean;
+      fields?: unknown;
+    };
+    if (item.disabled) return false;
+    if (item._type === "formFileUploadField") return true;
+    return (
+      item._type === "formFieldset" &&
+      hasActiveFileUploads(item.fields, depth + 1)
+    );
+  });
+}
+
 const MAX_FIELDS = 100;
 const MAX_STRING_LENGTH = 10_000;
 
@@ -148,6 +167,23 @@ export function validateFormValues(
       ? form.steps?.flatMap((step) => step.fields ?? [])
       : form.fields,
   );
+  // Fail closed for legacy published forms before inspecting submitted values:
+  // otherwise an optional upload could be silently ignored and delivered.
+  if (
+    hasActiveFileUploads(
+      form.formMode === "stepped"
+        ? form.steps?.flatMap((step) => step.fields ?? [])
+        : form.fields,
+    )
+  ) {
+    return {
+      ok: false,
+      code: "unsupported_file_upload",
+      error:
+        "This form is unavailable because file attachments are not supported.",
+    };
+  }
+
   const byName = new Map<string, PublishedFormField>();
   if (fields.length > MAX_FIELDS)
     return { ok: false, error: "Form configuration is too large." };

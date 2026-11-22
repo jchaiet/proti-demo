@@ -3,6 +3,7 @@ import {describe, expect, it} from 'vitest'
 import {formBlockType} from '../../blocks/formBlockType'
 import {formCalendarFieldType} from '../formCalendarFieldType'
 import {formFieldsetType} from '../formFieldsetType'
+import {formFileUploadFieldType} from '../formFileUploadFieldType'
 import {formInputFieldType} from '../formInputFieldType'
 import {formRadioGroupFieldType} from '../formRadioGroupFieldType'
 import {formRangeFieldType} from '../formRangeFieldType'
@@ -121,5 +122,24 @@ describe('Form webhook destination schema', () => {
       {title: 'Contact', value: 'contact'},
       {title: 'Newsletter', value: 'newsletter'},
     ])
+  })
+})
+
+describe('File Upload legacy schema contract', () => {
+  it('retains the original array member in all three locations for existing content', () => {
+    for (const schema of [formBlockType, formStepType, formFieldsetType]) {
+      expect(getArrayMemberTypes(schema, 'fields')).toContain('formFileUploadField')
+    }
+  })
+
+  it('marks uploads unavailable, retains authored data, and defaults new entries to disabled', () => {
+    expect(formFileUploadFieldType.deprecated?.reason).toContain('No file-storage adapter')
+    const disabled = getField(formFileUploadFieldType, 'disabled') as
+      (SchemaFieldLike & {initialValue?: boolean; readOnly?: boolean}) | undefined
+    expect(disabled?.initialValue).toBe(true)
+    expect(disabled?.readOnly).not.toBe(true)
+    const name = getField(formFileUploadFieldType, 'name') as
+      (SchemaFieldLike & {readOnly?: boolean}) | undefined
+    expect(name?.readOnly).toBe(true)
   })
 })

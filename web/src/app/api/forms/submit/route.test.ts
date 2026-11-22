@@ -464,3 +464,54 @@ describe("POST /api/forms/submit", () => {
     expect(forward).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("legacy File Upload submission safeguards", () => {
+  it("returns an explicit configuration error without forwarding visitor data", async () => {
+    find.mockResolvedValue({
+      _key: "key-123",
+      fields: [
+        {
+          _type: "formInputField",
+          name: "email",
+          type: "email",
+          required: true,
+        },
+        { _type: "formFileUploadField", name: "attachment" },
+      ],
+    });
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const response = await POST(request());
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({
+      error:
+        "This form is unavailable because file attachments are not supported.",
+    });
+    expect(forward).not.toHaveBeenCalled();
+    expect(warn).toHaveBeenCalledWith(
+      JSON.stringify({
+        source: "proti.forms",
+        event: "attachment_unsupported",
+        stage: "configuration",
+        status: 503,
+      }),
+    );
+    expect(JSON.stringify(warn.mock.calls)).not.toContain("person@example.com");
+  });
+
+  it("allows regular submissions when the legacy upload is disabled", async () => {
+    find.mockResolvedValue({
+      _key: "key-123",
+      fields: [
+        {
+          _type: "formInputField",
+          name: "email",
+          type: "email",
+          required: true,
+        },
+        { _type: "formFileUploadField", name: "attachment", disabled: true },
+      ],
+    });
+    expect((await POST(request())).status).toBe(200);
+    expect(forward).toHaveBeenCalledOnce();
+  });
+});

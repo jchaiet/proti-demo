@@ -12,6 +12,7 @@ export interface FormRendererProps extends Omit<FormBlockProps, "onSubmit"> {
   siteId: string;
   locale: string;
   submitButtonIconName?: CmsIcon;
+  hasUnsupportedFileUpload?: boolean;
   completionAction?: "message" | "redirect";
   successRedirectPath?: string;
 }
@@ -33,6 +34,7 @@ export function Form({
   siteId,
   locale,
   submitButtonIconName,
+  hasUnsupportedFileUpload = false,
   submitButtonProps,
   completionAction = "message",
   successRedirectPath,
@@ -156,6 +158,18 @@ export function Form({
       submissionInFlight.current = false;
     }
   };
+
+  // Legacy published forms can still contain active uploads from older
+  // Studio versions. Don't invite visitors to fill an un-submittable form.
+  if (hasUnsupportedFileUpload) {
+    return (
+      <div role="alert" aria-live="polite">
+        {isSpanish
+          ? "Este formulario no está disponible porque no admite archivos adjuntos. Contacta con el administrador del sitio."
+          : "This form is unavailable because file attachments are not supported. Please contact the site administrator."}
+      </div>
+    );
+  }
 
   return (
     <div ref={formContainerRef}>

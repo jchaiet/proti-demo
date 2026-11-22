@@ -4,6 +4,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   useTransition,
 } from "react";
@@ -19,6 +20,9 @@ import type {
 } from "mino-ui/blocks/DocumentListBlock";
 
 import type { MappedDocumentListBlock } from "@/cms/mappers/blocks";
+
+/** Wait until the visitor stops typing before navigating the server-backed list. */
+const DOCUMENT_LIST_SEARCH_DEBOUNCE_MS = 650;
 
 const normalizeValue = (value?: string) => value?.trim().toLowerCase() ?? "";
 
@@ -384,22 +388,32 @@ function ServerDocumentList({
     ...blockProps
   } = props;
 
-  const [queryState, setQueryState] = useState(() => ({
+  // The input must remain editable while a server navigation is pending.
+  // Keep the draft independently from serverState so an older response cannot
+  // replace letters the visitor has typed since that request started.
+  const [queryDraft, setQueryDraft] = useState(() => ({
     value: state.searchQuery,
     responseQuery: state.searchQuery,
+    editing: false,
   }));
 
-  const localQuery =
-    queryState.responseQuery === state.searchQuery
-      ? queryState.value
-      : state.searchQuery;
+  // Reconcile a new server query without overwriting a newer, unsent draft.
+  // React rerenders this component immediately; no extra request/effect is
+  // created and the controlled field stays stable while the visitor types.
+  if (queryDraft.responseQuery !== state.searchQuery) {
+    const keepDraft =
+      queryDraft.editing && queryDraft.value.trim() !== state.searchQuery;
 
-  const setLocalQuery = (value: string) => {
-    setQueryState({
-      value,
+    setQueryDraft({
+      value: keepDraft ? queryDraft.value : state.searchQuery,
       responseQuery: state.searchQuery,
+      editing: keepDraft,
     });
-  };
+  }
+
+  const localQuery = queryDraft.value;
+  const serverQueryRef = useRef(state.searchQuery);
+  const searchTimerRef = useRef<number | null>(null);
 
   const replaceParams = useCallback(
     (update: (params: URLSearchParams) => void) => {
@@ -421,29 +435,70 @@ function ServerDocumentList({
     [pathname, router, searchParams],
   );
 
+  // The timer needs the newest URL parameters, even if another control (such
+  // as a taxonomy filter) changes while the visitor is still typing.
+  const replaceParamsRef = useRef(replaceParams);
   useEffect(() => {
-    if (!enableSearch || localQuery === state.searchQuery) {
+    replaceParamsRef.current = replaceParams;
+  }, [replaceParams]);
+
+  useEffect(() => {
+    serverQueryRef.current = state.searchQuery;
+  }, [state.searchQuery]);
+
+  // Clear a queued search if this list is removed or the feature is disabled.
+  useEffect(() => {
+    if (!enableSearch && searchTimerRef.current !== null) {
+      window.clearTimeout(searchTimerRef.current);
+      searchTimerRef.current = null;
+    }
+
+    return () => {
+      if (searchTimerRef.current !== null) {
+        window.clearTimeout(searchTimerRef.current);
+        searchTimerRef.current = null;
+      }
+    };
+  }, [enableSearch]);
+
+  const handleSearchChange = (value: string) => {
+    // Update the controlled input immediately. Only the URL/navigation is
+    // delayed; typing never waits for search results.
+    const nextQuery = value.trim();
+    setQueryDraft({
+      value,
+      responseQuery: serverQueryRef.current,
+      editing: nextQuery !== serverQueryRef.current,
+    });
+
+    if (searchTimerRef.current !== null) {
+      window.clearTimeout(searchTimerRef.current);
+      searchTimerRef.current = null;
+    }
+
+    // Do not search until the input actually differs from the applied query.
+    if (nextQuery === serverQueryRef.current) {
       return;
     }
 
-    const timeout = window.setTimeout(() => {
-      replaceParams((params) => {
-        const value = localQuery.trim();
+    searchTimerRef.current = window.setTimeout(() => {
+      searchTimerRef.current = null;
 
-        if (value) {
-          params.set("q", value);
+      // Clearing the field removes q; whitespace alone is not a search term.
+      if (nextQuery === serverQueryRef.current) {
+        return;
+      }
+
+      replaceParamsRef.current((params) => {
+        if (nextQuery) {
+          params.set("q", nextQuery);
         } else {
           params.delete("q");
         }
-
         params.delete("page");
       });
-    }, 350);
-
-    return () => {
-      window.clearTimeout(timeout);
-    };
-  }, [enableSearch, localQuery, replaceParams, state.searchQuery]);
+    }, DOCUMENT_LIST_SEARCH_DEBOUNCE_MS);
+  };
 
   const handleFilterChange = (value: string | string[]) => {
     const values = Array.isArray(value) ? value : [value];
@@ -549,7 +604,7 @@ function ServerDocumentList({
       currentPage={state.currentPage}
       totalPages={state.totalPages}
       totalResults={state.totalResults}
-      onSearchChange={enableSearch ? setLocalQuery : undefined}
+      onSearchChange={enableSearch ? handleSearchChange : undefined}
       onFilterChange={filterOptions.length > 0 ? handleFilterChange : undefined}
       onClearFilters={
         resolvedFilterGroups.length > 0 ? handleClearFilters : undefined

@@ -27,6 +27,8 @@ export const formStepType = defineType({
       name: 'fields',
       title: 'Fields',
       type: 'array',
+      description:
+        'File Upload is currently unavailable; legacy entries must be disabled or removed.',
 
       of: [
         defineArrayMember({
@@ -49,6 +51,8 @@ export const formStepType = defineType({
           type: 'formCalendarField',
         }),
 
+        // Keep the legacy member registered so existing Sanity array values are recognized.
+        // It is deprecated and cannot be published while active.
         defineArrayMember({
           type: 'formFileUploadField',
         }),

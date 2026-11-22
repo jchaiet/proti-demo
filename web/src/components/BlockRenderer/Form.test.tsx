@@ -194,3 +194,23 @@ describe("CMS Form renderer", () => {
     await waitFor(() => expect(screen.getByRole("status")).toBeInTheDocument());
   });
 });
+
+describe("unsupported File Upload user experience", () => {
+  it("replaces an active legacy upload form with an accessible explanation", () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    render(<Form {...props} hasUnsupportedFileUpload />);
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "file attachments are not supported",
+    );
+    expect(
+      screen.queryByRole("button", { name: "Submit" }),
+    ).not.toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("provides an appropriate Spanish explanation", () => {
+    render(<Form {...props} locale="es-us" hasUnsupportedFileUpload />);
+    expect(screen.getByRole("alert")).toHaveTextContent("archivos adjuntos");
+  });
+});
