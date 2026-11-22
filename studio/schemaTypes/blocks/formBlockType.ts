@@ -358,7 +358,8 @@ export const formBlockType = defineType({
       title: 'Fields',
       type: 'array',
 
-      description: 'Add and order the fields in this single-page form.',
+      description:
+        'Add and order the fields in this single-page form. File Upload is unavailable without a storage adapter; legacy entries must be disabled or removed.',
 
       hidden: ({parent}) => parent?.formMode === 'stepped',
 
@@ -383,6 +384,8 @@ export const formBlockType = defineType({
           type: 'formCalendarField',
         }),
 
+        // Keep the legacy member registered so existing Sanity array values are recognized.
+        // It is deprecated and cannot be published while active.
         defineArrayMember({
           type: 'formFileUploadField',
         }),

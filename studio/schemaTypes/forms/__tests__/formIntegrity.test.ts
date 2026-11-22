@@ -11,6 +11,7 @@ import {
   validateNumericInputDefaultWithinBounds,
   validateNumericMinMax,
   validateSingleFormFields,
+  validateUnsupportedFileUploads,
   validateSteppedFormSteps,
   validateSubmittedFieldName,
   validateUniqueFieldsetKeys,
@@ -253,5 +254,41 @@ describe('Form data integrity validation', () => {
       'Default Date cannot be later than Maximum Date.',
     )
     expect(validateDateDefaultWithinBounds('2026-09-15', '2026-09-10', '2026-09-20')).toBe(true)
+  })
+})
+
+describe('legacy File Upload authoring safeguards', () => {
+  const input = {_type: 'formInputField', name: 'email'}
+  const upload = {_type: 'formFileUploadField', name: 'attachment'}
+
+  it('blocks an enabled File Upload even if it is optional or inside a fieldset', () => {
+    expect(validateSingleFormFields([input, upload])).toContain('File Upload is unavailable')
+    expect(
+      validateSingleFormFields([input, {_type: 'formFieldset', name: 'more', fields: [upload]}]),
+    ).toContain('File Upload is unavailable')
+  })
+
+  it('allows retained but disabled legacy fields and disabled fieldsets', () => {
+    expect(validateSingleFormFields([input, {...upload, disabled: true}])).toBe(true)
+    expect(
+      validateUnsupportedFileUploads([{_type: 'formFieldset', disabled: true, fields: [upload]}]),
+    ).toBe(true)
+  })
+
+  it('blocks enabled file uploads inside any step', () => {
+    expect(validateSteppedFormSteps([{fields: [input]}, {fields: [upload]}])).toContain(
+      'File Upload is unavailable',
+    )
+    expect(
+      validateSteppedFormSteps([
+        {fields: [input]},
+        {
+          fields: [
+            {...upload, disabled: true},
+            {_type: 'formInputField', name: 'name'},
+          ],
+        },
+      ]),
+    ).toBe(true)
   })
 })

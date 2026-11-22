@@ -5,6 +5,7 @@ export interface FormOptionLike {
 export interface FormFieldLike {
   _type?: string
   name?: unknown
+  disabled?: boolean
   fields?: unknown
 }
 
@@ -184,7 +185,31 @@ export function validateContainsSubmittableField(value: unknown, label = 'Form')
   return `${label} must contain at least one submittable field. Divider and Spacer do not submit values.`
 }
 
+/**
+ * Legacy File Upload entries must stay in the schema so Sanity can display
+ * existing content. No storage adapter is installed: prevent new publishes
+ * that would offer visitors a form which cannot accept attachments.
+ * Disabled uploads (or uploads inside disabled Fieldsets) are safe to retain.
+ */
+export function validateUnsupportedFileUploads(value: unknown): true | string {
+  function hasActiveUpload(fields: unknown, depth = 0): boolean {
+    if (depth > 4) return false
+    return asFields(fields).some((field) => {
+      if (!field || field.disabled) return false
+      if (field._type === 'formFileUploadField') return true
+      return field._type === 'formFieldset' && hasActiveUpload(field.fields, depth + 1)
+    })
+  }
+
+  return hasActiveUpload(value)
+    ? 'File Upload is unavailable without a storage adapter. Disable or remove the File Upload field before publishing this form.'
+    : true
+}
+
 export function validateSingleFormFields(value: unknown): true | string {
+  const uploads = validateUnsupportedFileUploads(value)
+  if (uploads !== true) return uploads
+
   const containsField = validateContainsSubmittableField(value)
 
   if (containsField !== true) {
@@ -219,6 +244,8 @@ export function validateSteppedFormSteps(value: unknown): true | string {
   }
 
   const allFields = steps.flatMap((step) => asFields(step?.fields))
+  const uploads = validateUnsupportedFileUploads(allFields)
+  if (uploads !== true) return uploads
 
   const uniqueNames = validateUniqueSubmittedFieldNames(allFields)
 

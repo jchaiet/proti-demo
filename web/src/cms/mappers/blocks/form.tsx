@@ -15,6 +15,7 @@ import {
 
 import { SANITY_RESPONSIVE_WIDTHS } from "@/cms/resolvers/image-widths";
 import { CmsRichText } from "@/components/CmsRichText";
+import { hasActiveFileUploads } from "@/lib/forms/validation";
 
 export type MappedFormBlockProps = Omit<FormBlockProps, "onSubmit"> & {
   formKey: string;
@@ -22,6 +23,8 @@ export type MappedFormBlockProps = Omit<FormBlockProps, "onSubmit"> & {
   submitButtonIconName?: CmsIcon;
   completionAction?: "message" | "redirect";
   successRedirectPath?: string;
+  /** Published legacy form includes an upload not supported by the default adapter. */
+  hasUnsupportedFileUpload?: boolean;
 };
 
 function mapFormSteps(steps: CmsFormBlock["steps"] | undefined): FormStep[] {
@@ -126,6 +129,8 @@ function mapFormField(field: CmsFormField): FormFieldConfig | null {
       };
 
     case "formFileUploadField":
+      // A disabled legacy upload is retained in Sanity but not shown to visitors.
+      if (field.disabled) return null;
       return {
         fieldType: "fileupload",
         name: field.name,
@@ -360,6 +365,12 @@ export function mapFormBlock(block: CmsFormBlock): MappedFormBlockProps {
     imageHeight: imageDimensions?.height,
 
     imageAlt: block.image?.alt ?? "",
+
+    hasUnsupportedFileUpload: hasActiveFileUploads(
+      isStepped
+        ? block.steps?.flatMap((step) => step.fields ?? [])
+        : block.fields,
+    ),
 
     fields: !isStepped ? mapFormFields(block.fields) : undefined,
 
