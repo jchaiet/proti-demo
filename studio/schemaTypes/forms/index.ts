@@ -30,3 +30,5 @@ export {formStepType} from './formStepType'
 export {formDividerFieldType} from './formDividerFieldType'
 
 export {formSpacerFieldType} from './formSpacerFieldType'
+
+export {formVisibilityConditionType} from './formVisibilityConditionType'

@@ -5,6 +5,7 @@ import {
   formFieldNameField,
   formFieldRequiredField,
   formFieldWidthField,
+  formFieldVisibilityConditionField,
 } from './shared'
 import {validateNumericDefaultWithinBounds, validateNumericMinMax} from './validation'
 
@@ -93,6 +94,8 @@ export const formRangeFieldType = defineType({
     formFieldRequiredField(),
 
     formFieldDisabledField(),
+
+    formFieldVisibilityConditionField(),
 
     formFieldWidthField(),
   ],

@@ -1,21 +1,27 @@
 import { NextRequest } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { parseBodyMock, revalidatePathMock, resolveRevalidationPlanMock } =
-  vi.hoisted(() => ({
-    parseBodyMock: vi.fn(),
-    revalidatePathMock: vi.fn<(path: string) => void>(),
-    resolveRevalidationPlanMock: vi.fn<
-      (payload: unknown) => Promise<{
-        documentId: string;
-        documentType: "singleton";
-        paths: string[];
-      } | null>
-    >(),
-  }));
+const {
+  parseBodyMock,
+  revalidatePathMock,
+  revalidateTagMock,
+  resolveRevalidationPlanMock,
+} = vi.hoisted(() => ({
+  parseBodyMock: vi.fn(),
+  revalidatePathMock: vi.fn<(path: string) => void>(),
+  revalidateTagMock: vi.fn(),
+  resolveRevalidationPlanMock: vi.fn<
+    (payload: unknown) => Promise<{
+      documentId: string;
+      documentType: "singleton" | "site";
+      paths: string[];
+    } | null>
+  >(),
+}));
 
 vi.mock("next/cache", () => ({
   revalidatePath: revalidatePathMock,
+  revalidateTag: revalidateTagMock,
 }));
 
 vi.mock("next-sanity/webhook", () => ({
@@ -26,6 +32,7 @@ vi.mock("@/cms/revalidation/dependencies", () => ({
   resolveRevalidationPlan: resolveRevalidationPlanMock,
 }));
 
+import { PUBLIC_SEARCH_SITE_LOOKUP_TAG } from "@/sanity/cache-tags";
 import { POST } from "./route";
 
 const validBody = {
@@ -52,6 +59,7 @@ describe("POST /api/revalidate", () => {
 
     parseBodyMock.mockReset();
     revalidatePathMock.mockReset();
+    revalidateTagMock.mockReset();
     resolveRevalidationPlanMock.mockReset();
 
     parseBodyMock.mockResolvedValue({
@@ -88,6 +96,7 @@ describe("POST /api/revalidate", () => {
 
     expect(response.status).toBe(401);
     expect(resolveRevalidationPlanMock).not.toHaveBeenCalled();
+    expect(revalidateTagMock).not.toHaveBeenCalled();
   });
 
   it("fails closed when the server secret is missing", async () => {
@@ -121,6 +130,39 @@ describe("POST /api/revalidate", () => {
       documentId: "singleton-a",
       count: 3,
     });
+    expect(revalidateTagMock).not.toHaveBeenCalled();
+  });
+
+  it("immediately expires the public Search Site cache for a signed Site change", async () => {
+    resolveRevalidationPlanMock.mockResolvedValueOnce({
+      documentId: "site-a",
+      documentType: "site",
+      paths: ["/", "/sitemap.xml"],
+    });
+
+    const siteBody = { after: { _id: "site-a", _type: "site" } };
+    parseBodyMock.mockResolvedValueOnce({
+      isValidSignature: true,
+      body: siteBody,
+    });
+    const response = await POST(createRequest(siteBody));
+
+    expect(response.status).toBe(200);
+    expect(revalidateTagMock).toHaveBeenCalledTimes(1);
+    expect(revalidateTagMock).toHaveBeenCalledWith(
+      PUBLIC_SEARCH_SITE_LOOKUP_TAG,
+      { expire: 0 },
+    );
+    expect(revalidatePathMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not expire the Site cache for invalid webhook signatures", async () => {
+    parseBodyMock.mockResolvedValueOnce({
+      isValidSignature: false,
+      body: validBody,
+    });
+    expect((await POST(createRequest())).status).toBe(401);
+    expect(revalidateTagMock).not.toHaveBeenCalled();
   });
 
   it("rejects a payload that does not identify a supported document", async () => {

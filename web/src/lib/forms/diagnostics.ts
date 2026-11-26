@@ -24,6 +24,7 @@ export type FormDiagnosticEvent =
   | "destination_unconfigured"
   | "validation_rejected"
   | "attachment_unsupported"
+  | "form_configuration_invalid"
   | "webhook_unavailable"
   | "unexpected_failure";
 

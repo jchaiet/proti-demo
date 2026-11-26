@@ -82,3 +82,13 @@ export const formFieldSizeField = (name = 'size', title = 'Size') =>
       layout: 'radio',
     },
   })
+
+/** A single optional condition; the parent form validates references and ordering. */
+export const formFieldVisibilityConditionField = () =>
+  defineField({
+    name: 'visibilityCondition',
+    title: 'Show This Field When…',
+    type: 'formVisibilityCondition',
+    description:
+      'Show this field only when an earlier Select, Radio Group, or Checkbox matches the configured submitted option value.',
+  })

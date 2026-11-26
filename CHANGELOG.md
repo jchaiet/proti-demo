@@ -2,6 +2,37 @@
 
 All notable Proti baseline changes are recorded here.
 
+## v0.7.0 — Page Builder Expansion, Conditional Forms and Search Efficiency
+
+### Added
+
+- Notice / Callout block with neutral, information, success, warning and promotional variants, rich-text content, optional icon and CTAs.
+- Metrics / Statistics block with default, card and divided presentations, responsive layouts, and text-based values, prefixes and suffixes.
+- Conditional Form authoring for supported choice-field triggers and nested fieldsets, including across earlier multistep fields.
+- Dynamic frontend field visibility, hidden-answer clearing, accessible change announcements and visibility-aware required-field handling.
+- Trusted server-side form condition evaluation using published Sanity definitions; hidden values are excluded from webhook payloads and malformed or unauthorized submissions are rejected.
+- Search performance instrumentation, benchmark comparison tools and live API contract regression checks.
+
+### Improved
+
+- Mino UI integration upgraded through version `0.0.6` for Grid image geometry and the new Notice/Metrics components.
+- Global Search published Host-to-Site lookup now uses tagged caching with a 60-second fallback and signed-webhook invalidation. Local development and draft-mode lookups bypass the cache; Search API responses remain `no-store`.
+- Document List search debounce and editable query state, including back navigation and preserving keystrokes during server responses.
+- Search content-type contract and related resolver, filtering and pagination behavior.
+- Form File Upload safeguards: unsupported active uploads cannot be newly authored or silently submitted.
+
+### Fixed / Regression
+
+- Grid image layout and its Proti integration after the Mino UI geometry correction.
+- Document List taxonomy filtering and search input races; retained existing sort, filter, and pagination semantics.
+- Test coverage for conditional fields, nested fieldsets, multistep flows, tampered submissions, search caching, webhook invalidation and search API contract behavior.
+
+### Validation and release status
+
+- Batch 0–3 implementation and `pnpm verify:all` were reported passing during v0.7.0 development, including Playwright fixture checks after clearing port 3000.
+- In the supplied local benchmark, empty-query median response time improved from **135.3 ms to 8.3 ms** and a two-result search improved from **280.2 ms to 159.1 ms**. These measurements are environment-specific; larger content collections were not benchmarked.
+- Final release PR/CI, deployment smoke, production webhook/cache freshness checks, package-version alignment, and publishing the `v0.7.0` tag require separate sign-off. This entry does not declare the release published.
+
 ## v0.6.0 — Production Readiness, Accessibility, Performance and Developer Experience
 
 ### Added

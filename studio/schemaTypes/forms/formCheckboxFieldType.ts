@@ -5,6 +5,7 @@ import {
   formFieldNameField,
   formFieldRequiredField,
   formFieldWidthField,
+  formFieldVisibilityConditionField,
 } from './shared'
 
 export const formCheckboxFieldType = defineType({
@@ -48,6 +49,8 @@ export const formCheckboxFieldType = defineType({
     formFieldRequiredField(),
 
     formFieldDisabledField(),
+
+    formFieldVisibilityConditionField(),
 
     formFieldWidthField(),
   ],

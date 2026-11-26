@@ -126,6 +126,8 @@ function blockLabel(block: BuilderBlock, index: number): string {
     accordionBlock: 'Accordion',
     carouselBlock: 'Carousel',
     contentBlock: 'Content',
+    noticeBlock: 'Notice / Callout',
+    metricsBlock: 'Metrics / Statistics',
     documentListBlock: 'Document List',
     formBlock: 'Form',
     gridBlock: 'Grid',

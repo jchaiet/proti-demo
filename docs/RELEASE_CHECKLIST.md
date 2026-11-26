@@ -1,13 +1,13 @@
-# Proti Release / Repository Hygiene Checklist — v0.6.0
+# Proti Release / Repository Hygiene Checklist — v0.7.0
 
-Use this checklist **before merging the v0.6.0 release PR**, then complete the deployment and tagging items only after `main` is green. Checkboxes are intentionally unchecked: local verification was reported successful, but the release itself has not yet been signed off.
+Use this checklist **before merging the v0.7.0 release PR**, then complete the deployment and tagging items only after `main` is green. Checkboxes are intentionally unchecked: local verification was reported successful, but the release itself has not yet been signed off.
 
 ## 1. Release contents and versions
 
-- [ ] Root `package.json`, `web/package.json`, and `studio/package.json` all declare version `0.6.0`.
-- [ ] `CHANGELOG.md` contains the v0.6.0 entry without changing earlier release history.
-- [ ] Review [v0.6.0 release notes](releases/v0.6.0.md) and [SEO/GEO guidance](SEO_GEO.md).
-- [ ] The independently versioned `web/mino-ui-0.0.3.tgz` is present and matches the `mino-ui` dependency in `web/package.json`.
+- [ ] Root `package.json`, `web/package.json`, and `studio/package.json` all declare version `0.7.0`.
+- [ ] `CHANGELOG.md` contains the v0.7.0 entry without changing earlier release history.
+- [ ] Review [v0.7.0 release notes](releases/v0.7.0.md) and [SEO/GEO guidance](SEO_GEO.md).
+- [ ] The independently versioned `web/mino-ui-0.0.6.tgz` is present and matches the `mino-ui` dependency in `web/package.json`.
 - [ ] Existing dependencies (including Mino UI) have not been changed just to bump the Proti version.
 - [ ] Root `pnpm-lock.yaml` resolves cleanly with the updated manifests; commit any lockfile changes only if the package manager generates them.
 - [ ] The release PR includes only intended changes; no temporary files, reports, or local credentials.
@@ -17,7 +17,7 @@ Use this checklist **before merging the v0.6.0 release PR**, then complete the d
 - [ ] Local secrets such as `web/.env.local`, `web/e2e/.env.e2e`, Studio private env files, and deployment credentials remain ignored/untracked.
 - [ ] Placeholder-only `web/.env.example` and `web/e2e/.env.e2e.example` are tracked.
 - [ ] `test-results/`, `playwright-report/`, and Lighthouse generated results are untracked/ignored.
-- [ ] All 37 version-controlled fixture baseline PNGs under `web/e2e/__screenshots__/` are present and reviewed.
+- [ ] All version-controlled fixture baseline PNGs under `web/e2e/__screenshots__/` are present and reviewed.
 - [ ] The production Vercel build **does not** set `PROTI_VISUAL_FIXTURES=1`; confirm the public fixture routes return 404.
 - [ ] The Web/Studio env settings use the expected Sanity project/dataset; secrets are not printed by diagnostics.
 - [ ] The local Mino tarball matches the lockfile. If it changes in a future release, use a _new_ tarball version/name rather than modifying existing bytes in place.
@@ -44,12 +44,12 @@ pnpm verify:all
 
 - [ ] Frozen-lockfile installation succeeds **without** loosening `--frozen-lockfile`.
 - [ ] Root initializer/environment/DX regression tests pass.
-- [ ] `pnpm verify:all` finishes all ten steps successfully, including Web/Studio checks, visual, accessibility, Grid layout and performance verification.
+- [ ] `pnpm verify:all` finishes all configured stages successfully, including Web/Studio checks, visual, accessibility, Grid layout and performance verification.
 - [ ] Web and Studio production builds, lint, type checking, and unit tests are green.
 - [ ] Reviewed snapshots are committed; no `--update-snapshots` command was used merely to make tests green.
 - [ ] If initialization changed, rehearse `pnpm proti:init --new-project` only in a disposable clone (it resets Git history after confirmation), then run `pnpm proti:check` and seed checks with a test Sanity project.
 
-The v0.6.0 root workflows are `pnpm verify:quick`, `pnpm verify:fixtures`, `pnpm verify:performance`, and `pnpm verify:all`. `pnpm proti:commands` displays the workflow reference. `pnpm verify:all --dry-run` displays commands without executing them.
+The v0.7.0 root workflows are `pnpm verify:quick`, `pnpm verify:fixtures`, `pnpm verify:performance`, and `pnpm verify:all`. `pnpm proti:commands` displays the workflow reference. `pnpm verify:all --dry-run` displays commands without executing them.
 
 ## 4. Playwright and performance validation
 
@@ -93,6 +93,18 @@ Confirm the **actual repository** checks, rather than assuming local success imp
 - [ ] No unexpected skipped/disabled required checks.
 - [ ] Required branch protections/status checks are green before merging.
 
+## v0.7.0 Feature and Production Safety Gates
+
+- [ ] Notice and Metrics render correctly on supported Page, Blog and reusable content, including desktop/mobile layouts.
+- [ ] Mino UI 0.0.6 tarball, Web dependency manifest and pnpm lockfile agree; frozen installation passes.
+- [ ] Conditional field visibility and client validation work for Select/Radio/Checkbox triggers, nested fieldsets, required fields and multistep flows.
+- [ ] API tampering regressions pass: invalid triggers and unknown/disabled fields are rejected; hidden values are discarded before forwarding.
+- [ ] **Deploy Web before Studio**; then submit a safe published conditional form and verify that only visible values reach the configured webhook.
+- [ ] Existing nonconditional forms, polls and file-upload safeguards remain intact.
+- [ ] Signed Sanity revalidation invalidates the published Host-to-Site search cache; verify locale/host separation and preview bypass.
+- [ ] Search and Document List regression checks pass, including actual page-2 pagination, sorting, filtering, debounce and back navigation.
+- [ ] Review the Batch 3C timing comparison and correctness results without treating small-dataset timings as a production guarantee.
+
 ## 7. Production smoke (after deployment, before tagging)
 
 Use a safe test page, form, and poll so smoke checks do not disturb real visitors' content or votes.
@@ -109,8 +121,8 @@ Use a safe test page, form, and poll so smoke checks do not disturb real visitor
 ## 8. Documentation and release notes
 
 - [ ] `docs/GETTING_STARTED.md`, `docs/ARCHITECTURE.md`, `docs/COMPONENTS.md`, and `docs/TESTING.md` reflect the current implementation.
-- [ ] `docs/RELEASE_CHECKLIST.md` (this file) uses v0.6.0 versions and current developer commands.
-- [ ] `docs/releases/v0.6.0.md` is reviewed for factual accuracy and migration notes.
+- [ ] `docs/RELEASE_CHECKLIST.md` (this file) uses v0.7.0 versions and current developer commands.
+- [ ] `docs/releases/v0.7.0.md` is reviewed for factual accuracy and migration notes.
 - [ ] `CHANGELOG.md` accurately distinguishes completed verification from checks still pending.
 - [ ] Document any observed breaking changes or additional migration steps before release.
 
@@ -123,12 +135,12 @@ git checkout main
 git pull --ff-only
 git status --short
 # Confirm the deployed main commit and GitHub Actions checks are green.
-git tag -a v0.6.0 -m "Proti v0.6.0"
-git push origin v0.6.0
+git tag -a v0.7.0 -m "Proti v0.7.0"
+git push origin v0.7.0
 ```
 
 - [ ] Release PR merged to `main`, branch checks green, and working tree clean.
 - [ ] Web and Studio are deployed from the intended commit and production smoke checks pass.
-- [ ] `v0.6.0` annotated tag is created on the verified release commit and pushed.
-- [ ] GitHub Release is published using `docs/releases/v0.6.0.md` as the source for the notes.
+- [ ] `v0.7.0` annotated tag is created on the verified release commit and pushed.
+- [ ] GitHub Release is published using `docs/releases/v0.7.0.md` as the source for the notes.
 - [ ] Release tag, commit, and deployment are recorded for rollback if necessary.

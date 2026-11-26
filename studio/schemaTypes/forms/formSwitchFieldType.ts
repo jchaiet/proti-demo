@@ -5,6 +5,7 @@ import {
   formFieldNameField,
   formFieldRequiredField,
   formFieldWidthField,
+  formFieldVisibilityConditionField,
 } from './shared'
 
 export const formSwitchFieldType = defineType({
@@ -98,6 +99,8 @@ export const formSwitchFieldType = defineType({
     formFieldRequiredField(),
 
     formFieldDisabledField(),
+
+    formFieldVisibilityConditionField(),
 
     formFieldWidthField(),
   ],

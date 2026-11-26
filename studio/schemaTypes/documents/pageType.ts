@@ -147,6 +147,8 @@ export const pageType = defineType({
         defineArrayMember({type: 'carouselBlock'}),
         defineArrayMember({type: 'accordionBlock'}),
         defineArrayMember({type: 'contentBlock'}),
+        defineArrayMember({type: 'noticeBlock'}),
+        defineArrayMember({type: 'metricsBlock'}),
         defineArrayMember({type: 'tabsBlock'}),
         defineArrayMember({type: 'formBlock'}),
         defineArrayMember({type: 'gridBlock'}),

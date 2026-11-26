@@ -1,9 +1,10 @@
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 import { parseBody } from "next-sanity/webhook";
 
 import { resolveRevalidationPlan } from "@/cms/revalidation/dependencies";
 import type { SanityRevalidationPayload } from "@/cms/revalidation/types";
+import { PUBLIC_SEARCH_SITE_LOOKUP_TAG } from "@/sanity/cache-tags";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -77,6 +78,13 @@ export async function POST(request: NextRequest) {
 
   for (const path of plan.paths) {
     revalidatePath(path);
+  }
+
+  // revalidatePath() does not invalidate unrelated tagged Data Cache entries.
+  // Site changes (including domain additions/removals) must also invalidate
+  // the published Host -> Site lookup used by the public Search API.
+  if (plan.documentType === "site") {
+    revalidateTag(PUBLIC_SEARCH_SITE_LOOKUP_TAG, { expire: 0 });
   }
 
   return NextResponse.json({

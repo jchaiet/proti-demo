@@ -6,6 +6,7 @@ import {
   formFieldRequiredField,
   formFieldSizeField,
   formFieldWidthField,
+  formFieldVisibilityConditionField,
 } from './shared'
 import {validateDateMinMax} from './validation'
 
@@ -56,6 +57,8 @@ export const formDatePickerFieldType = defineType({
     formFieldSizeField(),
 
     formFieldDisabledField(),
+
+    formFieldVisibilityConditionField(),
 
     formFieldWidthField(),
   ],

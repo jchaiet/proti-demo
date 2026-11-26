@@ -11,11 +11,19 @@ export type CmsFormPosition = "left" | "right";
 
 export type CmsFormColumnSpan = 1 | 2;
 
+/** Still draft-only until trusted server validation ships in Batch 2C. */
+export type CmsFormVisibilityCondition = {
+  sourceField: string;
+  operator: "equals" | "notEquals" | "contains";
+  value: string;
+};
+
 export interface CmsFormFieldBase {
   _key: string;
   name: string;
 
   colSpan?: CmsFormColumnSpan;
+  visibilityCondition?: CmsFormVisibilityCondition;
 }
 
 export interface CmsFormInteractiveFieldBase extends CmsFormFieldBase {
@@ -268,6 +276,8 @@ export interface CmsFormFieldset {
   colSpan?: CmsFormColumnSpan;
 
   legend: string;
+
+  visibilityCondition?: CmsFormVisibilityCondition;
 
   description?: string;
 

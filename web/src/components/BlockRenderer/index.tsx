@@ -3,6 +3,8 @@ import {
   mapCarouselBlock,
   mapHeroBlock,
   mapContentBlock,
+  mapNoticeBlock,
+  mapMetricsBlock,
   mapTabsBlock,
   mapFormBlock,
   mapGridBlock,
@@ -15,6 +17,8 @@ import type { CmsBlock } from "@/cms/types";
 import { Accordion } from "./Accordion";
 import { Carousel } from "./Carousel";
 import { Content } from "./Content";
+import { Notice } from "./Notice";
+import { Metrics } from "./Metrics";
 import { Tabs } from "./Tabs";
 import { FormLazy as Form } from "./FormLazy";
 import { Grid } from "./Grid";
@@ -100,6 +104,26 @@ export async function BlockRenderer({ blocks, context }: Props) {
                       isLeadingBlock && props.imageSrc ? "high" : "auto"
                     }
                   />
+                </BlockStyles>
+              );
+            }
+
+            case "noticeBlock": {
+              const props = await mapNoticeBlock(block);
+
+              return (
+                <BlockStyles key={block._key} config={block.styles}>
+                  <Notice {...props} />
+                </BlockStyles>
+              );
+            }
+
+            case "metricsBlock": {
+              const props = mapMetricsBlock(block);
+
+              return (
+                <BlockStyles key={block._key} config={block.styles}>
+                  <Metrics {...props} />
                 </BlockStyles>
               );
             }

@@ -14,6 +14,8 @@ import {heroBlockType} from './blocks/heroBlockType'
 import {carouselBlockType} from './blocks/carouselBlockType'
 import {accordionBlockType} from './blocks/accordionBlockType'
 import {contentBlockType} from './blocks/contentBlockType'
+import {noticeBlockType} from './blocks/noticeBlockType'
+import {metricsBlockType} from './blocks/metricsBlockType'
 import {tabsBlockType} from './blocks/tabsBlockType'
 import {gridBlockType} from './blocks/gridBlockType'
 import {documentListBlockType} from './blocks/documentListBlockType'
@@ -36,6 +38,7 @@ import {inlineRichTextType} from './objects/inlineRichTextType'
 import {richTextType} from './objects/richTextType'
 import {iconPickerType} from './objects/iconPickerType'
 import {gridImageItemType} from './objects/gridImageItemType'
+import {metricItemType} from './objects/metricItemType'
 import {authorCredentialType} from './objects/authorCredentialType'
 import {citationSourceType} from './objects/citationSourceType'
 
@@ -88,6 +91,7 @@ import {
   formStepType,
   formSwitchFieldType,
   formTextareaFieldType,
+  formVisibilityConditionType,
 } from './forms'
 
 export const schemaTypes = [
@@ -101,6 +105,7 @@ export const schemaTypes = [
   iconPickerType,
 
   gridImageItemType,
+  metricItemType,
   authorCredentialType,
   citationSourceType,
   translationEntryType,
@@ -152,6 +157,8 @@ export const schemaTypes = [
   carouselBlockType,
   accordionBlockType,
   contentBlockType,
+  noticeBlockType,
+  metricsBlockType,
   tabsBlockType,
   formBlockType,
   gridBlockType,
@@ -178,6 +185,7 @@ export const schemaTypes = [
   formCalendarFieldType,
   formHiddenFieldType,
   formStepType,
+  formVisibilityConditionType,
 
   // Documents
   siteType,

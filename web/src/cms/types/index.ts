@@ -68,6 +68,14 @@ export type {
   CmsContentSplitMediaPosition,
 } from "./blocks";
 
+export type { CmsNoticeBlock, CmsNoticeVariant } from "./blocks";
+export type {
+  CmsMetricsBlock,
+  CmsMetricItem,
+  CmsMetricsVariant,
+  CmsMetricsColumns,
+} from "./blocks";
+
 export type {
   CmsTabsBlock,
   CmsTabsItem,

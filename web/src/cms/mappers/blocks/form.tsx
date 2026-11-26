@@ -1,8 +1,4 @@
-import type {
-  FormBlockProps,
-  FormFieldConfig,
-  FormStep,
-} from "mino-ui/blocks/FormBlock";
+import type { FormBlockProps, FormFieldConfig } from "mino-ui/blocks/FormBlock";
 
 import type { CmsFormBlock, CmsFormField, CmsIcon } from "@/cms/types";
 
@@ -16,8 +12,17 @@ import {
 import { SANITY_RESPONSIVE_WIDTHS } from "@/cms/resolvers/image-widths";
 import { CmsRichText } from "@/components/CmsRichText";
 import { hasActiveFileUploads } from "@/lib/forms/validation";
+import type {
+  ConditionalFormField,
+  ConditionalFormStep,
+} from "@/lib/forms/visibility";
 
-export type MappedFormBlockProps = Omit<FormBlockProps, "onSubmit"> & {
+export type MappedFormBlockProps = Omit<
+  FormBlockProps,
+  "onSubmit" | "fields" | "steps"
+> & {
+  fields?: ConditionalFormField[];
+  steps?: ConditionalFormStep[];
   formKey: string;
   blockKey: string;
   submitButtonIconName?: CmsIcon;
@@ -27,7 +32,9 @@ export type MappedFormBlockProps = Omit<FormBlockProps, "onSubmit"> & {
   hasUnsupportedFileUpload?: boolean;
 };
 
-function mapFormSteps(steps: CmsFormBlock["steps"] | undefined): FormStep[] {
+function mapFormSteps(
+  steps: CmsFormBlock["steps"] | undefined,
+): ConditionalFormStep[] {
   if (!steps?.length) {
     return [];
   }
@@ -319,14 +326,25 @@ function mapFormField(field: CmsFormField): FormFieldConfig | null {
   }
 }
 
-function mapFormFields(fields: CmsFormField[] | undefined): FormFieldConfig[] {
+function mapFormFields(
+  fields: CmsFormField[] | undefined,
+): ConditionalFormField[] {
   if (!fields?.length) {
     return [];
   }
 
   return fields
-    .map(mapFormField)
-    .filter((field): field is FormFieldConfig => field !== null);
+    .map((field) => {
+      const mapped = mapFormField(field);
+      if (!mapped) return null;
+      const condition =
+        "visibilityCondition" in field ? field.visibilityCondition : undefined;
+      return {
+        ...mapped,
+        ...(condition ? { visibilityCondition: condition } : {}),
+      } as ConditionalFormField;
+    })
+    .filter((field): field is ConditionalFormField => field !== null);
 }
 
 export function mapFormBlock(block: CmsFormBlock): MappedFormBlockProps {
