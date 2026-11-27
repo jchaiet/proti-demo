@@ -515,3 +515,118 @@ describe("legacy File Upload submission safeguards", () => {
     expect(forward).toHaveBeenCalledOnce();
   });
 });
+
+describe("POST /api/forms/submit — trusted conditional visibility", () => {
+  const published = {
+    _key: "key-123",
+    fields: [
+      {
+        _type: "formSelectField",
+        name: "interest",
+        required: true,
+        options: [{ value: "nutrition" }, { value: "fitness" }],
+      },
+      {
+        _type: "formTextareaField",
+        name: "dietaryGoals",
+        required: true,
+        visibilityCondition: {
+          sourceField: "interest",
+          operator: "equals",
+          value: "nutrition",
+        },
+      },
+      {
+        _type: "formInputField",
+        name: "exerciseGoals",
+        required: true,
+        visibilityCondition: {
+          sourceField: "interest",
+          operator: "equals",
+          value: "fitness",
+        },
+      },
+    ],
+  } as const;
+
+  it("forwards only visible answers even when hidden answers were explicitly submitted", async () => {
+    find.mockResolvedValue(
+      published as unknown as Awaited<ReturnType<typeof findPublishedForm>>,
+    );
+    const response = await POST(
+      request({
+        ...payload,
+        fields: {
+          interest: "nutrition",
+          dietaryGoals: "Eat more vegetables",
+          exerciseGoals: "forged hidden data",
+        },
+      }),
+    );
+    expect(response.status).toBe(200);
+    expect(forward).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fields: { interest: "nutrition", dietaryGoals: "Eat more vegetables" },
+      }),
+      expect.any(Object),
+    );
+  });
+
+  it("rejects an invalid trigger option before evaluating conditional fields", async () => {
+    find.mockResolvedValue(
+      published as unknown as Awaited<ReturnType<typeof findPublishedForm>>,
+    );
+    const response = await POST(
+      request({
+        ...payload,
+        fields: {
+          interest: "injected",
+          dietaryGoals: "cannot bypass",
+        },
+      }),
+    );
+    expect(response.status).toBe(400);
+    expect(forward).not.toHaveBeenCalled();
+  });
+
+  it("rejects a missing visible required field and never calls the webhook", async () => {
+    find.mockResolvedValue(
+      published as unknown as Awaited<ReturnType<typeof findPublishedForm>>,
+    );
+    const response = await POST(
+      request({ ...payload, fields: { interest: "fitness" } }),
+    );
+    expect(response.status).toBe(400);
+    expect(forward).not.toHaveBeenCalled();
+  });
+
+  it("returns 503 when a published record has a corrupt condition contract", async () => {
+    find.mockResolvedValue({
+      _key: "key-123",
+      fields: [
+        {
+          _type: "formSelectField",
+          name: "interest",
+          options: [{ value: "nutrition" }],
+        },
+        {
+          _type: "formInputField",
+          name: "extra",
+          visibilityCondition: {
+            sourceField: "nonexistent",
+            operator: "equals",
+            value: "nutrition",
+          },
+        },
+      ],
+    });
+    const response = await POST(
+      request({ ...payload, fields: { interest: "nutrition" } }),
+    );
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({
+      error: "Invalid form configuration.",
+    });
+    expect(forward).not.toHaveBeenCalled();
+  });
+});

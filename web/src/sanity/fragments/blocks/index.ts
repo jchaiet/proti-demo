@@ -6,6 +6,9 @@ export { ACCORDION_BLOCK_FRAGMENT } from "./accordion";
 
 export { CONTENT_BLOCK_FRAGMENT } from "./content";
 
+export { NOTICE_BLOCK_FRAGMENT } from "./notice";
+export { METRICS_BLOCK_FRAGMENT } from "./metrics";
+
 export { TABS_BLOCK_FRAGMENT } from "./tabs";
 
 export { FORM_BLOCK_FRAGMENT } from "./form";

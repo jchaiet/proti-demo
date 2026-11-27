@@ -2,14 +2,14 @@ import { NextRequest } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/cms/resolvers/search", () => ({ searchContent: vi.fn() }));
-vi.mock("@/sanity/queries/site", () => ({ resolveSiteByHost: vi.fn() }));
+vi.mock("@/sanity/queries/site", () => ({ resolveSearchSiteByHost: vi.fn() }));
 
 import { searchContent } from "@/cms/resolvers/search";
-import { resolveSiteByHost } from "@/sanity/queries/site";
+import { resolveSearchSiteByHost } from "@/sanity/queries/site";
 import { GET } from "./route";
 
 const search = vi.mocked(searchContent);
-const resolveSite = vi.mocked(resolveSiteByHost);
+const resolveSite = vi.mocked(resolveSearchSiteByHost);
 
 function request(searchParams: string): NextRequest {
   return new NextRequest(`https://proti.test/api/search?${searchParams}`, {
@@ -23,7 +23,7 @@ beforeEach(() => {
     _id: "site-1",
     defaultLocale: "en-us",
     locales: [{ code: "en-us" }],
-  } as Awaited<ReturnType<typeof resolveSiteByHost>>);
+  } as Awaited<ReturnType<typeof resolveSearchSiteByHost>>);
   search.mockResolvedValue({
     query: "",
     locale: "en-us",
@@ -70,6 +70,24 @@ describe("public search input limits", () => {
       414,
     );
     expect(resolveSite).not.toHaveBeenCalled();
+  });
+
+  it("resolves the actual request host and leaves API responses uncached", async () => {
+    const response = await GET(request("q=first"));
+
+    expect(response.status).toBe(200);
+    expect(resolveSite).toHaveBeenCalledWith("proti.test");
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(search).toHaveBeenCalledWith(
+      expect.objectContaining({ siteId: "site-1", locale: "en-us" }),
+    );
+  });
+
+  it("still rejects unsupported locales before fetching search content", async () => {
+    const response = await GET(request("q=first&locale=us-es"));
+
+    expect(response.status).toBe(400);
+    expect(search).not.toHaveBeenCalled();
   });
 
   it("preserves valid search and existing page-size bounds", async () => {

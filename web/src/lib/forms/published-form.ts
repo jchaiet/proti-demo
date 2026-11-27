@@ -9,11 +9,13 @@ const FIELD_PROJECTION = `
   _type, name, type, value, required, disabled,
   minLength, maxLength, min, max, minDate, maxDate, multiple,
   options[]{value, disabled},
+  visibilityCondition{sourceField, operator, value},
   fields[]{
     _type, name, type, value, required, disabled,
     minLength, maxLength, min, max, minDate, maxDate, multiple,
     options[]{value, disabled},
-    fields[]{_type, name, type, value, required, disabled, minLength, maxLength, min, max, minDate, maxDate, multiple, options[]{value, disabled}}
+    visibilityCondition{sourceField, operator, value},
+    fields[]{_type, name, type, value, required, disabled, minLength, maxLength, min, max, minDate, maxDate, multiple, options[]{value, disabled}, visibilityCondition{sourceField, operator, value}}
   }
 `;
 

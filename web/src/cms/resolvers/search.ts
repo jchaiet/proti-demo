@@ -616,6 +616,27 @@ export async function searchContent(
 ): Promise<SearchResponse> {
   const query = options.query.trim().slice(0, 200);
 
+  // Temporary, opt-in profiling for Batch 3B. No query text or content is logged.
+  const searchPerfEnabled = process.env.PROTI_SEARCH_PERF_DEBUG === "1";
+  const searchPerfStart = searchPerfEnabled ? performance.now() : 0;
+  const searchFetchMs: Record<string, number> = {};
+  const elapsedMs = (start: number) =>
+    Math.round((performance.now() - start) * 10) / 10;
+
+  async function measureSanityFetch<T>(
+    name: "site" | "content" | "taxonomy",
+    operation: () => Promise<T>,
+  ): Promise<T> {
+    if (!searchPerfEnabled) return operation();
+
+    const start = performance.now();
+    try {
+      return await operation();
+    } finally {
+      searchFetchMs[name] = elapsedMs(start);
+    }
+  }
+
   const page = Math.max(1, options.page ?? 1);
 
   const pageSize = Math.min(1000, Math.max(1, options.pageSize ?? 12));
@@ -698,37 +719,41 @@ export async function searchContent(
     };
   }
 
+  const fetchStart = searchPerfEnabled ? performance.now() : 0;
   const [site, documents, taxonomyDocuments] = await Promise.all([
-    sanityFetch<SearchSiteSettings | null>(
-      SEARCH_SITE_SETTINGS_QUERY,
-      {
-        siteId: options.siteId,
-
-        locale: options.locale,
-      },
-      { revalidate: 0 },
+    measureSanityFetch("site", () =>
+      sanityFetch<SearchSiteSettings | null>(
+        SEARCH_SITE_SETTINGS_QUERY,
+        {
+          siteId: options.siteId,
+          locale: options.locale,
+        },
+        { revalidate: 0 },
+      ),
     ),
-
-    sanityFetch<RawSearchDocument[]>(
-      SEARCH_CONTENT_QUERY,
-      {
-        siteId: options.siteId,
-
-        locale: options.locale,
-      },
-      { revalidate: 0 },
+    measureSanityFetch("content", () =>
+      sanityFetch<RawSearchDocument[]>(
+        SEARCH_CONTENT_QUERY,
+        {
+          siteId: options.siteId,
+          locale: options.locale,
+        },
+        { revalidate: 0 },
+      ),
     ),
-
-    sanityFetch<RawTaxonomy[]>(
-      SEARCH_TAXONOMY_QUERY,
-      {
-        siteId: options.siteId,
-
-        locale: options.locale,
-      },
-      { revalidate: 0 },
+    measureSanityFetch("taxonomy", () =>
+      sanityFetch<RawTaxonomy[]>(
+        SEARCH_TAXONOMY_QUERY,
+        {
+          siteId: options.siteId,
+          locale: options.locale,
+        },
+        { revalidate: 0 },
+      ),
     ),
   ]);
+
+  const parallelFetchMs = searchPerfEnabled ? elapsedMs(fetchStart) : 0;
 
   if (!site) {
     return {
@@ -778,6 +803,7 @@ export async function searchContent(
 
   const tokens = tokenizeQuery(query);
 
+  const indexStart = searchPerfEnabled ? performance.now() : 0;
   const indexed: IndexedDocument[] = [];
 
   for (const document of documents) {
@@ -957,6 +983,8 @@ export async function searchContent(
    * Dynamic Document List inside its configured content boundary while still
    * allowing visitors to filter that scoped set independently.
    */
+  const indexMs = searchPerfEnabled ? elapsedMs(indexStart) : 0;
+  const scopeStart = searchPerfEnabled ? performance.now() : 0;
   const scoped = indexed.filter((item) => {
     if (!types.includes(item.result.type)) {
       return false;
@@ -975,8 +1003,12 @@ export async function searchContent(
    * Facets are calculated from every query-matching document inside the
    * authored scope before the currently selected visitor filters are applied.
    */
+  const scopeMs = searchPerfEnabled ? elapsedMs(scopeStart) : 0;
+  const facetsStart = searchPerfEnabled ? performance.now() : 0;
   const facets = buildFacets(scoped, types);
+  const facetsMs = searchPerfEnabled ? elapsedMs(facetsStart) : 0;
 
+  const filtersStart = searchPerfEnabled ? performance.now() : 0;
   const filtered = scoped.filter((item) => {
     if (
       filters.length > 0 &&
@@ -1006,7 +1038,10 @@ export async function searchContent(
     );
   });
 
+  const filtersMs = searchPerfEnabled ? elapsedMs(filtersStart) : 0;
+  const sortStart = searchPerfEnabled ? performance.now() : 0;
   const sorted = sortResults(filtered, sort);
+  const sortMs = searchPerfEnabled ? elapsedMs(sortStart) : 0;
 
   const maxResults = options.maxResults
     ? Math.min(Math.max(options.maxResults, 1), 1000)
@@ -1025,6 +1060,30 @@ export async function searchContent(
   const results = limited
     .slice(start, start + pageSize)
     .map((item) => item.result);
+
+  if (searchPerfEnabled) {
+    console.info(
+      "[Proti search perf]",
+      JSON.stringify({
+        stage: "resolver",
+        queryIsEmpty: query.length === 0,
+        fetchMs: searchFetchMs,
+        parallelFetchMs,
+        indexMs,
+        scopeMs,
+        facetsMs,
+        filtersMs,
+        sortMs,
+        totalMs: elapsedMs(searchPerfStart),
+        fetchedDocuments: documents.length,
+        fetchedTaxonomy: taxonomyDocuments.length,
+        queryMatches: indexed.length,
+        scopedMatches: scoped.length,
+        filteredMatches: filtered.length,
+        returned: results.length,
+      }),
+    );
+  }
 
   return {
     query,

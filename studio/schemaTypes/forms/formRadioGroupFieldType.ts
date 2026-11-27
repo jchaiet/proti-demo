@@ -1,6 +1,7 @@
 import {defineArrayMember, defineField, defineType} from 'sanity'
 
 import {formFieldNameField, formFieldRequiredField, formFieldWidthField} from './shared'
+import {formFieldVisibilityConditionField} from './shared'
 import {validateDefaultOptionValue, validateUniqueOptionValues} from './validation'
 
 export const formRadioGroupFieldType = defineType({
@@ -48,6 +49,8 @@ export const formRadioGroupFieldType = defineType({
     }),
 
     formFieldRequiredField(),
+
+    formFieldVisibilityConditionField(),
 
     formFieldWidthField(),
   ],

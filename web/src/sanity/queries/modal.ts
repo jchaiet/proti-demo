@@ -5,6 +5,7 @@ import { sanityFetch } from "@/sanity/fetch";
 import {
   ACCORDION_BLOCK_FRAGMENT,
   CONTENT_BLOCK_FRAGMENT,
+  NOTICE_BLOCK_FRAGMENT,
   FORM_BLOCK_FRAGMENT,
   RICH_TEXT_BLOCK_FRAGMENT,
   TABS_BLOCK_FRAGMENT,
@@ -31,6 +32,7 @@ export const MODALS_QUERY = `
       _type,
 
       ${CONTENT_BLOCK_FRAGMENT},
+      ${NOTICE_BLOCK_FRAGMENT},
 
       ${RICH_TEXT_BLOCK_FRAGMENT},
 

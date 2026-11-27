@@ -1,6 +1,7 @@
 import {defineArrayMember, defineField, defineType} from 'sanity'
 
 import {formFieldDisabledField, formFieldSizeField, formFieldWidthField} from './shared'
+import {formFieldVisibilityConditionField} from './shared'
 import {validateContainsSubmittableField, validateNonBlankText} from './validation'
 
 export const formFieldsetType = defineType({
@@ -61,6 +62,8 @@ export const formFieldsetType = defineType({
     formFieldSizeField(),
 
     formFieldDisabledField(),
+
+    formFieldVisibilityConditionField(),
 
     formFieldWidthField(),
 

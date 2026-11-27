@@ -5,6 +5,7 @@ import {
   formFieldNameField,
   formFieldRequiredField,
   formFieldWidthField,
+  formFieldVisibilityConditionField,
 } from './shared'
 import {validateDateDefaultWithinBounds, validateDateMinMax} from './validation'
 
@@ -71,6 +72,8 @@ export const formCalendarFieldType = defineType({
     formFieldRequiredField(),
 
     formFieldDisabledField(),
+
+    formFieldVisibilityConditionField(),
 
     formFieldWidthField(),
   ],

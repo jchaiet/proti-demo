@@ -10,6 +10,12 @@ const FORM_FIELD_FRAGMENT = `
   name,
   colSpan,
 
+  visibilityCondition {
+    sourceField,
+    operator,
+    value
+  },
+
   label,
   placeholder,
   helperText,

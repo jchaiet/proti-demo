@@ -6,6 +6,7 @@ import {
   formFieldRequiredField,
   formFieldSizeField,
   formFieldWidthField,
+  formFieldVisibilityConditionField,
 } from './shared'
 import {validateNumericMinMax} from './validation'
 
@@ -99,6 +100,8 @@ export const formTextareaFieldType = defineType({
     formFieldSizeField(),
 
     formFieldDisabledField(),
+
+    formFieldVisibilityConditionField(),
 
     formFieldWidthField(),
   ],

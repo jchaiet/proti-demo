@@ -5,6 +5,8 @@ import type {
   CmsCarouselBlock,
   CmsHeroBlock,
   CmsContentBlock,
+  CmsNoticeBlock,
+  CmsMetricsBlock,
   CmsTabsBlock,
   CmsFormBlock,
   CmsGridBlock,
@@ -18,6 +20,8 @@ type CmsReusableBlockData =
   | CmsCarouselBlock
   | CmsAccordionBlock
   | CmsContentBlock
+  | CmsNoticeBlock
+  | CmsMetricsBlock
   | CmsTabsBlock
   | CmsFormBlock
   | CmsGridBlock

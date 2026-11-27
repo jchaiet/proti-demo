@@ -5,8 +5,25 @@ import { useRouter } from "next/navigation";
 import { FormBlock, type FormBlockProps } from "mino-ui/blocks/FormBlock";
 import type { CmsIcon } from "@/cms/types";
 import { resolveIcon } from "@/cms/resolvers/icon";
+import {
+  filterVisibleFormFields,
+  formHasConditions,
+  getConditionSourceNames,
+  getDefaultConditionValues,
+  getVisibleConditionalLabels,
+  getVisibleFieldNames,
+  readFormConditionValues,
+  sameConditionValues,
+  type ConditionalFormField,
+  type ConditionalFormStep,
+} from "@/lib/forms/visibility";
 
-export interface FormRendererProps extends Omit<FormBlockProps, "onSubmit"> {
+export interface FormRendererProps extends Omit<
+  FormBlockProps,
+  "onSubmit" | "fields" | "steps"
+> {
+  fields?: ConditionalFormField[];
+  steps?: ConditionalFormStep[];
   formKey: string;
   blockKey: string;
   siteId: string;
@@ -35,6 +52,8 @@ export function Form({
   locale,
   submitButtonIconName,
   hasUnsupportedFileUpload = false,
+  fields,
+  steps,
   submitButtonProps,
   completionAction = "message",
   successRedirectPath,
@@ -47,6 +66,80 @@ export function Form({
   const [error, setError] = useState<string | null>(null);
   const submissionInFlight = useRef(false);
   const formContainerRef = useRef<HTMLDivElement>(null);
+  const normalizedLocale = locale.toLowerCase();
+  const isSpanish =
+    normalizedLocale.startsWith("es") || normalizedLocale.endsWith("-es");
+  const hasConditions = formHasConditions(fields, steps);
+  const sourceNames = getConditionSourceNames(fields, steps);
+  const [conditionState, setConditionState] = useState(() => ({
+    values: getDefaultConditionValues(fields, steps),
+    clearedNames: new Set<string>(),
+    announcement: "",
+  }));
+
+  const handleConditionalChange = () => {
+    if (!hasConditions) return;
+    const form = formContainerRef.current?.querySelector("form");
+    if (!form) return;
+    // Collect values from all mounted steps, including earlier inactive steps.
+    const formValues = readFormConditionValues(form);
+    const currentValues = Object.fromEntries(
+      [...sourceNames].map((name) => [name, formValues[name]]),
+    );
+    setConditionState((previous) => {
+      if (sameConditionValues(previous.values, currentValues)) return previous;
+      const before = getVisibleFieldNames(fields, steps, previous.values);
+      const after = getVisibleFieldNames(fields, steps, currentValues);
+      const clearedNames = new Set(previous.clearedNames);
+      for (const name of before) {
+        if (!after.has(name)) clearedNames.add(name);
+      }
+
+      const priorLabels = getVisibleConditionalLabels(
+        fields,
+        steps,
+        previous.values,
+      );
+      const newLabels = getVisibleConditionalLabels(
+        fields,
+        steps,
+        currentValues,
+      );
+      const appeared = [...newLabels].filter(
+        ([name]) => !priorLabels.has(name),
+      );
+      const disappeared = [...priorLabels].filter(
+        ([name]) => !newLabels.has(name),
+      );
+      const announcement = appeared.length
+        ? `${isSpanish ? "Campos adicionales disponibles" : "Additional form fields available"}: ${appeared.map(([, label]) => label).join(", ")}.`
+        : disappeared.length
+          ? `${isSpanish ? "Campos adicionales ocultos" : "Additional form fields hidden"}: ${disappeared.map(([, label]) => label).join(", ")}.`
+          : previous.announcement;
+
+      // Keep only authored trigger selections, never visitor free-text answers.
+      // Hidden controls are already removed from the DOM and FormData.
+      return { values: currentValues, clearedNames, announcement };
+    });
+  };
+
+  const visibleFields = hasConditions
+    ? filterVisibleFormFields(
+        fields,
+        conditionState.values,
+        conditionState.clearedNames,
+      )
+    : fields;
+  const visibleSteps = hasConditions
+    ? steps?.map((step) => ({
+        ...step,
+        fields: filterVisibleFormFields(
+          step.fields,
+          conditionState.values,
+          conditionState.clearedNames,
+        ),
+      }))
+    : steps;
 
   useEffect(() => {
     // Mino's FormBlock owns the <form> markup and has no extra-field slot.
@@ -75,9 +168,6 @@ export function Form({
     return () => trap.remove();
   }, []);
   const icon = resolveIcon(submitButtonIconName);
-  const normalizedLocale = locale.toLowerCase();
-  const isSpanish =
-    normalizedLocale.startsWith("es") || normalizedLocale.endsWith("-es");
   const fallbackTitle = isSpanish ? "¡Gracias!" : "Thank you!";
   const fallbackMessage = isSpanish
     ? "Hemos recibido tu formulario correctamente."
@@ -104,11 +194,25 @@ export function Form({
     // Collect synchronously while React still exposes event.currentTarget.
     // FormData preserves multi-select values that FormBlock's flat object loses.
     const data = new FormData(event.currentTarget);
+    // Submission is based on the current DOM, not potentially stale React
+    // state; a hidden field cannot be smuggled into the outbound payload.
+    const permittedNames = hasConditions
+      ? getVisibleFieldNames(
+          fields,
+          steps,
+          readFormConditionValues(event.currentTarget),
+        )
+      : null;
     const honeypotValue = data.get(HONEYPOT_FIELD);
     const honeypot = typeof honeypotValue === "string" ? honeypotValue : "";
-    const fields: Record<string, string | string[]> = Object.create(null);
+    const submittedFields: Record<string, string | string[]> =
+      Object.create(null);
     for (const [name, entry] of data.entries()) {
-      if (name === HONEYPOT_FIELD) continue;
+      if (
+        name === HONEYPOT_FIELD ||
+        (permittedNames && !permittedNames.has(name))
+      )
+        continue;
       if (entry instanceof File) {
         if (entry.size === 0) continue;
         setError(
@@ -119,10 +223,10 @@ export function Form({
         submissionInFlight.current = false;
         return;
       }
-      const current = fields[name];
-      if (current === undefined) fields[name] = entry;
+      const current = submittedFields[name];
+      if (current === undefined) submittedFields[name] = entry;
       else if (Array.isArray(current)) current.push(entry);
-      else fields[name] = [current, entry];
+      else submittedFields[name] = [current, entry];
     }
 
     try {
@@ -134,7 +238,7 @@ export function Form({
           blockKey,
           siteId,
           locale,
-          fields,
+          fields: submittedFields,
           honeypot,
         }),
       });
@@ -172,9 +276,14 @@ export function Form({
   }
 
   return (
-    <div ref={formContainerRef}>
+    <div
+      ref={formContainerRef}
+      onChangeCapture={hasConditions ? handleConditionalChange : undefined}
+    >
       <FormBlock
         {...props}
+        fields={visibleFields}
+        steps={visibleSteps}
         isSubmitted={submitted}
         successTitle={confirmationTitle}
         successMessage={confirmationMessage}
@@ -185,6 +294,26 @@ export function Form({
         }}
         onSubmit={handleSubmit}
       />
+      {hasConditions && (
+        <span
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+          style={{
+            position: "absolute",
+            width: 1,
+            height: 1,
+            padding: 0,
+            margin: -1,
+            overflow: "hidden",
+            clip: "rect(0, 0, 0, 0)",
+            whiteSpace: "nowrap",
+            border: 0,
+          }}
+        >
+          {conditionState.announcement}
+        </span>
+      )}
     </div>
   );
 }

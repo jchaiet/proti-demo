@@ -7,6 +7,7 @@ import {validateSiteLocale} from '../validation/siteLocale'
 
 const modalContentMembers = [
   defineArrayMember({type: 'contentBlock'}),
+  defineArrayMember({type: 'noticeBlock'}),
   defineArrayMember({type: 'richTextBlock'}),
   defineArrayMember({type: 'accordionBlock'}),
   defineArrayMember({type: 'tabsBlock'}),

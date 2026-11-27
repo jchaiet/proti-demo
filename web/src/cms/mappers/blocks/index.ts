@@ -2,6 +2,8 @@ export { mapHeroBlock } from "./hero";
 export { mapCarouselBlock } from "./carousel";
 export { mapAccordionBlock } from "./accordion";
 export { mapContentBlock } from "./content";
+export { mapNoticeBlock } from "./notice";
+export { mapMetricsBlock } from "./metrics";
 export { mapTabsBlock } from "./tabs";
 export { mapFormBlock } from "./form";
 export { mapGridBlock } from "./grid";

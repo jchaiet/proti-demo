@@ -6,6 +6,7 @@ import {
   formFieldRequiredField,
   formFieldSizeField,
   formFieldWidthField,
+  formFieldVisibilityConditionField,
 } from './shared'
 import {
   validateDefaultOptionValue,
@@ -122,6 +123,8 @@ export const formSelectFieldType = defineType({
     formFieldSizeField(),
 
     formFieldDisabledField(),
+
+    formFieldVisibilityConditionField(),
 
     formFieldWidthField(),
   ],

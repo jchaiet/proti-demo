@@ -161,6 +161,13 @@ export async function POST(request: Request) {
           "attachment_unsupported",
           "configuration",
         );
+      if (validated.code === "invalid_configuration")
+        return reply(
+          validated.error,
+          503,
+          "form_configuration_invalid",
+          "configuration",
+        );
       return reply(validated.error, 400, "validation_rejected", "validation");
     }
 

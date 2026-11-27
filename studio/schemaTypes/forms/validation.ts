@@ -7,6 +7,10 @@ export interface FormFieldLike {
   name?: unknown
   disabled?: boolean
   fields?: unknown
+  visibilityCondition?: unknown
+  options?: unknown
+  multiple?: boolean
+  value?: unknown
 }
 
 export interface FormStepLike {
@@ -206,6 +210,123 @@ export function validateUnsupportedFileUploads(value: unknown): true | string {
     : true
 }
 
+/**
+ * Batch 2A authoring contract. Conditions reference an earlier, unconditional
+ * enabled Select, Radio Group, or Checkbox. Conditional trigger chains are
+ * intentionally disallowed in v1 to avoid cycles and ambiguous step state.
+ * Validation is shared by single-page and stepped forms.
+ */
+export function validateFormVisibilityConditions(fields: unknown): true | string {
+  interface IndexedField {
+    field: FormFieldLike
+    disabledByAncestor: boolean
+    conditionalByAncestor: boolean
+  }
+
+  const ordered: IndexedField[] = []
+
+  function visit(
+    entries: unknown,
+    disabledByAncestor = false,
+    conditionalByAncestor = false,
+    depth = 0,
+  ): void {
+    if (depth > 4) return
+    for (const field of asFields(entries)) {
+      if (!field || typeof field !== 'object') continue
+      const entry = {
+        field,
+        disabledByAncestor,
+        conditionalByAncestor,
+      }
+      ordered.push(entry)
+      if (field._type === 'formFieldset') {
+        visit(
+          field.fields,
+          disabledByAncestor || field.disabled === true,
+          conditionalByAncestor || field.visibilityCondition != null,
+          depth + 1,
+        )
+      }
+    }
+  }
+  visit(fields)
+
+  const recognized = new Map<string, {field: FormFieldLike; index: number; eligible: boolean}>()
+  for (let index = 0; index < ordered.length; index += 1) {
+    const {field, disabledByAncestor, conditionalByAncestor} = ordered[index]
+    const name = normalizedString(field.name)
+    if (!name || recognized.has(name.toLowerCase())) continue
+    const allowed = ['formSelectField', 'formRadioGroupField', 'formCheckboxField'].includes(
+      field._type ?? '',
+    )
+    recognized.set(name.toLowerCase(), {
+      field,
+      index,
+      eligible:
+        allowed &&
+        !disabledByAncestor &&
+        !conditionalByAncestor &&
+        field.disabled !== true &&
+        field.visibilityCondition == null,
+    })
+  }
+
+  for (let index = 0; index < ordered.length; index += 1) {
+    const {field, disabledByAncestor} = ordered[index]
+    if (disabledByAncestor || field.disabled === true || field.visibilityCondition == null) {
+      continue
+    }
+    const label =
+      normalizedString(field.name) ?? (field._type === 'formFieldset' ? 'Fieldset' : 'Field')
+    const condition = field.visibilityCondition
+    if (!condition || typeof condition !== 'object' || Array.isArray(condition)) {
+      return `Visibility Condition for “${label}” is invalid.`
+    }
+    const {sourceField, operator, value} = condition as Record<string, unknown>
+    if (
+      typeof sourceField !== 'string' ||
+      !sourceField.trim() ||
+      typeof value !== 'string' ||
+      !value.trim() ||
+      !['equals', 'notEquals', 'contains'].includes(String(operator))
+    ) {
+      return `Visibility Condition for “${label}” needs a trigger name, valid operator, and option value.`
+    }
+    const trigger = recognized.get(sourceField.toLowerCase())
+    if (!trigger || trigger.field.name !== sourceField || trigger.index >= index) {
+      return `Visibility Condition for “${label}” must reference an earlier Trigger Field Name: “${sourceField}”.`
+    }
+    if (!trigger.eligible) {
+      return `Visibility Condition for “${label}” must reference an enabled, unconditional Select, Radio Group, or Checkbox.`
+    }
+    if (trigger.field._type === 'formSelectField' && trigger.field.multiple === true) {
+      if (operator !== 'contains') {
+        return `Visibility Condition for “${label}” must use Contains Selection for a multiple-select trigger.`
+      }
+    } else if (operator === 'contains') {
+      return `Visibility Condition for “${label}” can only use Contains Selection with a multiple-select trigger.`
+    }
+    const allowedValues =
+      trigger.field._type === 'formCheckboxField'
+        ? [typeof trigger.field.value === 'string' ? trigger.field.value : 'on']
+        : Array.isArray(trigger.field.options)
+          ? trigger.field.options
+              .filter(
+                (option) =>
+                  option &&
+                  typeof option === 'object' &&
+                  (option as {disabled?: boolean}).disabled !== true,
+              )
+              .map((option) => (option as FormOptionLike).value)
+          : []
+    if (!allowedValues.includes(value)) {
+      return `Visibility Condition for “${label}” must match an enabled option value on “${sourceField}”.`
+    }
+  }
+  return true
+}
+
 export function validateSingleFormFields(value: unknown): true | string {
   const uploads = validateUnsupportedFileUploads(value)
   if (uploads !== true) return uploads
@@ -222,7 +343,12 @@ export function validateSingleFormFields(value: unknown): true | string {
     return uniqueNames
   }
 
-  return validateUniqueFieldsetKeys(value)
+  const keys = validateUniqueFieldsetKeys(value)
+  if (keys !== true) return keys
+
+  const conditions = validateFormVisibilityConditions(value)
+  if (conditions !== true) return conditions
+  return true
 }
 
 export function validateSteppedFormSteps(value: unknown): true | string {
@@ -253,7 +379,12 @@ export function validateSteppedFormSteps(value: unknown): true | string {
     return uniqueNames
   }
 
-  return validateUniqueFieldsetKeys(allFields)
+  const keys = validateUniqueFieldsetKeys(allFields)
+  if (keys !== true) return keys
+
+  const conditions = validateFormVisibilityConditions(allFields)
+  if (conditions !== true) return conditions
+  return true
 }
 
 export function validateUniqueOptionValues(options: unknown): true | string {

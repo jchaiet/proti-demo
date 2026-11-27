@@ -8,7 +8,7 @@ import type {
   SearchTaxonomyMatch,
 } from "@/cms/types/search";
 
-import { resolveSiteByHost } from "@/sanity/queries/site";
+import { resolveSearchSiteByHost } from "@/sanity/queries/site";
 
 export const dynamic = "force-dynamic";
 
@@ -145,7 +145,13 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const site = await resolveSiteByHost(host);
+    const searchPerfEnabled = process.env.PROTI_SEARCH_PERF_DEBUG === "1";
+    const routeStart = searchPerfEnabled ? performance.now() : 0;
+    const lookupStart = searchPerfEnabled ? performance.now() : 0;
+    const site = await resolveSearchSiteByHost(host);
+    const lookupMs = searchPerfEnabled
+      ? Math.round((performance.now() - lookupStart) * 10) / 10
+      : 0;
 
     if (!site) {
       return NextResponse.json(
@@ -218,6 +224,7 @@ export async function GET(request: NextRequest) {
 
     const sort = parseSort(request.nextUrl.searchParams.get("sort"));
 
+    const resolverStart = searchPerfEnabled ? performance.now() : 0;
     const response = await searchContent({
       siteId: site._id,
 
@@ -235,6 +242,20 @@ export async function GET(request: NextRequest) {
 
       sort,
     });
+
+    if (searchPerfEnabled) {
+      console.info(
+        "[Proti search perf]",
+        JSON.stringify({
+          stage: "api",
+          queryIsEmpty: query.length === 0,
+          siteLookupMs: lookupMs,
+          resolverMs: Math.round((performance.now() - resolverStart) * 10) / 10,
+          totalMs: Math.round((performance.now() - routeStart) * 10) / 10,
+          resultCount: response.results.length,
+        }),
+      );
+    }
 
     return NextResponse.json(response, {
       headers: {

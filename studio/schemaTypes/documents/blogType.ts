@@ -214,6 +214,10 @@ export const blogType = defineType({
           type: 'contentBlock',
         }),
 
+        defineArrayMember({type: 'noticeBlock'}),
+
+        defineArrayMember({type: 'metricsBlock'}),
+
         defineArrayMember({
           type: 'richTextBlock',
         }),

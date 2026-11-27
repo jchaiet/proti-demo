@@ -1,6 +1,8 @@
 import { ACCORDION_BLOCK_FRAGMENT } from "./accordion";
 import { CAROUSEL_BLOCK_FRAGMENT } from "./carousel";
 import { CONTENT_BLOCK_FRAGMENT } from "./content";
+import { NOTICE_BLOCK_FRAGMENT } from "./notice";
+import { METRICS_BLOCK_FRAGMENT } from "./metrics";
 import { DOCUMENT_LIST_BLOCK_FRAGMENT } from "./documentList";
 import { FORM_BLOCK_FRAGMENT } from "./form";
 import { GRID_BLOCK_FRAGMENT } from "./grid";
@@ -27,6 +29,8 @@ export const SINGLETON_REFERENCE_BLOCK_FRAGMENT = `
         ${CAROUSEL_BLOCK_FRAGMENT},
         ${ACCORDION_BLOCK_FRAGMENT},
         ${CONTENT_BLOCK_FRAGMENT},
+        ${NOTICE_BLOCK_FRAGMENT},
+        ${METRICS_BLOCK_FRAGMENT},
         ${TABS_BLOCK_FRAGMENT},
         ${FORM_BLOCK_FRAGMENT},
         ${GRID_BLOCK_FRAGMENT},

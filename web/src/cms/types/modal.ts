@@ -1,6 +1,7 @@
 import type {
   CmsAccordionBlock,
   CmsContentBlock,
+  CmsNoticeBlock,
   CmsFormBlock,
   CmsRichTextBlock,
   CmsTabsBlock,
@@ -10,6 +11,7 @@ export type CmsModalSize = "sm" | "md" | "lg" | "xl" | "full";
 
 export type CmsModalBlock =
   | CmsContentBlock
+  | CmsNoticeBlock
   | CmsRichTextBlock
   | CmsAccordionBlock
   | CmsTabsBlock
